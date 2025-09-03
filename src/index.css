@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Mantive sua estrutura de @theme, pois ela está correta */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* =================================================
+  🎨 PALETA DE CORES "CORPORATE TRUST" - MODO CLARO
+=================================================
+*/
+:root {
+  --radius: 0.625rem;
+
+  /* Cores Base */
+  --background: oklch(0.98 0.006 240); /* Cinza muito claro (quase branco) */
+  --foreground: oklch(0.25 0.04 265); /* Azul-escuro para texto */
+  
+  /* Componentes (Cards, Popovers) */
+  --card: oklch(1 0 0); /* Branco puro */
+  --card-foreground: oklch(0.25 0.04 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.04 265);
+
+  /* Cor Primária (Ações principais) */
+  --primary: oklch(0.45 0.16 264); /* Azul Atlassian */
+  --primary-foreground: oklch(1 0 0); /* Branco para texto sobre o azul */
+
+  /* Cores Secundárias e de Apoio */
+  --secondary: oklch(0.95 0.01 250); /* Cinza claro para fundos sutis */
+  --secondary-foreground: oklch(0.25 0.04 265);
+  --muted: oklch(0.95 0.01 250);
+  --muted-foreground: oklch(0.55 0.02 257); /* Cinza para texto secundário */
+  --accent: oklch(0.97 0.02 250);
+  --accent-foreground: oklch(0.45 0.16 264);
+
+  /* Cores Semânticas */
+  --destructive: oklch(0.52 0.2 27); /* Vermelho para erros */
+  --success: oklch(0.56 0.11 160); /* Verde para sucesso */
+  --warning: oklch(0.77 0.15 85); /* Amarelo para alertas */
+
+  /* Bordas, Inputs e Anéis de Foco */
+  --border: oklch(0.92 0.01 255); /* Borda cinza sutil */
+  --input: oklch(0.92 0.01 255);
+  --ring: oklch(0.65 0.18 264 / 0.7); /* Azul primário mais claro para foco */
+
+  /* Cores para Gráficos */
+  --chart-1: oklch(0.45 0.16 264); /* Azul (Primário) */
+  --chart-2: oklch(0.65 0.12 185); /* Ciano */
+  --chart-3: oklch(0.6 0.15 290);  /* Roxo */
+  --chart-4: oklch(0.77 0.15 85);  /* Laranja (Warning) */
+  --chart-5: oklch(0.56 0.11 160); /* Verde (Success) */
+
+  /* Cores da Sidebar (alinhadas com Card) */
+  --sidebar: oklch(1 0 0); /* Fundo branco, igual ao card */
+  --sidebar-foreground: oklch(0.25 0.04 265);
+  --sidebar-primary: oklch(0.45 0.16 264);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.97 0.02 250);
+  --sidebar-accent-foreground: oklch(0.45 0.16 264);
+  --sidebar-border: oklch(0.92 0.01 255);
+  --sidebar-ring: oklch(0.65 0.18 264 / 0.7);
+}
+
+/* =================================================
+  🎨 PALETA DE CORES "CORPORATE TRUST" - MODO ESCURO
+=================================================
+*/
+.dark {
+  /* Cores Base */
+  --background: oklch(0.15 0.03 260); /* Azul-marinho muito escuro */
+  --foreground: oklch(0.9 0.01 250); /* Cinza claro para texto */
+  
+  /* Componentes (Cards, Popovers) */
+  --card: oklch(0.2 0.035 262); /* Um tom mais claro que o fundo */
+  --card-foreground: oklch(0.9 0.01 250);
+  --popover: oklch(0.2 0.035 262);
+  --popover-foreground: oklch(0.9 0.01 250);
+
+  /* Cor Primária (Ações principais) */
+  --primary: oklch(0.65 0.18 264); /* Azul mais brilhante para contraste */
+  --primary-foreground: oklch(0.15 0.03 260); /* Texto escuro sobre o azul */
+
+  /* Cores Secundárias e de Apoio */
+  --secondary: oklch(0.25 0.04 265);
+  --secondary-foreground: oklch(0.9 0.01 250);
+  --muted: oklch(0.25 0.04 265);
+  --muted-foreground: oklch(0.65 0.02 255); /* Cinza médio para texto secundário */
+  --accent: oklch(0.25 0.04 265);
+  --accent-foreground: oklch(0.65 0.18 264);
+
+  /* Cores Semânticas */
+  --destructive: oklch(0.65 0.2 27); /* Vermelho mais claro */
+  --success: oklch(0.65 0.12 160); /* Verde mais claro */
+  --warning: oklch(0.8 0.15 85); /* Amarelo mais claro */
+
+  /* Bordas, Inputs e Anéis de Foco */
+  --border: oklch(1 0 0 / 0.15); /* Branco com 15% de opacidade */
+  --input: oklch(1 0 0 / 0.1); /* Branco com 10% de opacidade */
+  --ring: oklch(0.65 0.18 264); /* Azul primário do modo escuro */
+
+  /* Cores para Gráficos (versões mais brilhantes) */
+  --chart-1: oklch(0.65 0.18 264); /* Azul (Primário) */
+  --chart-2: oklch(0.7 0.13 185); /* Ciano */
+  --chart-3: oklch(0.7 0.16 290);  /* Roxo */
+  --chart-4: oklch(0.8 0.15 85);  /* Laranja (Warning) */
+  --chart-5: oklch(0.65 0.12 160); /* Verde (Success) */
+
+  /* Cores da Sidebar (alinhadas com Card) */
+  --sidebar: oklch(0.2 0.035 262); /* Fundo igual ao card */
+  --sidebar-foreground: oklch(0.9 0.01 250);
+  --sidebar-primary: oklch(0.65 0.18 264);
+  --sidebar-primary-foreground: oklch(0.15 0.03 260);
+  --sidebar-accent: oklch(0.25 0.04 265);
+  --sidebar-accent-foreground: oklch(0.65 0.18 264);
+  --sidebar-border: oklch(1 0 0 / 0.15);
+  --sidebar-ring: oklch(0.65 0.18 264);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Adiciona suavização de fonte para melhor legibilidade */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
