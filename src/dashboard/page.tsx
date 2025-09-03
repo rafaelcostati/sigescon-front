@@ -1,5 +1,4 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 
 import {
@@ -7,7 +6,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
-import data from "./data.json"
+
 
 export default function Page() {
   return (
@@ -31,8 +30,8 @@ export default function Page() {
                 {/* O componente de gráfico usará as cores primárias e de accent que definimos */}
                 <ChartAreaInteractive />
               </div>
-              {/* O DataTable será estilizado internamente com as cores de card, borda e texto */}
-              <DataTable data={data} />
+             
+              
             </div>
           </div>
         </div>
