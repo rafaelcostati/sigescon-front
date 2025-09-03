@@ -17,7 +17,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const data = {
   user: {
@@ -28,32 +29,30 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
       title: "Contratos",
-      url: "#",
+      url: "/contratos",
       icon: IconFileText,
     },
     {
       title: "Fornecedores",
-      url: "#",
+      url: "/fornecedores",
       icon: IconBuilding,
     },
     {
       title: "Processos",
-      url: "#",
+      url: "/processos",
       icon: IconGavel,
     },
     {
       title: "Usuários",
-      url: "#",
+      url: "/usuarios",
       icon: IconUsers,
     },
   ],
-  
-  
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -66,17 +65,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
-                <ShieldCheck className="!size-5" />                
+              <Link to="/dashboard">
+                <ShieldCheck className="!size-5" />
                 <span className="text-base font-semibold">SIGESCON</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
-        <NavMain items={data.navMain} />     
-     </SidebarContent>
+        {/* navegação principal */}
+        <NavMain items={data.navMain} />
+      </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>

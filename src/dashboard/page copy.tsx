@@ -1,7 +1,8 @@
+import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
-
+import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
@@ -20,8 +21,9 @@ export default function Page() {
       }
     >
       {/* A sidebar geralmente tem um fundo de card */}
-      
-      <SidebarInset>        
+      <AppSidebar variant="inset" className="bg-card" />
+      <SidebarInset>
+        <SiteHeader />
         {/* Usamos a cor de fundo principal aqui */}
         <div className="flex flex-1 flex-col bg-background text-foreground">
           <div className="@container/main flex flex-1 flex-col gap-2">
