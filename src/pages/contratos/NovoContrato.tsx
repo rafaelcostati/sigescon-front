@@ -183,12 +183,12 @@ export default function NovoContrato() {
   const documentoValue = watch("documento");
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-full mx-auto p-6">
       <h1 className="text-3xl font-bold mb-8">Novo Contrato</h1>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <FormField
               control={form.control}
               name="nr_contrato"
@@ -215,12 +215,37 @@ export default function NovoContrato() {
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="doe"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>DOE</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="data_doe"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data DOE</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
               name="objeto"
               render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="md:col-span-4">
                   <FormLabel>Objeto</FormLabel>
                   <FormControl>
                     <Textarea rows={3} {...field} />
@@ -262,36 +287,24 @@ export default function NovoContrato() {
               control={form.control}
               name="base_legal"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="md:col-span-2">
                   <FormLabel>Base legal</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
                 </FormItem>
               )}
-            />
+            />           
 
-            <FormField
+            
+             <FormField
               control={form.control}
-              name="doe"
+              name="termos_contratuais"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>DOE</FormLabel>
+                <FormItem className="md:col-span-4">
+                  <FormLabel>Termos contratuais</FormLabel>
                   <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="data_doe"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data DOE</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
+                    <Textarea rows={4} {...field} />
                   </FormControl>
                 </FormItem>
               )}
@@ -325,18 +338,7 @@ export default function NovoContrato() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="termos_contratuais"
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel>Termos contratuais</FormLabel>
-                  <FormControl>
-                    <Textarea rows={4} {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+           
 
             <FormField
               control={form.control}
@@ -420,7 +422,7 @@ export default function NovoContrato() {
               control={form.control}
               name="documento"
               render={() => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="col-span-4">
                   <FormLabel>Documento</FormLabel>
                   <FormControl>
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
