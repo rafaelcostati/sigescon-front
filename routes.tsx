@@ -3,6 +3,7 @@ import AppLayout from '@/_layouts/app'
 // Páginas
 import Page from '@/dashboard/page' // Dashboard
 import { ContratosDataTable } from '@/pages/contratos/Contratos'
+import NovoContrato from '@/pages/contratos/NovoContrato'
 
 // Crie stubs temporários (até você implementar as páginas reais)
 const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
       {
         path: '/contratos',
         element: <ContratosDataTable />,
+      },
+      {
+        path: '/novocontrato',
+        element: <NovoContrato />,
       },
       {
         path: '/fornecedores',
