@@ -4,11 +4,11 @@ import AppLayout from '@/_layouts/app'
 import Page from '@/dashboard/page' // Dashboard
 import { ContratosDataTable } from '@/pages/contratos/Contratos'
 import NovoContrato from '@/pages/contratos/NovoContrato'
+import UserCard from '@/pages/usuarios/usuarios'
 
 // Crie stubs temporários (até você implementar as páginas reais)
 const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>
 const ProcessosPage = () => <div>⚖️ Página de Processos</div>
-const UsuariosPage = () => <div>👤 Página de Usuários</div>
 
 export const router = createBrowserRouter([
   {
@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/usuarios',
-        element: <UsuariosPage />,
+        element: <UserCard />,
       },
     ],
   },
