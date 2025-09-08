@@ -1,46 +1,7 @@
-import * as React from "react";
 import { useEffect, useState } from "react";
 import data from "@/pages/usuarios/data.json";
-
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from "@tanstack/react-table";
-
-import { ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import { Edit2, Trash2, Power } from "lucide-react";
 
 // ---- Tipos ----
@@ -85,117 +46,12 @@ const getPerfilDescription = (perfil?: string) => {
   }
 };
 
-// ---- Colunas ----
-// ---- Colunas ----
-export const columns: ColumnDef<UserCardProps>[] = [
-  {
-    accessorKey: "nome",
-    header: ({ column }) => (
-      <button
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-2"
-      >
-        Nome
-        <ChevronDown
-          className={`w-4 h-4 transition-transform ${
-            column.getIsSorted() === "asc" ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-    ),
-    cell: ({ row }) => (
-      <div className="text-violet-800 font-semibold">{row.getValue("nome")}</div>
-    ),
-    enableSorting: true,
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-  },
-  {
-    accessorKey: "cpf",
-    header: "CPF",
-    cell: ({ row }) => <div>{formatCPF(row.getValue("cpf"))}</div>,
-  },
-  {
-    accessorKey: "perfil",
-    header: "Perfil",
-    cell: ({ row }) => <div>{getPerfilDescription(row.getValue("perfil"))}</div>,
-  },
-  {
-    accessorKey: "ativo",
-    header: "Status",
-    cell: ({ row }) => {
-      const ativo = row.getValue("ativo") as boolean;
-      return (
-        <span
-          className={`px-2 py-1 rounded text-xs font-semibold ${
-            ativo ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}
-        >
-          {ativo ? "Ativo" : "Inativo"}
-        </span>
-      );
-    },
-  },
-  // 👉 Coluna de ação (botão editar)
-  {
-  id: "actions",
-  header: "Ações",
-  cell: ({ row }) => {
-    const user = row.original; // objeto do usuário
-    const ativo = user.ativo;
-
-    return (
-      <div className="flex gap-2">
-        {/* Botão Editar */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="p-1"
-          onClick={() => console.log("Editar usuário:", user)}
-        >
-          <Edit2 className="w-4 h-4" />
-        </Button>
-
-        {/* Botão Excluir */}
-        <Button
-          variant="destructive"
-          size="sm"
-          className="p-1"
-          onClick={() => console.log("Excluir usuário:", user)}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-
-        {/* Botão Ativar/Desativar */}
-        <Button
-          variant="outline"
-          size="sm"
-          className={`p-1 ${ativo ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
-          onClick={() => console.log(`${ativo ? "Desativar" : "Ativar"} usuário:`, user)}
-        >
-          <Power className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  },
-}
-];
-
-
 // ---- Componente ----
 export default function UserCard() {
   const [users, setUsers] = useState<UserCardProps[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    // 🔹 Mapear o JSON para o formato da tabela
     const mappedUsers: UserCardProps[] = (data as any[]).map((user) => ({
       id: user.id,
       nome: user.nome,
@@ -207,114 +63,112 @@ export default function UserCard() {
           : user.perfil_id === 2
           ? "Coordenação"
           : "Externo",
-      ativo: true, // valor fixo para exibição
+      ativo: true,
     }));
 
     setUsers(mappedUsers);
   }, []);
 
-  const table = useReactTable({
-    data: users,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: { sorting, columnFilters, columnVisibility, rowSelection },
-  });
+  const filteredUsers = users.filter((user) =>
+    user.nome.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const toggleAtivo = (id: number) => {
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === id ? { ...user, ativo: !user.ativo } : user
+      )
+    );
+  };
 
   return (
     <div className="w-full mx-auto p-6">
+      {/* Filtro */}
       <div className="flex items-center py-4">
         <Input
           placeholder="Filtrar por nome..."
-          value={(table.getColumn("nome")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("nome")?.setFilterValue(event.target.value)
-          }
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Colunas <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) =>
-                    column.toggleVisibility(!!value)
-                  }
+      </div>
+
+      {/* Grid de Cards */}
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {filteredUsers.length ? (
+          filteredUsers.map((user) => (
+            <div
+              key={user.id}
+              className="backdrop-blur-sm bg-white/40 dark:bg-gray-900/40 border border-white/30 dark:border-gray-700/50 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between transform hover:-translate-y-1"
+            >
+              {/* Informações */}
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-1">
+                  {user.nome}
+                </h2>
+                <p className="text-gray-500 dark:text-gray-300 text-sm lowercase">
+                  {user.email}
+                </p>
+                <p className="text-gray-500 dark:text-gray-300 text-sm">
+                  CPF: {formatCPF(user.cpf)}
+                </p>
+                <p className="text-gray-500 dark:text-gray-300 text-sm">
+                  Perfil: {getPerfilDescription(user.perfil)}
+                </p>
+              </div>
+
+              {/* Status e Ações */}
+              <div className="flex items-center justify-between mt-auto">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${
+                    user.ativo
+                      ? "bg-green-100 text-green-700 dark:bg-green-200/30 dark:text-green-300"
+                      : "bg-red-100 text-red-700 dark:bg-red-200/30 dark:text-red-300"
+                  }`}
                 >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Nenhum resultado encontrado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex justify-start mt-3 mb-2">
-        <Pagination className="bottom-0 dark:bg-transparent py-2 cursor-pointer">
-          <PaginationContent>
-            <PaginationPrevious onClick={() => table.previousPage()}>
-              Página Anterior
-            </PaginationPrevious>
-            <PaginationItem>
-              Página {table.getState().pagination.pageIndex + 1} de{" "}
-              {table.getPageCount()}
-            </PaginationItem>
-            <PaginationNext onClick={() => table.nextPage()}>
-              Próxima Página
-            </PaginationNext>
-          </PaginationContent>
-        </Pagination>
+                  {user.ativo ? "Ativo" : "Inativo"}
+                </span>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="p-2 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900 transition-colors"
+                    onClick={() => console.log("Editar usuário:", user)}
+                  >
+                    <Edit2 className={`w-5 h-5 text-violet-700 dark:text-violet-300`} />
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+                    onClick={() => console.log("Excluir usuário:", user)}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`p-2 rounded-lg transition-colors duration-300 ${
+                      user.ativo
+                        ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-800/40"
+                        : "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-800/40"
+                    }`}
+                    onClick={() => toggleAtivo(user.id)}
+                  >
+                    <Power className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="col-span-full text-center text-gray-500 dark:text-gray-300">
+            Nenhum resultado encontrado.
+          </p>
+        )}
       </div>
     </div>
   );
