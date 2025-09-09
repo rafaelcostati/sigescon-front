@@ -1,53 +1,67 @@
 import { createBrowserRouter } from 'react-router-dom'
 import AppLayout from '@/_layouts/app'
+import { AuthLayout } from '@/_layouts/auth'
+
 // Páginas
-import Page from '@/dashboard/page' // Dashboard
+import Page from '@/dashboard/page'
 import { ContratosDataTable } from '@/pages/contratos/Contratos'
 import NovoContrato from '@/pages/contratos/NovoContrato'
 import UserCard from '@/pages/usuarios/usuarios'
 import { NovoUsuario } from '@/pages/usuarios/NovoUsuario'
+import { NotFound } from '@/NotFound'
+import { SignIn } from '@/pages/auth/SignIn'
 
-
-// Crie stubs temporários (até você implementar as páginas reais)
+// Stubs temporários
 const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>
 const ProcessosPage = () => <div>⚖️ Página de Processos</div>
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <AppLayout />,
+    path: '/', // rota inicial → auth
+    element: <AuthLayout />,
+    errorElement: <NotFound />,
     children: [
       {
-        index: true, // rota inicial: "/"
-        element: <Page />, // Dashboard
+        index: true, // quando acessar "/" → login
+        element: <SignIn />,
       },
       {
-        path: '/dashboard',
-        element: <Page />, // Também acessível em "/dashboard"
+        path: 'login',
+        element: <SignIn />,
+      },
+    ],
+  },
+  {
+    path: '/', // rotas da aplicação
+    element: <AppLayout />,
+    errorElement: <NotFound />,
+    children: [
+      {
+        path: 'dashboard',
+        element: <Page />,
       },
       {
-        path: '/contratos',
+        path: 'contratos',
         element: <ContratosDataTable />,
       },
       {
-        path: '/novocontrato',
+        path: 'novocontrato',
         element: <NovoContrato />,
       },
       {
-        path: '/fornecedores',
+        path: 'fornecedores',
         element: <FornecedoresPage />,
       },
       {
-        path: '/processos',
+        path: 'processos',
         element: <ProcessosPage />,
       },
       {
-        path: '/cadastrarusuario',
+        path: 'cadastrarusuario',
         element: <NovoUsuario />,
       },
-      
       {
-        path: '/usuarios',
+        path: 'usuarios',
         element: <UserCard />,
       },
     ],

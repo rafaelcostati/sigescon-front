@@ -126,7 +126,7 @@ function unmaskCPF(value: string) {
     return value.replace(/\D/g, '');
 }
 
-export function UserEditar({ user }: UserEditarProps) {
+export  function UserEditar({ user }: UserEditarProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const { register, handleSubmit, control, formState: { isSubmitting } } = useForm<UpdateUserForm>({

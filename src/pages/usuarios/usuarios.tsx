@@ -16,7 +16,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Edit2, Trash2, Power, LoaderCircle, CirclePlus } from "lucide-react";
+import { Trash2, LoaderCircle, CirclePlus } from "lucide-react";
+import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
 //================================================================================
 // SECTION: TIPOS E SCHEMAS
@@ -37,7 +38,6 @@ export type User = {
     nome: string;
     email: string;
     perfil: string;
-    ativo: boolean;
     cpf: string;
     matricula?: string; // Adicionado matrícula
 };
@@ -242,7 +242,6 @@ export default function UserCard() {
                 cpf: user.cpf,
                 matricula: user.matricula, // Mapeado matrícula
                 perfil: perfisMap.get(user.perfil_id) || "Desconhecido",
-                ativo: true,
             }));
             setUsers(mappedUsers);
         } catch (error) {
@@ -261,11 +260,8 @@ export default function UserCard() {
         user.nome.toLowerCase().includes(filter.toLowerCase()) ||
         user.email.toLowerCase().includes(filter.toLowerCase()) ||
         user.cpf.includes(filter)
-    );
-    
-    const toggleAtivo = (id: number) => {
-        setUsers((prev) => prev.map((user) => user.id === id ? { ...user, ativo: !user.ativo } : user));
-    };
+    );    
+   
 
     if (loading) {
         return (
@@ -304,13 +300,12 @@ export default function UserCard() {
                                 <p className="text-gray-500 dark:text-gray-300 text-sm">Perfil: {user.perfil}</p>
                             </div>
                             <div className="flex items-center justify-between mt-auto">
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${user.ativo ? "bg-green-100 text-green-700 dark:bg-green-200/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-200/30 dark:text-red-300"}`}>
-                                    {user.ativo ? "Ativo" : "Inativo"}
-                                </span>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" className="p-2 rounded-lg" onClick={() => console.log("Editar:", user)}><Edit2 className="w-5 h-5 text-violet-700" /></Button>
+                                
+                                <div className="flex gap-2">                                    
+                                    <UserEditar user={user}/>                                    
+                                   
                                     <Button variant="destructive" size="sm" className="p-2 rounded-lg" onClick={() => console.log("Excluir:", user)}><Trash2 className="w-5 h-5" /></Button>
-                                    <Button variant="outline" size="sm" className={`p-2 rounded-lg ${user.ativo ? "text-red-700" : "text-green-700"}`} onClick={() => toggleAtivo(user.id)}><Power className="w-5 h-5" /></Button>
+                                   
                                 </div>
                             </div>
                         </div>
