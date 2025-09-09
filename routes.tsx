@@ -5,6 +5,7 @@ import Page from '@/dashboard/page' // Dashboard
 import { ContratosDataTable } from '@/pages/contratos/Contratos'
 import NovoContrato from '@/pages/contratos/NovoContrato'
 import UserCard from '@/pages/usuarios/usuarios'
+import { NovoUsuario } from '@/pages/usuarios/NovoUsuario'
 
 // Crie stubs temporários (até você implementar as páginas reais)
 const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>
@@ -38,6 +39,10 @@ export const router = createBrowserRouter([
       {
         path: '/processos',
         element: <ProcessosPage />,
+      },
+      {
+        path: '/cadastrarusuario',
+        element: <NovoUsuario />,
       },
       {
         path: '/usuarios',
