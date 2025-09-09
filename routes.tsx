@@ -7,6 +7,7 @@ import NovoContrato from '@/pages/contratos/NovoContrato'
 import UserCard from '@/pages/usuarios/usuarios'
 import { NovoUsuario } from '@/pages/usuarios/NovoUsuario'
 
+
 // Crie stubs temporários (até você implementar as páginas reais)
 const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>
 const ProcessosPage = () => <div>⚖️ Página de Processos</div>
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
         path: '/cadastrarusuario',
         element: <NovoUsuario />,
       },
+      
       {
         path: '/usuarios',
         element: <UserCard />,
