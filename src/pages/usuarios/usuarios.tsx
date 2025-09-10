@@ -16,6 +16,19 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 import { Trash2, LoaderCircle, CirclePlus } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
@@ -118,7 +131,6 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
         if (isDialogOpen) {
             const fetchPerfis = async () => {
                 try {
-                    // Para consistência, a rota de perfis também deve ser protegida
                     const token = localStorage.getItem('token');
                     const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis`, {
                         headers: {
@@ -220,6 +232,65 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 }
 
 //================================================================================
+// SECTION: NOVO COMPONENTE DE EXCLUSÃO
+//================================================================================
+
+function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDeleted: () => void }) {
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/${user.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+            });
+
+            if (response.ok) {
+                toast.success(`Usuário "${user.nome}" excluído com sucesso.`);
+                onUserDeleted(); // Recarrega a lista de usuários no componente pai
+            } else {
+                const result = await response.json();
+                toast.error(result.error || 'Falha ao excluir usuário.');
+            }
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            toast.error('Ocorreu um erro de rede. Tente novamente.');
+        } finally {
+            setIsDeleting(false);
+                    }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="p-2 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação irá excluir o usuário <span className="font-bold">{user.nome}</span>. Deseja continuar?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+                        {isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
+
+//================================================================================
 // SECTION: COMPONENTE PRINCIPAL (LISTAGEM)
 //================================================================================
 export default function UserCard() {
@@ -231,8 +302,6 @@ export default function UserCard() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            // ATENÇÃO: Verifique se a chave 'userProfile' está correta.
-            // Use a mesma chave que você usou para salvar o perfil do usuário no login.
             const perfil = localStorage.getItem('userProfile');
 
             if (!token || !perfil) {
@@ -244,8 +313,6 @@ export default function UserCard() {
             const fetchOptions = {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    // ATENÇÃO: O nome deste cabeçalho ('X-User-Profile') é um exemplo.
-                    // Use o nome exato que a sua API espera para receber o perfil.
                     'X-User-Profile': perfil,
                     'Content-Type': 'application/json',
                 }
@@ -282,7 +349,7 @@ export default function UserCard() {
             console.error("Erro ao carregar usuários:", error);
 
             if (error instanceof Error && error.message === 'Não autorizado') {
-                // A notificação de sessão expirada já foi exibida, então não fazemos nada aqui.
+                
             } else {
                 toast.error("Não foi possível carregar a lista de usuários.");
             }
@@ -340,7 +407,7 @@ export default function UserCard() {
                             <div className="flex items-center justify-between mt-auto">
                                 <div className="flex gap-2">
                                     <UserEditar user={user} onUserUpdated={fetchUsersAndPerfis} />
-                                    <Button variant="destructive" size="sm" className="p-2 rounded-lg" onClick={() => console.log("Excluir:", user)}><Trash2 className="w-5 h-5" /></Button>
+                                    <ExcluirUsuarioDialog user={user} onUserDeleted={fetchUsersAndPerfis} />
                                 </div>
                             </div>
                         </div>
