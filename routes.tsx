@@ -6,14 +6,15 @@ import { AuthLayout } from '@/_layouts/auth';
 import Page from '@/dashboard/page';
 import { ContratosDataTable } from '@/pages/contratos/Contratos';
 import NovoContrato from '@/pages/contratos/NovoContrato';
-import  UserCard   from '@/pages/usuarios/usuarios';
-import { NovoUsuario } from '@/pages/usuarios/NovoUsuario';
+import  UserCard   from '@/pages/usuarios/Usuario';
+import { NovoUsuario } from '@/pages/usuarios/CadastrarUsuario';
 import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
 import PrivateRoute from '@/utils/PrivateRoute';
+import Contratados from '@/pages/fornecedor/Contratado';
 
 // Stubs temporários
-const FornecedoresPage = () => <div>📦 Página de Fornecedores</div>;
+
 const ProcessosPage = () => <div>⚖️ Página de Processos</div>;
 
 export const router = createBrowserRouter([
@@ -52,8 +53,8 @@ export const router = createBrowserRouter([
         element: <PrivateRoute allowedProfiles={['Administrador']}><NovoContrato /></PrivateRoute>,
       },
       {
-        path: '/fornecedores',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><FornecedoresPage /></PrivateRoute>,
+        path: '/contratado',
+        element: <PrivateRoute allowedProfiles={['Administrador']}><Contratados /></PrivateRoute>,
       },
       {
         path: '/processos',

@@ -38,8 +38,8 @@ const data = {
       icon: IconFileText,
     },
     {
-      title: "Fornecedores",
-      url: "/fornecedores",
+      title: "Contratados",
+      url: "/contratado",
       icon: IconBuilding,
     },
     {
