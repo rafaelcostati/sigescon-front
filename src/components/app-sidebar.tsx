@@ -4,7 +4,6 @@ import {
   IconUsers,
   IconBuilding,
   IconFileText,
-  IconGavel,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -41,12 +40,7 @@ const data = {
       title: "Contratados",
       url: "/contratado",
       icon: IconBuilding,
-    },
-    {
-      title: "Processos",
-      url: "/processos",
-      icon: IconGavel,
-    },
+    },   
     {
       title: "Usuários",
       url: "/usuarios",
