@@ -39,7 +39,7 @@ export type User = {
     email: string;
     perfil: string;
     cpf: string;
-    matricula?: string; // Adicionado matrícula
+    matricula?: string;
 };
 
 type Perfil = {
@@ -54,9 +54,9 @@ const signUpForm = z.object({
     senha: z.string().min(1, "Senha é obrigatória"),
     perfil_id: z.string().min(1, "Perfil é obrigatório"),
     cpf: z.string()
-           .transform((val) => val.replace(/\D/g, ''))
-           .refine((val) => val.length === 11, { message: "CPF deve conter 11 números" })
-           .refine((val) => validateCPF(val), { message: "CPF inválido" }),
+        .transform((val) => val.replace(/\D/g, ''))
+        .refine((val) => val.length === 11, { message: "CPF deve conter 11 números" })
+        .refine((val) => validateCPF(val), { message: "CPF inválido" }),
     matricula: z.string().optional(),
 });
 
@@ -118,7 +118,13 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
         if (isDialogOpen) {
             const fetchPerfis = async () => {
                 try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis`);
+                    // Para consistência, a rota de perfis também deve ser protegida
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     if (!response.ok) throw new Error('Falha ao buscar perfis.');
                     const data = await response.json();
                     setPerfis(data);
@@ -149,7 +155,7 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
                 toast.success('Usuário cadastrado com sucesso.');
                 setIsDialogOpen(false);
                 reset();
-                onUserAdded(); // Chama a função de atualização da lista
+                onUserAdded();
             } else {
                 const result = await response.json();
                 toast.error(result.error || 'Cadastro inválido.');
@@ -173,30 +179,29 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
                     <DialogHeader>
                         <DialogTitle>Novo Usuário</DialogTitle>
                         <DialogDescription>
-                           Preencha os campos para cadastrar um novo usuário.
+                            Preencha os campos para cadastrar um novo usuário.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        {/* Fields: Nome, E-mail, CPF, Matrícula, Perfil, Senha */}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="nome" className="text-right">Nome</Label>
                             <div className="col-span-3"><Input id="nome" {...register('nome')} />{errors.nome && <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>}</div>
                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="email" className="text-right">E-mail</Label>
                             <div className="col-span-3"><Input id="email" {...register('email')} />{errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}</div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="cpf" className="text-right">CPF</Label>
-                            <div className="col-span-3"><Controller name="cpf" control={control} defaultValue="" render={({ field }) => (<Input id="cpf" value={cpfMask(field.value)} onChange={(e) => { const unmasked = e.target.value.replace(/\D/g, ''); if (unmasked.length <= 11) field.onChange(unmasked); }} maxLength={14} /> )}/>{errors.cpf && <p className="text-red-500 text-sm mt-1">{errors.cpf.message}</p>}</div>
+                            <div className="col-span-3"><Controller name="cpf" control={control} defaultValue="" render={({ field }) => (<Input id="cpf" value={cpfMask(field.value)} onChange={(e) => { const unmasked = e.target.value.replace(/\D/g, ''); if (unmasked.length <= 11) field.onChange(unmasked); }} maxLength={14} />)} />{errors.cpf && <p className="text-red-500 text-sm mt-1">{errors.cpf.message}</p>}</div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="matricula" className="text-right">Matrícula</Label>
-                             <div className="col-span-3"><Input id="matricula" {...register('matricula')} />{errors.matricula && <p className="text-red-500 text-sm mt-1">{errors.matricula.message}</p>}</div>
+                            <div className="col-span-3"><Input id="matricula" {...register('matricula')} />{errors.matricula && <p className="text-red-500 text-sm mt-1">{errors.matricula.message}</p>}</div>
                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="perfil_id" className="text-right">Perfil</Label>
-                            <div className="col-span-3"><Controller name="perfil_id" control={control} render={({ field }) => ( <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Escolha um perfil" /></SelectTrigger><SelectContent>{perfis.map(p => (<SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>))}</SelectContent></Select> )}/>{errors.perfil_id && <p className="text-red-500 text-sm mt-1">{errors.perfil_id.message}</p>}</div>
+                            <div className="col-span-3"><Controller name="perfil_id" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Escolha um perfil" /></SelectTrigger><SelectContent>{perfis.map(p => (<SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>))}</SelectContent></Select>)} />{errors.perfil_id && <p className="text-red-500 text-sm mt-1">{errors.perfil_id.message}</p>}</div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="senha" className="text-right">Senha</Label>
@@ -225,11 +230,40 @@ export default function UserCard() {
     const fetchUsersAndPerfis = async () => {
         setLoading(true);
         try {
+            const token = localStorage.getItem('token');
+            // ATENÇÃO: Verifique se a chave 'userProfile' está correta.
+            // Use a mesma chave que você usou para salvar o perfil do usuário no login.
+            const perfil = localStorage.getItem('userProfile');
+
+            if (!token || !perfil) {
+                toast.error("Acesso não autorizado. Faça o login novamente.");
+                setLoading(false);
+                return;
+            }
+
+            const fetchOptions = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    // ATENÇÃO: O nome deste cabeçalho ('X-User-Profile') é um exemplo.
+                    // Use o nome exato que a sua API espera para receber o perfil.
+                    'X-User-Profile': perfil,
+                    'Content-Type': 'application/json',
+                }
+            };
+
             const [usersResponse, perfisResponse] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/usuarios`),
-                fetch(`${import.meta.env.VITE_API_URL}/perfis`)
+                fetch(`${import.meta.env.VITE_API_URL}/usuarios`, fetchOptions),
+                fetch(`${import.meta.env.VITE_API_URL}/perfis`, fetchOptions)
             ]);
-            if (!usersResponse.ok || !perfisResponse.ok) throw new Error('Falha ao buscar dados.');
+            
+            if (usersResponse.status === 401 || perfisResponse.status === 401) {
+                toast.error("Sua sessão expirou. Faça o login novamente.");
+                throw new Error('Não autorizado');
+           }
+
+            if (!usersResponse.ok || !perfisResponse.ok) {
+                throw new Error('Falha ao buscar dados da API.');
+            }
 
             const usersData: ApiUser[] = await usersResponse.json();
             const perfisData: Perfil[] = await perfisResponse.json();
@@ -240,13 +274,18 @@ export default function UserCard() {
                 nome: user.nome,
                 email: user.email,
                 cpf: user.cpf,
-                matricula: user.matricula, // Mapeado matrícula
+                matricula: user.matricula,
                 perfil: perfisMap.get(user.perfil_id) || "Desconhecido",
             }));
             setUsers(mappedUsers);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
-            toast.error("Não foi possível carregar a lista de usuários.");
+
+            if (error instanceof Error && error.message === 'Não autorizado') {
+                // A notificação de sessão expirada já foi exibida, então não fazemos nada aqui.
+            } else {
+                toast.error("Não foi possível carregar a lista de usuários.");
+            }
         } finally {
             setLoading(false);
         }
@@ -260,8 +299,7 @@ export default function UserCard() {
         user.nome.toLowerCase().includes(filter.toLowerCase()) ||
         user.email.toLowerCase().includes(filter.toLowerCase()) ||
         user.cpf.includes(filter)
-    );    
-   
+    );
 
     if (loading) {
         return (
@@ -300,12 +338,9 @@ export default function UserCard() {
                                 <p className="text-gray-500 dark:text-gray-300 text-sm">Perfil: {user.perfil}</p>
                             </div>
                             <div className="flex items-center justify-between mt-auto">
-                                
-                                <div className="flex gap-2">                                    
-                                    <UserEditar user={user}/>                                    
-                                   
+                                <div className="flex gap-2">
+                                    <UserEditar user={user} />
                                     <Button variant="destructive" size="sm" className="p-2 rounded-lg" onClick={() => console.log("Excluir:", user)}><Trash2 className="w-5 h-5" /></Button>
-                                   
                                 </div>
                             </div>
                         </div>
