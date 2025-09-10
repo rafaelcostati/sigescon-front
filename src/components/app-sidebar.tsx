@@ -4,6 +4,7 @@ import {
   IconUsers,
   IconBuilding,
   IconFileText,
+  IconFileCertificate, 
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -35,6 +36,11 @@ const data = {
       title: "Contratos",
       url: "/contratos",
       icon: IconFileText,
+    },
+    {
+      title: "Modalidades",
+      url: "/modalidades",
+      icon: IconFileCertificate,
     },
     {
       title: "Contratados",

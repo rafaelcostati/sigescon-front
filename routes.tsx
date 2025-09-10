@@ -12,10 +12,8 @@ import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
 import PrivateRoute from '@/utils/PrivateRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
+import Modalidades from '@/pages/modalidades/Modalidade';
 
-// Stubs temporários
-
-const ProcessosPage = () => <div>⚖️ Página de Processos</div>;
 
 export const router = createBrowserRouter([
 
@@ -57,8 +55,8 @@ export const router = createBrowserRouter([
         element: <PrivateRoute allowedProfiles={['Administrador']}><Contratados /></PrivateRoute>,
       },
       {
-        path: '/processos',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><ProcessosPage /></PrivateRoute>,
+        path: '/modalidades',
+        element: <PrivateRoute allowedProfiles={['Administrador']}><Modalidades /></PrivateRoute>,
       },
       {
         path: '/cadastrarusuario',
