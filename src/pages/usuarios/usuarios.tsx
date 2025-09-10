@@ -255,11 +255,11 @@ export default function UserCard() {
                 fetch(`${import.meta.env.VITE_API_URL}/usuarios`, fetchOptions),
                 fetch(`${import.meta.env.VITE_API_URL}/perfis`, fetchOptions)
             ]);
-            
+
             if (usersResponse.status === 401 || perfisResponse.status === 401) {
                 toast.error("Sua sessão expirou. Faça o login novamente.");
                 throw new Error('Não autorizado');
-           }
+            }
 
             if (!usersResponse.ok || !perfisResponse.ok) {
                 throw new Error('Falha ao buscar dados da API.');
@@ -339,7 +339,7 @@ export default function UserCard() {
                             </div>
                             <div className="flex items-center justify-between mt-auto">
                                 <div className="flex gap-2">
-                                    <UserEditar user={user} />
+                                    <UserEditar user={user} onUserUpdated={fetchUsersAndPerfis} />
                                     <Button variant="destructive" size="sm" className="p-2 rounded-lg" onClick={() => console.log("Excluir:", user)}><Trash2 className="w-5 h-5" /></Button>
                                 </div>
                             </div>
