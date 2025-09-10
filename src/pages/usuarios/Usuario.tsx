@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +29,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-import { Trash2, LoaderCircle, CirclePlus } from "lucide-react";
+import { Trash2, LoaderCircle, CirclePlus, X } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
 //================================================================================
@@ -290,15 +290,17 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
 }
 
 
+
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM)
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM) - MODIFICADO
 //================================================================================
 export default function UserCard() {
     const [users, setUsers] = useState<User[]>([]);
-    const [filter, setFilter] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
 
-    const fetchUsersAndPerfis = async () => {
+    const fetchUsersAndPerfis = useCallback(async (searchQuery = "") => {
+        // ... (esta função permanece exatamente a mesma do seu código original)
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -318,8 +320,13 @@ export default function UserCard() {
                 }
             };
 
+            const usersUrl = new URL(`${import.meta.env.VITE_API_URL}/usuarios`);
+            if (searchQuery) {
+                usersUrl.searchParams.append('nome', searchQuery);
+            }
+            
             const [usersResponse, perfisResponse] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/usuarios`, fetchOptions),
+                fetch(usersUrl.toString(), fetchOptions),
                 fetch(`${import.meta.env.VITE_API_URL}/perfis`, fetchOptions)
             ]);
 
@@ -347,26 +354,29 @@ export default function UserCard() {
             setUsers(mappedUsers);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
-
-            if (error instanceof Error && error.message === 'Não autorizado') {
-                
-            } else {
+            if (!(error instanceof Error && error.message === 'Não autorizado')) {
                 toast.error("Não foi possível carregar a lista de usuários.");
             }
         } finally {
             setLoading(false);
         }
-    };
-
+    }, []);
+    
     useEffect(() => {
         fetchUsersAndPerfis();
-    }, []);
+    }, [fetchUsersAndPerfis]);
 
-    const filteredUsers = users.filter((user) =>
-        user.nome.toLowerCase().includes(filter.toLowerCase()) ||
-        user.email.toLowerCase().includes(filter.toLowerCase()) ||
-        user.cpf.includes(filter)
-    );
+    const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault(); 
+        fetchUsersAndPerfis(searchTerm);
+    };
+
+    // NOVO: Função para limpar o filtro de busca
+    const handleClearFilter = () => {
+        setSearchTerm(""); 
+        fetchUsersAndPerfis(""); 
+    };
+
 
     if (loading) {
         return (
@@ -380,18 +390,34 @@ export default function UserCard() {
     return (
         <div className="w-full mx-auto p-6">
             <div className="flex items-center justify-between py-4 gap-4">
-                <Input
-                    placeholder="Filtrar por nome, e-mail ou CPF..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="max-w-sm"
-                />
-                <NovoUsuario onUserAdded={fetchUsersAndPerfis} />
+                <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center flex-grow">
+                    <Input
+                        placeholder="Filtrar por nome..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="max-w-sm"
+                    />
+                    <Button type="submit">Buscar</Button>
+
+                    {/* NOVO: Botão para remover o filtro, que só aparece se searchTerm não for vazio */}
+                    {searchTerm && (
+                        <Button
+                            type="button" // Importante para não submeter o formulário
+                            variant="outline"
+                            size="icon"
+                            onClick={handleClearFilter}
+                        >
+                           <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </form>
+                <NovoUsuario onUserAdded={() => fetchUsersAndPerfis()} />
             </div>
 
+            {/* O restante do seu JSX para renderizar os cards permanece o mesmo */}
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => (
+                {users.length > 0 ? (
+                    users.map((user) => (
                         <div key={user.id} className="backdrop-blur-sm bg-white/40 dark:bg-gray-900/40 border border-white/30 dark:border-gray-700/50 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between transform hover:-translate-y-1">
                             <div className="mb-4">
                                 <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-1 truncate">{user.nome}</h2>
@@ -406,8 +432,8 @@ export default function UserCard() {
                             </div>
                             <div className="flex items-center justify-between mt-auto">
                                 <div className="flex gap-2">
-                                    <UserEditar user={user} onUserUpdated={fetchUsersAndPerfis} />
-                                    <ExcluirUsuarioDialog user={user} onUserDeleted={fetchUsersAndPerfis} />
+                                    <UserEditar user={user} onUserUpdated={() => fetchUsersAndPerfis()} />
+                                    <ExcluirUsuarioDialog user={user} onUserDeleted={() => fetchUsersAndPerfis()} />
                                 </div>
                             </div>
                         </div>
