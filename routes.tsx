@@ -13,6 +13,7 @@ import { SignIn } from '@/pages/auth/SignIn';
 import PrivateRoute from '@/utils/PrivateRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
 import Modalidades from '@/pages/modalidades/Modalidade';
+import { EditarContrato }  from '@/pages/contratos/EditarContrato';
 
 
 export const router = createBrowserRouter([
@@ -49,6 +50,10 @@ export const router = createBrowserRouter([
       {
         path: '/novocontrato',
         element: <PrivateRoute allowedProfiles={['Administrador']}><NovoContrato /></PrivateRoute>,
+      },
+      {
+        path: '/contratos/editar/:id',
+        element: <PrivateRoute allowedProfiles={['Administrador']}><EditarContrato /></PrivateRoute>,
       },
       {
         path: '/contratado',

@@ -88,6 +88,8 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useNavigate } from 'react-router-dom';
+import { Pencil } from 'lucide-react'
 
 // ============================================================================
 // Schema e Tipos para Dados da API
@@ -268,6 +270,15 @@ function DraggableContratoCard({
         id: contrato.id as UniqueIdentifier,
     });
 
+    const navigate = useNavigate();
+
+    
+    const handleEditClick = () => {
+        // 3. Navegue para a rota de edição, passando o ID do contrato
+        navigate(`/contratos/editar/${contrato.id}`);
+    };
+
+
     // ATENÇÃO: A lógica de ícone/cor de status foi simplificada pois não temos mais o ID.
     // O ideal seria a API enviar o ID para termos mais controle.
     const getStatusIcon = (statusName: string) => {
@@ -300,7 +311,10 @@ function DraggableContratoCard({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem>Editar Contrato</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
+                            <Pencil className="h-4 w-4" />
+                            Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Ver Documento</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>Excluir</DropdownMenuItem>
