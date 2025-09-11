@@ -96,26 +96,59 @@ export const contratoSchema = z.object({
     id: z.number(),
     nr_contrato: z.string(),
     objeto: z.string(),
-    valor_anual: z.number(),
-    valor_global: z.number(),
-    base_legal: z.string(),
+    // ALTERAÇÃO AQUI: Pré-processa os valores para convertê-los em número
+    valor_anual: z.preprocess(
+        (val) => (typeof val === "string" ? parseFloat(val) : val),
+        z.number().nullable()
+    ),
+    valor_global: z.preprocess(
+        (val) => (typeof val === "string" ? parseFloat(val) : val),
+        z.number().nullable()
+    ),
+    base_legal: z.string().nullable(),
     data_inicio: z.string(),
     data_fim: z.string(),
-    termos_contratuais: z.string(),
+    termos_contratuais: z.string().nullable(),
     contratado_id: z.number(),
     modalidade_id: z.number(),
     status_id: z.number(),
     gestor_id: z.number(),
     fiscal_id: z.number(),
     fiscal_substituto_id: z.number().nullable(),
-    pae: z.string(),
-    doe: z.string(),
-    data_doe: z.string(),
-    documento: z.string(),
+    pae: z.string().nullable(),
+    doe: z.string().nullable(),
+    data_doe: z.string().nullable(),
+    // ALTERAÇÃO AQUI: Pré-processa o documento para convertê-lo em string
+    documento: z.preprocess(
+        (val) => (typeof val === "number" ? String(val) : val),
+        z.string().nullable()
+    ),
     created_at: z.string(),
     updated_at: z.string(),
-})
+});
 type Contrato = z.infer<typeof contratoSchema>
+
+// --- NOVOS SCHEMAS E TIPOS PARA DETALHES ---
+export const relatorioSchema = z.object({
+    id: z.number(),
+    descricao: z.string(),
+    data_envio: z.string(),
+});
+export type Relatorio = z.infer<typeof relatorioSchema>;
+
+export const pendenciaSchema = z.object({
+    id: z.number(),
+    descricao: z.string(),
+    resolvida: z.boolean(),
+});
+export type Pendencia = z.infer<typeof pendenciaSchema>;
+
+export const contratoDetalhadoSchema = contratoSchema.extend({
+    relatorios: z.array(relatorioSchema).optional(),
+    pendencias: z.array(pendenciaSchema).optional(),
+});
+export type ContratoDetalhado = z.infer<typeof contratoDetalhadoSchema>;
+
 
 type ContratadoInfo = { id: number; nome: string; cnpj: string }
 type StatusInfo = { id: number; nome: string }
@@ -124,10 +157,12 @@ type UsuarioInfo = { id: number; nome: string; perfil: string }
 // ============================================================================
 // Funções Auxiliares de Formatação
 // ============================================================================
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+const formatCurrency = (value: number | null | undefined) => {
+    if (value == null) return "N/A";
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+}
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "N/A"
     return new Date(dateString).toLocaleDateString("pt-BR", {
         timeZone: "UTC",
@@ -137,7 +172,7 @@ const formatDate = (dateString: string) => {
     })
 }
 
-const formatDateTime = (dateString: string) => {
+const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return "N/A"
     return new Date(dateString).toLocaleString("pt-BR", { timeZone: "UTC" })
 }
@@ -162,7 +197,6 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-                    {/* Número do Contrato */}
                     <div className="space-y-1.5">
                         <Label htmlFor="nrContrato">Número do Contrato</Label>
                         <Input
@@ -172,8 +206,6 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
                             onChange={(e) => table.getColumn("nr_contrato")?.setFilterValue(e.target.value)}
                         />
                     </div>
-
-                    {/* Objeto */}
                     <div className="space-y-1.5">
                         <Label htmlFor="objeto">Objeto do Contrato</Label>
                         <Input
@@ -183,8 +215,6 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
                             onChange={(e) => table.getColumn("objeto")?.setFilterValue(e.target.value)}
                         />
                     </div>
-
-                    {/* Status (Dinâmico) */}
                     <div className="space-y-1.5">
                         <Label>Status</Label>
                         <Select
@@ -206,8 +236,6 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
                             </SelectContent>
                         </Select>
                     </div>
-
-                    {/* Botões */}
                     <div className="flex flex-col md:flex-row gap-2 self-end">
                         <Button type="button" className="w-full md:w-auto">
                             <IconSearch className="h-4 w-4 mr-2" /> Pesquisar
@@ -223,40 +251,35 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
 }
 
 // ============================================================================
-// Componente: DraggableContratoCard
+// Componente: DraggableContratoCard (VERSÃO CORRIGIDA)
 // ============================================================================
 function DraggableContratoCard({
     contrato,
-    contratados,
-    statusList,
+    contratados, 
+    statusList,  
     usuarios,
 }: {
-    contrato: Contrato
+    contrato: any // Usando 'any' temporariamente para acomodar os novos campos da API
     contratados: ContratadoInfo[]
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
 }) {
     const { transform, transition, setNodeRef, isDragging } = useSortable({
         id: contrato.id as UniqueIdentifier,
-    })
+    });
 
-    const status = statusList.find((s) => s.id === contrato.status_id) || { nome: "Desconhecido" }
-    const contratado = contratados.find((c) => c.id === contrato.contratado_id) || { nome: "Não encontrado" }
-    
-    const getStatusVariant = (statusId: number) => {
-        switch (statusId) {
-            case 1: return "outline";
-            case 2: return "secondary";
-            default: return "default";
+    // ATENÇÃO: A lógica de ícone/cor de status foi simplificada pois não temos mais o ID.
+    // O ideal seria a API enviar o ID para termos mais controle.
+    const getStatusIcon = (statusName: string) => {
+        // Você pode adicionar uma lógica simples baseada no nome se desejar
+        if (statusName?.toLowerCase().includes('vencido')) {
+            return <IconExclamationCircle className="text-gray-500" />;
         }
-    }
-    const getStatusIcon = (statusId: number) => {
-        switch (statusId) {
-            case 1: return <IconCircleCheckFilled className="text-green-500" />;
-            case 2: return <IconExclamationCircle className="text-gray-500" />;
-            default: return <IconClockHour4 className="text-blue-500" />;
+        if (statusName?.toLowerCase().includes('ativo')) {
+            return <IconCircleCheckFilled className="text-green-500" />;
         }
-    }
+        return <IconClockHour4 className="text-blue-500" />;
+    };
 
     return (
         <Card
@@ -274,7 +297,6 @@ function DraggableContratoCard({
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="text-muted-foreground h-8 w-8 p-0">
                             <IconDotsVertical className="h-4 w-4" />
-                            <span className="sr-only">Abrir menu</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
@@ -288,22 +310,21 @@ function DraggableContratoCard({
             <CardContent className="flex flex-grow flex-col gap-4 text-sm">
                 <div className="flex flex-col gap-2">
                     <div>
-                        <Label className="text-xs text-muted-foreground">Status</Label>
-                        <Badge variant={getStatusVariant(contrato.status_id)} className="gap-1.5 whitespace-nowrap">
-                           {getStatusIcon(contrato.status_id)}
-                           {status.nome}
+                        <Label className="text-xs text-muted-foreground">Modalidade</Label>
+                        
+                        <Badge variant={"secondary"} className="gap-1.5 whitespace-nowrap">
+                            {getStatusIcon(contrato.modalidade_nome)}
+                            {contrato.modalidade_nome || "Não informado"}
                         </Badge>
                     </div>
                     <div>
                         <Label className="text-xs text-muted-foreground">Contratado</Label>
-                        <p className="font-medium">{contratado.nome}</p>
+                        {/* MUDANÇA AQUI: Exibindo o nome do contratado diretamente */}
+                        <p className="font-medium">{contrato.contratado_nome || "Não informado"}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">Valor Anual</Label>
-                        <p className="font-medium">{formatCurrency(contrato.valor_anual)}</p>
-                    </div>
+                    
                     <div>
                         <Label className="text-xs text-muted-foreground">Vigência</Label>
                         <p className="whitespace-nowrap font-medium">
@@ -313,9 +334,9 @@ function DraggableContratoCard({
                 </div>
             </CardContent>
             <CardFooter>
-                <ContratoDetailsViewer 
-                    contrato={contrato} 
-                    contratados={contratados} 
+                <ContratoDetailsViewer
+                    contrato={contrato}
+                    contratados={contratados}
                     statusList={statusList}
                     usuarios={usuarios}
                 />
@@ -354,21 +375,15 @@ export function ContratosDataTable() {
             setIsLoading(true)
             setError(null)
             try {
-
                 const token = localStorage.getItem('token');
-
-                // Se não houver token, o usuário não está logado. Interrompe a execução.
                 if (!token) {
                     throw new Error("Acesso não autorizado. Por favor, faça o login.");
                 }
 
-                // 2. Crie o cabeçalho de autorização.
                 const headers = {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 };
-                
-                // ======================== FIM DA ALTERAÇÃO ========================
 
                 const apiUrl = import.meta.env.VITE_API_URL;
                 if (!apiUrl) {
@@ -381,7 +396,6 @@ export function ContratosDataTable() {
                     statusRes,
                     usuariosRes,
                 ] = await Promise.all([
-                    // 3. Adicione o objeto { headers } a cada chamada fetch.
                     fetch(`${apiUrl}/contratos`, { headers }),
                     fetch(`${apiUrl}/contratados`, { headers }),
                     fetch(`${apiUrl}/status`, { headers }),
@@ -577,10 +591,10 @@ const DetailItem = ({ label, children }: { label: string; children: React.ReactN
 )
 
 // ============================================================================
-// Componente: ContratoDetailsViewer (Modal)
+// Componente: ContratoDetailsViewer (Modal) - VERSÃO CORRIGIDA
 // ============================================================================
 function ContratoDetailsViewer({
-    contrato,
+    contrato, // Usado para exibição inicial e para obter o ID
     contratados,
     statusList,
     usuarios,
@@ -590,14 +604,65 @@ function ContratoDetailsViewer({
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
 }) {
-    const status = statusList.find(s => s.id === contrato.status_id) || { nome: 'Desconhecido' };
-    const contratado = contratados.find(c => c.id === contrato.contratado_id) || { nome: 'Não encontrado', cnpj: 'N/A' };
-    const gestor = usuarios.find(u => u.id === contrato.gestor_id) || { nome: `ID: ${contrato.gestor_id}` };
-    const fiscal = usuarios.find(u => u.id === contrato.fiscal_id) || { nome: `ID: ${contrato.fiscal_id}` };
-    const fiscalSubstituto = usuarios.find(u => u.id === contrato.fiscal_substituto_id) || null;
+    // --- NOVOS ESTADOS ---
+    const [isOpen, setIsOpen] = React.useState(false)
+    const [detailedData, setDetailedData] = React.useState<ContratoDetalhado | null>(null)
+    const [isLoading, setIsLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+
+    // --- EFEITO PARA BUSCAR DADOS AO ABRIR O MODAL ---
+    React.useEffect(() => {
+        // Se o modal não estiver aberto, não faz nada
+        if (!isOpen) {
+            return
+        }
+
+        const fetchDetails = async () => {
+            setIsLoading(true)
+            setError(null)
+            try {
+                const token = localStorage.getItem("token")
+                if (!token) throw new Error("Usuário não autenticado.")
+
+                const apiUrl = import.meta.env.VITE_API_URL
+                if (!apiUrl) throw new Error("VITE_API_URL não configurada.")
+
+                const response = await fetch(`${apiUrl}/contratos/${contrato.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar detalhes: ${response.statusText}`)
+                }
+
+                const data = await response.json()
+                const validatedData = contratoDetalhadoSchema.parse(data); // Valida os dados recebidos
+                setDetailedData(validatedData)
+
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido."
+                setError(errorMessage)
+                toast.error("Falha ao carregar detalhes", { description: errorMessage })
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        fetchDetails()
+    }, [isOpen, contrato.id]) // Dependências: re-executa se o modal abrir ou o ID do contrato mudar
+
+    // --- DADOS PARA EXIBIÇÃO ---
+    // Usa os dados detalhados se já carregaram, senão, usa os dados do card como fallback
+    const dataToShow = detailedData || contrato;
+
+    const status = statusList.find(s => s.id === dataToShow.status_id) || { nome: 'Desconhecido' };
+    const contratado = contratados.find(c => c.id === dataToShow.contratado_id) || { nome: 'Não encontrado', cnpj: 'N/A' };
+    const gestor = usuarios.find(u => u.id === dataToShow.gestor_id) || { nome: `ID: ${dataToShow.gestor_id}` };
+    const fiscal = usuarios.find(u => u.id === dataToShow.fiscal_id) || { nome: `ID: ${dataToShow.fiscal_id}` };
+    const fiscalSubstituto = usuarios.find(u => u.id === dataToShow.fiscal_substituto_id) || null;
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="secondary" className="w-full" onPointerDown={(e) => e.stopPropagation()}>
                     Ver Detalhes
@@ -605,47 +670,79 @@ function ContratoDetailsViewer({
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Detalhes do Contrato: {contrato.nr_contrato}</DialogTitle>
-                    <DialogDescription>{contrato.objeto}</DialogDescription>
+                    <DialogTitle>Detalhes do Contrato: {dataToShow.nr_contrato}</DialogTitle>
+                    <DialogDescription>{dataToShow.objeto}</DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col gap-6 py-4 text-sm">
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                        <DetailItem label="Status">{status.nome}</DetailItem>
-                        <DetailItem label="Valor Anual">{formatCurrency(contrato.valor_anual)}</DetailItem>
-                        <DetailItem label="Valor Global">{formatCurrency(contrato.valor_global)}</DetailItem>
-                        <DetailItem label="Vigência">{`${formatDate(contrato.data_inicio)} a ${formatDate(contrato.data_fim)}`}</DetailItem>
-                        <DetailItem label="Contratado">{contratado.nome}</DetailItem>
-                        <DetailItem label="CNPJ do Contratado">{contratado.cnpj}</DetailItem>
+
+                {isLoading && <div className="py-8 text-center">Carregando detalhes...</div>}
+                {error && <div className="py-8 text-center text-red-600"><strong>Erro:</strong> {error}</div>}
+
+                {!isLoading && !error && (
+                    <div className="flex flex-col gap-6 py-4 text-sm">
+                        {/* Seções de Detalhes (usando dataToShow) */}
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                            <DetailItem label="Status">{status.nome}</DetailItem>
+                            <DetailItem label="Valor Anual">{formatCurrency(dataToShow.valor_anual)}</DetailItem>
+                            <DetailItem label="Valor Global">{formatCurrency(dataToShow.valor_global)}</DetailItem>
+                            <DetailItem label="Vigência">{`${formatDate(dataToShow.data_inicio)} a ${formatDate(dataToShow.data_fim)}`}</DetailItem>
+                            <DetailItem label="Contratado">{contratado.nome}</DetailItem>
+                            <DetailItem label="CNPJ do Contratado">{contratado.cnpj}</DetailItem>
+                        </div>
+                        <Separator />
+                        <h4 className="font-semibold text-foreground">Documentação e Processos</h4>
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                            <DetailItem label="Processo (PAE)">{dataToShow.pae || 'N/A'}</DetailItem>
+                            <DetailItem label="DOE">{dataToShow.doe || 'N/A'}</DetailItem>
+                            <DetailItem label="Data DOE">{formatDate(dataToShow.data_doe)}</DetailItem>
+                            <DetailItem label="Base Legal">{dataToShow.base_legal || 'N/A'}</DetailItem>
+                        </div>
+                        <Separator />
+                        <h4 className="font-semibold text-foreground">Responsáveis</h4>
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                            <DetailItem label="Gestor">{gestor.nome}</DetailItem>
+                            <DetailItem label="Fiscal">{fiscal.nome}</DetailItem>
+                            <DetailItem label="Fiscal Substituto">{fiscalSubstituto?.nome ?? "N/A"}</DetailItem>
+                        </div>
+                        <Separator />
+
+                        {/* --- NOVA SEÇÃO: RELATÓRIOS --- */}
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2">Relatórios</h4>
+                            {detailedData?.relatorios && detailedData.relatorios.length > 0 ? (
+                                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                                    {detailedData.relatorios.map(rel => (
+                                        <li key={rel.id}>{rel.descricao} - {formatDate(rel.data_envio)}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-muted-foreground">Nenhum relatório associado.</p>
+                            )}
+                        </div>
+
+                        {/* --- NOVA SEÇÃO: PENDÊNCIAS --- */}
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2">Pendências</h4>
+                            {detailedData?.pendencias && detailedData.pendencias.length > 0 ? (
+                                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                                    {detailedData.pendencias.map(pend => (
+                                        <li key={pend.id} className={pend.resolvida ? 'line-through' : ''}>
+                                            {pend.descricao}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-muted-foreground">Nenhuma pendência encontrada.</p>
+                            )}
+                        </div>
+
+                        <Separator />
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">                            
+                            <DetailItem label="Criado em">{formatDateTime(dataToShow.created_at)}</DetailItem>
+                            <DetailItem label="Atualizado em">{formatDateTime(dataToShow.updated_at)}</DetailItem>
+                        </div>
                     </div>
-                    <Separator />
-                    <h4 className="font-semibold text-foreground">Documentação e Processos</h4>
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                        <DetailItem label="Processo (PAE)">{contrato.pae}</DetailItem>
-                        <DetailItem label="DOE">{contrato.doe}</DetailItem>
-                        <DetailItem label="Data DOE">{formatDate(contrato.data_doe)}</DetailItem>
-                        <DetailItem label="Documento">{contrato.documento}</DetailItem>
-                        <DetailItem label="Base Legal">{contrato.base_legal}</DetailItem>
-                    </div>
-                    <Separator />
-                    <h4 className="font-semibold text-foreground">Responsáveis</h4>
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                        <DetailItem label="Gestor">{gestor.nome}</DetailItem>
-                        <DetailItem label="Fiscal">{fiscal.nome}</DetailItem>
-                        <DetailItem label="Fiscal Substituto">{fiscalSubstituto?.nome ?? "N/A"}</DetailItem>
-                    </div>
-                    <Separator />
-                    <div className="grid grid-cols-1 gap-y-6">
-                        <DetailItem label="Termos Contratuais">
-                            <p className="text-muted-foreground">{contrato.termos_contratuais}</p>
-                        </DetailItem>
-                    </div>
-                    <Separator />
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                        <DetailItem label="ID">{contrato.id}</DetailItem>
-                        <DetailItem label="Criado em">{formatDateTime(contrato.created_at)}</DetailItem>
-                        <DetailItem label="Atualizado em">{formatDateTime(contrato.updated_at)}</DetailItem>
-                    </div>
-                </div>
+                )}
+
                 <DialogFooter>
                     <DialogClose asChild>
                         <Button type="button" variant="default">
