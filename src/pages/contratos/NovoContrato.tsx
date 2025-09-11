@@ -1,177 +1,124 @@
-"use client"
-
-import React, { useEffect, useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-
-import { SquareX, Upload, FileText } from "lucide-react";
-
+// Schema de validação Zod
 const contractSchema = z.object({
-  nr_contrato: z.string().min(3, "Número do contrato obrigatório"),
-  objeto: z.string().min(3, "Objeto obrigatório"),
-  valor_anual: z
-    .number()
-    .refine((val) => !isNaN(val), {
-      message: "Valor anual deve ser um número",
-    })
-    .nonnegative("Valor deve ser positivo"),
-  valor_global: z
-    .number()
-    .refine((val) => !isNaN(val), {
-      message: "Valor global deve ser um número",
-    })
-    .nonnegative("Valor deve ser positivo"),
+  nr_contrato: z.string().min(1, "Número do contrato é obrigatório"),
+  objeto: z.string().min(1, "Objeto é obrigatório"),
+  data_inicio: z.string().min(1, "Data de início é obrigatória"),
+  data_fim: z.string().min(1, "Data de fim é obrigatória"),
+
+  contratado_id: z.string().min(1, "Contratado é obrigatório"),
+  modalidade_id: z.string().min(1, "Modalidade é obrigatória"),
+  status_id: z.string().min(1, "Status é obrigatório"),
+  gestor_id: z.string().min(1, "Gestor é obrigatório"),
+  fiscal_id: z.string().min(1, "Fiscal é obrigatório"),
+
+  fiscal_substituto_id: z.string().optional(),
+  valor_anual: z.string().optional(),
+  valor_global: z.string().optional(),
   base_legal: z.string().optional(),
-  data_inicio: z.string().refine((s) => !Number.isNaN(Date.parse(s)), {
-    message: "Data inicial inválida",
-  }),
-  data_fim: z.string().refine((s) => !Number.isNaN(Date.parse(s)), {
-    message: "Data final inválida",
-  }),
   termos_contratuais: z.string().optional(),
-  contratado_id: z.number().optional(),
-  modalidade_id: z.number().optional(),
-  status_id: z.number().optional(),
-  gestor_id: z.number().optional(),
-  fiscal_id: z.number().optional(),
-  fiscal_substituto_id: z.number().nullable().optional(),
   pae: z.string().optional(),
   doe: z.string().optional(),
   data_doe: z.string().optional(),
-  documento: z.string().optional(),
 });
 
-export type ContractFormData = z.infer<typeof contractSchema>;
+type ContractFormData = z.infer<typeof contractSchema>;
 
-const DEFAULT_CONTRACT = {
-  id: 14,
-  nr_contrato: "CT-2025/014",
-  objeto: "Serviços de agenciamento de viagens e passagens aéreas.",
-  valor_anual: 550000.0,
-  valor_global: 1100000.0,
-  base_legal: "Lei nº 14.133/2021",
-  data_inicio: "2025-04-01",
-  data_fim: "2027-03-31",
-  termos_contratuais:
-    "Gestão e emissão de passagens aéreas e rodoviárias nacionais e internacionais.",
-  contratado_id: 188,
-  modalidade_id: 1,
-  status_id: 3,
-  gestor_id: 25,
-  fiscal_id: 64,
-  fiscal_substituto_id: null,
-  pae: "87654.321098/2024-10",
-  doe: "Nº 35400",
-  data_doe: "2025-03-20",
-  documento: "/docs/contratos/CT_2025_014.pdf",
-  created_at: "2025-03-10T10:15:00Z",
-  updated_at: "2025-03-10T10:15:00Z",
-};
-
-function toInputDate(dateString?: string) {
-  if (!dateString) return "";
-  try {
-    return format(new Date(dateString), "yyyy-MM-dd");
-  } catch {
-    return dateString || "";
-  }
-}
-
-export default function NovoContrato() {
+export function NovoContrato() {
   const navigate = useNavigate();
+  const [fileObj, setFileObj] = useState<File | null>(null);
 
-  const form = useForm<ContractFormData>({
+  // estados para dropdowns
+  const [contratados, setContratados] = useState<any[]>([]);
+  const [modalidades, setModalidades] = useState<any[]>([]);
+  const [statusList, setStatusList] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
-    defaultValues: {
-      nr_contrato: DEFAULT_CONTRACT.nr_contrato,
-      objeto: DEFAULT_CONTRACT.objeto,
-      valor_anual: DEFAULT_CONTRACT.valor_anual,
-      valor_global: DEFAULT_CONTRACT.valor_global,
-      base_legal: DEFAULT_CONTRACT.base_legal,
-      data_inicio: toInputDate(DEFAULT_CONTRACT.data_inicio),
-      data_fim: toInputDate(DEFAULT_CONTRACT.data_fim),
-      termos_contratuais: DEFAULT_CONTRACT.termos_contratuais,
-      contratado_id: DEFAULT_CONTRACT.contratado_id,
-      modalidade_id: DEFAULT_CONTRACT.modalidade_id,
-      status_id: DEFAULT_CONTRACT.status_id,
-      gestor_id: DEFAULT_CONTRACT.gestor_id,
-      fiscal_id: DEFAULT_CONTRACT.fiscal_id,
-      fiscal_substituto_id: DEFAULT_CONTRACT.fiscal_substituto_id,
-      pae: DEFAULT_CONTRACT.pae,
-      doe: DEFAULT_CONTRACT.doe,
-      data_doe: toInputDate(DEFAULT_CONTRACT.data_doe),
-      documento: DEFAULT_CONTRACT.documento,
-    } as any,
   });
 
-  const { setValue, watch } = form;
-
-  // File state for preview & control
-  const [fileObj, setFileObj] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    DEFAULT_CONTRACT.documento || null
-  );
-
-  // keep form.documento in sync with previewUrl (we store blob/url string in form)
+  // carregar dados auxiliares
   useEffect(() => {
-    if (previewUrl) setValue("documento", previewUrl);
-    else setValue("documento", "");
-  }, [previewUrl, setValue]);
+    async function fetchData() {
+      try {
+        const token = localStorage.getItem("token") || "";
 
-  // Clean up blob urls on unmount
-  useEffect(() => {
-    return () => {
-      if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+        const [contratadosRes, modalidadesRes, statusRes, usuariosRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/contratados`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/modalidades`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/status`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/usuarios`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
 
-  // handle file input change
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // revoke previous blob
-    if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+        if (!contratadosRes.ok || !modalidadesRes.ok || !statusRes.ok || !usuariosRes.ok) {
+          throw new Error("Erro ao carregar dados auxiliares");
+        }
 
-    const tmpUrl = URL.createObjectURL(file);
-    setFileObj(file);
-    setPreviewUrl(tmpUrl);
-  }
+        setContratados(await contratadosRes.json());
+        setModalidades(await modalidadesRes.json());
+        setStatusList(await statusRes.json());
+        setUsuarios(await usuariosRes.json());
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar dados dos selects");
+      }
+    }
 
-  function removeFile() {
-    if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    setFileObj(null);
-    setPreviewUrl("");
-    const input = document.getElementById("documento-file") as HTMLInputElement | null;
-    if (input) input.value = "";
-  }
+    fetchData();
+  }, []);
 
   async function onSubmit(data: ContractFormData) {
-    const payload = {
-      ...data,
-      valor_anual: Number(data.valor_anual),
-      valor_global: Number(data.valor_global),
-    } as any;
-
     try {
-      const res = await fetch("/api/contratos", {
+      const formData = new FormData();
+
+      // obrigatórios
+      formData.append("nr_contrato", data.nr_contrato);
+      formData.append("objeto", data.objeto);
+      formData.append("data_inicio", data.data_inicio);
+      formData.append("data_fim", data.data_fim);
+      formData.append("contratado_id", String(data.contratado_id));
+      formData.append("modalidade_id", String(data.modalidade_id));
+      formData.append("status_id", String(data.status_id));
+      formData.append("gestor_id", String(data.gestor_id));
+      formData.append("fiscal_id", String(data.fiscal_id));
+
+      // opcionais
+      if (data.fiscal_substituto_id) formData.append("fiscal_substituto_id", data.fiscal_substituto_id);
+      if (data.valor_anual) formData.append("valor_anual", data.valor_anual);
+      if (data.valor_global) formData.append("valor_global", data.valor_global);
+      if (data.base_legal) formData.append("base_legal", data.base_legal);
+      if (data.termos_contratuais) formData.append("termos_contratuais", data.termos_contratuais);
+      if (data.pae) formData.append("pae", data.pae);
+      if (data.doe) formData.append("doe", data.doe);
+      if (data.data_doe) formData.append("data_doe", data.data_doe);
+
+      if (fileObj) {
+        formData.append("documento_contrato", fileObj);
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/contratos`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
       });
 
-      if (!res.ok) throw new Error("Falha ao salvar o contrato");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Falha ao salvar contrato");
+      }
 
-      const json = await res.json();
-      console.log("Contrato criado:", json);
       alert("Contrato criado com sucesso!");
       navigate("/contratos");
     } catch (err: any) {
@@ -180,337 +127,121 @@ export default function NovoContrato() {
     }
   }
 
-  const documentoValue = watch("documento");
-
   return (
-    <div className="w-full mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Novo Contrato</h1>
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">Novo Contrato</h1>
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+        <div>
+          <label>Número do contrato</label>
+          <input type="text" {...register("nr_contrato")} className="border p-2 w-full" />
+          {errors.nr_contrato && <p className="text-red-500">{errors.nr_contrato.message}</p>}
+        </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FormField
-              control={form.control}
-              name="nr_contrato"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número do contrato</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: CT-2025/014" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Objeto</label>
+          <input type="text" {...register("objeto")} className="border p-2 w-full" />
+          {errors.objeto && <p className="text-red-500">{errors.objeto.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="pae"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>PAE</FormLabel>
-                  <FormControl>
-                    <Input placeholder="87654.321098/2024-10" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="doe"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>DOE</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Data Início</label>
+          <input type="date" {...register("data_inicio")} className="border p-2 w-full" />
+          {errors.data_inicio && <p className="text-red-500">{errors.data_inicio.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="data_doe"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data DOE</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Data Fim</label>
+          <input type="date" {...register("data_fim")} className="border p-2 w-full" />
+          {errors.data_fim && <p className="text-red-500">{errors.data_fim.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="objeto"
-              render={({ field }) => (
-                <FormItem className="md:col-span-4">
-                  <FormLabel>Objeto</FormLabel>
-                  <FormControl>
-                    <Textarea rows={3} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {/* selects obrigatórios */}
+        <div>
+          <label>Contratado</label>
+          <select {...register("contratado_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {contratados.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          {errors.contratado_id && <p className="text-red-500">{errors.contratado_id.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="valor_anual"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor anual (R$)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Modalidade</label>
+          <select {...register("modalidade_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {modalidades.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
+            ))}
+          </select>
+          {errors.modalidade_id && <p className="text-red-500">{errors.modalidade_id.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="valor_global"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor global (R$)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Status</label>
+          <select {...register("status_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {statusList.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </select>
+          {errors.status_id && <p className="text-red-500">{errors.status_id.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="base_legal"
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel>Base legal</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />           
+        <div>
+          <label>Gestor</label>
+          <select {...register("gestor_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+          {errors.gestor_id && <p className="text-red-500">{errors.gestor_id.message}</p>}
+        </div>
 
-            
-             <FormField
-              control={form.control}
-              name="termos_contratuais"
-              render={({ field }) => (
-                <FormItem className="md:col-span-4">
-                  <FormLabel>Termos contratuais</FormLabel>
-                  <FormControl>
-                    <Textarea rows={4} {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Fiscal</label>
+          <select {...register("fiscal_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+          {errors.fiscal_id && <p className="text-red-500">{errors.fiscal_id.message}</p>}
+        </div>
 
-            <FormField
-              control={form.control}
-              name="data_inicio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data início</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Fiscal Substituto</label>
+          <select {...register("fiscal_substituto_id")} className="border p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <FormField
-              control={form.control}
-              name="data_fim"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data fim</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div>
+          <label>Documento do contrato</label>
+          <input type="file" onChange={(e) => setFileObj(e.target.files?.[0] || null)} />
+        </div>
 
-           
-
-            <FormField
-              control={form.control}
-              name="modalidade_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modalidade</FormLabel>
-                  <Select
-                    onValueChange={(v) => field.onChange(Number(v))}
-                    defaultValue={field.value ? String(field.value) : undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a modalidade" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="1">Pregão</SelectItem>
-                      <SelectItem value="2">Concorrência</SelectItem>
-                      <SelectItem value="3">Dispensa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select
-                    onValueChange={(v) => field.onChange(Number(v))}
-                    defaultValue={field.value ? String(field.value) : undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="1">Rascunho</SelectItem>
-                      <SelectItem value="2">Em análise</SelectItem>
-                      <SelectItem value="3">Ativo</SelectItem>
-                      <SelectItem value="4">Encerrado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="gestor_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gestor (id)</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="fiscal_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fiscal (id)</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {/* File upload field - estilizado, preview e botão limpar */}
-            <FormField
-              control={form.control}
-              name="documento"
-              render={() => (
-                <FormItem className="col-span-4">
-                  <FormLabel>Documento</FormLabel>
-                  <FormControl>
-                    <div className="flex flex-col md:flex-row md:items-center gap-4">
-                      <label
-                        htmlFor="documento-file"
-                        className="flex-1 cursor-pointer rounded-md border-2 border-dashed border-muted p-4 text-center hover:border-primary transition"
-                      >
-                        <input
-                          id="documento-file"
-                          type="file"
-                          className="hidden"
-                          onChange={handleFileChange}
-                          aria-label="Selecione o documento do contrato"
-                        />
-
-                        <div className="flex flex-col items-center gap-2">
-                          <Upload className="h-6 w-6" />
-                          <div className="text-sm">Arraste aqui ou clique para selecionar um arquivo</div>
-                          <div className="text-xs text-muted-foreground">PDF, PNG, JPG (máx. recomendado 10MB)</div>
-                        </div>
-                      </label>
-
-                      <div className="flex flex-col items-start gap-2">
-                        {previewUrl ? (
-                          <div className="flex items-center gap-3">
-                            {fileObj && fileObj.type.startsWith("image") ? (
-                              <img
-                                src={previewUrl}
-                                alt="preview"
-                                className="h-20 w-28 object-cover rounded-md border"
-                              />
-                            ) : (
-                              <div className="flex items-center gap-2 px-3 py-2 rounded-md border">
-                                <FileText />
-                                <div className="text-sm max-w-xs truncate">{fileObj ? fileObj.name : documentoValue}</div>
-                              </div>
-                            )}
-
-                            <div className="flex flex-col">
-                              <a
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-sm underline"
-                              >
-                                Visualizar
-                              </a>
-                              <Button size="sm" variant="ghost" onClick={removeFile}>
-                                Limpar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">Nenhum arquivo selecionado</div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => document.getElementById("documento-file")?.click()}
-                          >
-                            Selecionar
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => removeFile()}>
-                            Remover
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 justify-end">
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Salvando..." : "Salvar contrato"}
-            </Button>
-
-            <Button type="button" variant="destructive" onClick={() => navigate("/contratos")}>
-              <SquareX className="mr-2 h-4 w-4" />
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      </Form>
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+          Salvar
+        </button>
+      </form>
     </div>
   );
 }

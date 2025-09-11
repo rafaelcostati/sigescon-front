@@ -5,7 +5,7 @@ import { AuthLayout } from '@/_layouts/auth';
 // Páginas
 import Page from '@/dashboard/page';
 import { ContratosDataTable } from '@/pages/contratos/Contratos';
-import NovoContrato from '@/pages/contratos/NovoContrato';
+import { NovoContrato } from '@/pages/contratos/NovoContrato';
 import  UserCard   from '@/pages/usuarios/Usuario';
 import { NovoUsuario } from '@/pages/usuarios/CadastrarUsuario';
 import { NotFound } from '@/NotFound';

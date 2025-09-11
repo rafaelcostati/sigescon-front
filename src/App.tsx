@@ -6,14 +6,11 @@ import '../src/index.css'
 export function App() {
   
 
-  return (
-
-    
+  return (    
       <>
        <Toaster richColors />
         <RouterProvider router={ router } />
-      </>
-        
+      </>    
        
 
 
