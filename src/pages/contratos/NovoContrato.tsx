@@ -3,22 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, SquareX, Upload } from "lucide-react"; // ícone para upload
+import { Save, SquareX, Upload, Trash2 } from "lucide-react"; // Ícones adicionados
 import { Button } from '@/components/ui/button';
 
-// Schema de validação Zod
+// Schema de validação Zod (inalterado)
 const contractSchema = z.object({
     nr_contrato: z.string().min(1, "Número do contrato é obrigatório"),
     objeto: z.string().min(1, "Objeto é obrigatório"),
     data_inicio: z.string().min(1, "Data de início é obrigatória"),
     data_fim: z.string().min(1, "Data de fim é obrigatória"),
-
     contratado_id: z.string().min(1, "Contratado é obrigatório"),
     modalidade_id: z.string().min(1, "Modalidade é obrigatória"),
     status_id: z.string().min(1, "Status é obrigatório"),
     gestor_id: z.string().min(1, "Gestor é obrigatório"),
     fiscal_id: z.string().min(1, "Fiscal é obrigatório"),
-
     fiscal_substituto_id: z.string().optional(),
     valor_anual: z.string().optional(),
     valor_global: z.string().optional(),
@@ -33,7 +31,8 @@ type ContractFormData = z.infer<typeof contractSchema>;
 
 export function NovoContrato() {
     const navigate = useNavigate();
-    const [fileObj, setFileObj] = useState<File | null>(null);
+    // 1. ALTERAÇÃO: Estado para armazenar um array de arquivos
+    const [files, setFiles] = useState<File[]>([]);
 
     // estados para os dropdowns
     const [contratados, setContratados] = useState<any[]>([]);
@@ -49,7 +48,7 @@ export function NovoContrato() {
         resolver: zodResolver(contractSchema),
     });
 
-    // carregar opções iniciais
+    // carregar opções iniciais (inalterado)
     useEffect(() => {
         async function fetchData() {
             try {
@@ -78,31 +77,19 @@ export function NovoContrato() {
         try {
             const formData = new FormData();
 
-            // obrigatórios
-            formData.append("nr_contrato", data.nr_contrato);
-            formData.append("objeto", data.objeto);
-            formData.append("data_inicio", data.data_inicio);
-            formData.append("data_fim", data.data_fim);
+            // Adiciona todos os campos do formulário ao FormData (inalterado)
+            Object.entries(data).forEach(([key, value]) => {
+                if (value) {
+                    formData.append(key, value as string);
+                }
+            });
 
-            formData.append("contratado_id", data.contratado_id);
-            formData.append("modalidade_id", data.modalidade_id);
-            formData.append("status_id", data.status_id);
-            formData.append("gestor_id", data.gestor_id);
-            formData.append("fiscal_id", data.fiscal_id);
-
-            // opcionais
-            if (data.fiscal_substituto_id) formData.append("fiscal_substituto_id", data.fiscal_substituto_id);
-            if (data.valor_anual) formData.append("valor_anual", data.valor_anual);
-            if (data.valor_global) formData.append("valor_global", data.valor_global);
-            if (data.base_legal) formData.append("base_legal", data.base_legal);
-            if (data.termos_contratuais) formData.append("termos_contratuais", data.termos_contratuais);
-            if (data.pae) formData.append("pae", data.pae);
-            if (data.doe) formData.append("doe", data.doe);
-            if (data.data_doe) formData.append("data_doe", data.data_doe);
-
-            // arquivo
-            if (fileObj) {
-                formData.append("documento_contrato", fileObj);
+            // 2. ALTERAÇÃO: Adicionar múltiplos arquivos ao FormData
+            // A API espera vários arquivos com a mesma chave "documentos_contrato"
+            if (files.length > 0) {
+                files.forEach(file => {
+                    formData.append("documentos_contrato", file);
+                });
             }
 
             const res = await fetch(`${import.meta.env.VITE_API_URL}/contratos`, {
@@ -118,8 +105,7 @@ export function NovoContrato() {
                 throw new Error(errorText || "Falha ao salvar o contrato");
             }
 
-            const json = await res.json();
-            console.log("Contrato criado:", json);
+            await res.json();
             alert("Contrato criado com sucesso!");
             navigate("/contratos");
         } catch (err: any) {
@@ -127,6 +113,19 @@ export function NovoContrato() {
             alert(err.message || "Erro ao criar contrato");
         }
     }
+    
+    // 3. ALTERAÇÃO: Funções para manipular a lista de arquivos
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            const newFiles = Array.from(event.target.files);
+            setFiles(prevFiles => [...prevFiles, ...newFiles]); // Adiciona os novos arquivos à lista existente
+        }
+    };
+
+    const handleRemoveFile = (indexToRemove: number) => {
+        setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+    };
+
 
     return (
         <div className="w-full mx-auto p-6">
@@ -176,7 +175,6 @@ export function NovoContrato() {
                 </div>
 
                 {/* Gestor do Contrato*/}
-
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Gestor</label>
                     <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -188,7 +186,6 @@ export function NovoContrato() {
                 </div>
 
                 {/* Fiscal do Contrato*/}
-
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Fiscal</label>
                     <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -223,7 +220,6 @@ export function NovoContrato() {
                 </div>
 
                 {/* Modalidade */}
-
                 <div>
                     <label className="font-medium">Modalidade</label>
                     <select {...register("modalidade_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -244,8 +240,6 @@ export function NovoContrato() {
                     </select>
                 </div>
 
-
-
                 {/* Campos opcionais */}
                 <div>
                     <label className="font-medium">Valor Anual</label>
@@ -265,20 +259,40 @@ export function NovoContrato() {
                 </div>
 
 
-                {/* Upload */}
-                <div className="md:col-span-2">
-                    <label className="font-medium">Documento do contrato</label>
-                    <div className="mt-2 flex items-center gap-3">
-                        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                {/* 4. ALTERAÇÃO: Nova interface para upload de múltiplos arquivos */}
+                <div className="lg:col-span-4">
+                    <label className="font-medium">Documentos do Contrato</label>
+                    <div className="mt-2 p-4 border-2 border-dashed rounded-lg">
+                        {/* Lista de arquivos selecionados */}
+                        {files.length > 0 && (
+                            <ul className="mb-4 space-y-2">
+                                {files.map((file, index) => (
+                                    <li key={index} className="flex justify-between items-center text-sm bg-gray-100 p-2 rounded">
+                                        <span className="truncate pr-2">{file.name}</span>
+                                        <button
+                                            type="button" // Previne o envio do formulário
+                                            onClick={() => handleRemoveFile(index)}
+                                            className="text-red-500 hover:text-red-700"
+                                            aria-label={`Remover ${file.name}`}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {/* Botão para adicionar mais arquivos */}
+                        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
                             <Upload size={18} />
-                            {fileObj ? "Trocar arquivo" : "Selecionar arquivo"}
+                            Adicionar Arquivo(s)
                             <input
                                 type="file"
+                                multiple // Permite a seleção de múltiplos arquivos
                                 className="hidden"
-                                onChange={(e) => setFileObj(e.target.files?.[0] || null)}
+                                onChange={handleFileChange}
                             />
                         </label>
-                        {fileObj && <span className="text-sm text-gray-600">{fileObj.name}</span>}
                     </div>
                 </div>
 
@@ -296,7 +310,6 @@ export function NovoContrato() {
                         <SquareX className="h-5 w-5" />
                         Cancelar
                     </Button>
-
                 </div>
             </form>
         </div>
