@@ -30,6 +30,7 @@ import {
     IconPlus,
     IconX,
     IconSearch,
+    IconDownload, // Ícone adicionado para o botão de download
 } from "@tabler/icons-react"
 import {
     type ColumnDef,
@@ -98,7 +99,6 @@ export const contratoSchema = z.object({
     id: z.number(),
     nr_contrato: z.string(),
     objeto: z.string(),
-    // ALTERAÇÃO AQUI: Pré-processa os valores para convertê-los em número
     valor_anual: z.preprocess(
         (val) => (typeof val === "string" ? parseFloat(val) : val),
         z.number().nullable()
@@ -120,7 +120,6 @@ export const contratoSchema = z.object({
     pae: z.string().nullable(),
     doe: z.string().nullable(),
     data_doe: z.string().nullable(),
-    // ALTERAÇÃO AQUI: Pré-processa o documento para convertê-lo em string
     documento: z.preprocess(
         (val) => (typeof val === "number" ? String(val) : val),
         z.string().nullable()
@@ -144,6 +143,14 @@ export const pendenciaSchema = z.object({
     resolvida: z.boolean(),
 });
 export type Pendencia = z.infer<typeof pendenciaSchema>;
+
+// --- NOVO SCHEMA PARA ARQUIVOS ---
+export const arquivoSchema = z.object({
+    id: z.number(),
+    nome_arquivo: z.string(),
+    data_upload: z.string().optional(),
+});
+export type Arquivo = z.infer<typeof arquivoSchema>;
 
 export const contratoDetalhadoSchema = contratoSchema.extend({
     relatorios: z.array(relatorioSchema).optional(),
@@ -253,15 +260,15 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
 }
 
 // ============================================================================
-// Componente: DraggableContratoCard (VERSÃO CORRIGIDA)
+// Componente: DraggableContratoCard
 // ============================================================================
 function DraggableContratoCard({
     contrato,
-    contratados, 
-    statusList,  
+    contratados,
+    statusList,
     usuarios,
 }: {
-    contrato: any // Usando 'any' temporariamente para acomodar os novos campos da API
+    contrato: any
     contratados: ContratadoInfo[]
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
@@ -272,17 +279,12 @@ function DraggableContratoCard({
 
     const navigate = useNavigate();
 
-    
+
     const handleEditClick = () => {
-        // 3. Navegue para a rota de edição, passando o ID do contrato
         navigate(`/contratos/editar/${contrato.id}`);
     };
 
-
-    // ATENÇÃO: A lógica de ícone/cor de status foi simplificada pois não temos mais o ID.
-    // O ideal seria a API enviar o ID para termos mais controle.
     const getStatusIcon = (statusName: string) => {
-        // Você pode adicionar uma lógica simples baseada no nome se desejar
         if (statusName?.toLowerCase().includes('vencido')) {
             return <IconExclamationCircle className="text-gray-500" />;
         }
@@ -325,7 +327,7 @@ function DraggableContratoCard({
                 <div className="flex flex-col gap-2">
                     <div>
                         <Label className="text-xs text-muted-foreground">Modalidade</Label>
-                        
+
                         <Badge variant={"secondary"} className="gap-1.5 whitespace-nowrap">
                             {getStatusIcon(contrato.modalidade_nome)}
                             {contrato.modalidade_nome || "Não informado"}
@@ -333,12 +335,11 @@ function DraggableContratoCard({
                     </div>
                     <div>
                         <Label className="text-xs text-muted-foreground">Contratado</Label>
-                        {/* MUDANÇA AQUI: Exibindo o nome do contratado diretamente */}
                         <p className="font-medium">{contrato.contratado_nome || "Não informado"}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    
+
                     <div>
                         <Label className="text-xs text-muted-foreground">Vigência</Label>
                         <p className="whitespace-nowrap font-medium">
@@ -416,6 +417,7 @@ export function ContratosDataTable() {
                     fetch(`${apiUrl}/usuarios`, { headers }),
                 ]);
 
+                // Verificação de erros foi mantida
                 const responses = [contratosRes, contratadosRes, statusRes, usuariosRes];
                 for (const res of responses) {
                     if (res.status === 401) {
@@ -425,21 +427,32 @@ export function ContratosDataTable() {
                         throw new Error(`Falha na requisição para ${res.url} com status ${res.status}`);
                     }
                 }
-
+                
+                // --- AJUSTE PRINCIPAL AQUI ---
                 const contratosData = await contratosRes.json();
-                const contratadosData = await contratadosRes.json();
+                const contratadosData = await contratadosRes.json(); // Correção de bug: estava usando contratosRes
                 const statusData = await statusRes.json();
                 const usuariosData = await usuariosRes.json();
 
-                setContratos(contratosData);
-                setContratados(contratadosData);
-                setStatusList(statusData);
-                setUsuarios(usuariosData);
+                
+                 
+
+                // Se a API retorna { "contratos": [...] }, use contratosData.contratos
+                // Se a API retorna { "data": [...] }, use contratosData.data
+                // O '|| []' garante que, se a propriedade não existir, será um array vazio, evitando erros.
+                setContratos(contratosData.data || []); 
+
+                setContratados(contratadosData || []); // Assumindo que contratados, status e usuarios retornam arrays diretos
+                setStatusList(statusData || []);
+                setUsuarios(usuariosData || []);
+
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
                 setError(errorMessage);
                 toast.error("Erro ao carregar dados: " + errorMessage);
+                 // Importante: garantir que o estado não fique inconsistente em caso de erro
+                setContratos([]);
             } finally {
                 setIsLoading(false);
             }
@@ -605,10 +618,10 @@ const DetailItem = ({ label, children }: { label: string; children: React.ReactN
 )
 
 // ============================================================================
-// Componente: ContratoDetailsViewer (Modal) - VERSÃO CORRIGIDA
+// Componente: ContratoDetailsViewer (Modal) - VERSÃO AJUSTADA
 // ============================================================================
 function ContratoDetailsViewer({
-    contrato, // Usado para exibição inicial e para obter o ID
+    contrato,
     contratados,
     statusList,
     usuarios,
@@ -618,57 +631,107 @@ function ContratoDetailsViewer({
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
 }) {
-    // --- NOVOS ESTADOS ---
     const [isOpen, setIsOpen] = React.useState(false)
     const [detailedData, setDetailedData] = React.useState<ContratoDetalhado | null>(null)
+    const [arquivos, setArquivos] = React.useState<Arquivo[]>([]) // NOVO ESTADO PARA ARQUIVOS
     const [isLoading, setIsLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    // --- EFEITO PARA BUSCAR DADOS AO ABRIR O MODAL ---
+    // --- NOVA FUNÇÃO PARA DOWNLOAD DE ARQUIVO ---
+    const handleDownloadArquivo = async (arquivoId: number, nomeOriginal: string) => {
+        const toastId = toast.loading(`Baixando "${nomeOriginal}"...`);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("Usuário não autenticado.");
+
+            const apiUrl = import.meta.env.VITE_API_URL;
+            if (!apiUrl) throw new Error("VITE_API_URL não configurada.");
+
+            const response = await fetch(`${apiUrl}/arquivos/${arquivoId}/download`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error("Arquivo não encontrado no servidor.");
+                }
+                throw new Error(`Erro no servidor: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nomeOriginal;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success(`Download de "${nomeOriginal}" concluído!`, { id: toastId });
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+            toast.error(`Falha no download de "${nomeOriginal}"`, {
+                description: errorMessage,
+                id: toastId,
+            });
+        }
+    };
+
+
+    // --- EFEITO AJUSTADO PARA BUSCAR DETALHES E ARQUIVOS ---
     React.useEffect(() => {
-        // Se o modal não estiver aberto, não faz nada
         if (!isOpen) {
-            return
+            setDetailedData(null);
+            setArquivos([]);
+            return;
         }
 
-        const fetchDetails = async () => {
-            setIsLoading(true)
-            setError(null)
+        const fetchAllDetails = async () => {
+            setIsLoading(true);
+            setError(null);
             try {
-                const token = localStorage.getItem("token")
-                if (!token) throw new Error("Usuário não autenticado.")
+                const token = localStorage.getItem("token");
+                if (!token) throw new Error("Usuário não autenticado.");
 
-                const apiUrl = import.meta.env.VITE_API_URL
-                if (!apiUrl) throw new Error("VITE_API_URL não configurada.")
+                const apiUrl = import.meta.env.VITE_API_URL;
+                if (!apiUrl) throw new Error("VITE_API_URL não configurada.");
 
-                const response = await fetch(`${apiUrl}/contratos/${contrato.id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                })
+                const headers = { Authorization: `Bearer ${token}` };
 
-                if (!response.ok) {
-                    throw new Error(`Erro ao buscar detalhes: ${response.statusText}`)
-                }
+                const [detailsRes, arquivosRes] = await Promise.all([
+                    fetch(`${apiUrl}/contratos/${contrato.id}`, { headers }),
+                    fetch(`${apiUrl}/contratos/${contrato.id}/arquivos`, { headers }), // Busca os arquivos
+                ]);
 
-                const data = await response.json()
-                const validatedData = contratoDetalhadoSchema.parse(data); // Valida os dados recebidos
-                setDetailedData(validatedData)
+                if (!detailsRes.ok) throw new Error(`Erro ao buscar detalhes: ${detailsRes.statusText}`);
+                if (!arquivosRes.ok) throw new Error(`Erro ao buscar arquivos: ${arquivosRes.statusText}`);
+
+                const detailsData = await detailsRes.json();
+                const arquivosData = await arquivosRes.json();
+
+                console.log("Resposta da API de ARQUIVOS:", arquivosData);
+
+                const validatedDetails = contratoDetalhadoSchema.parse(detailsData);
+                const validatedArquivos = z.array(arquivoSchema).parse(arquivosData);
+
+                setDetailedData(validatedDetails);
+                setArquivos(validatedArquivos);
 
             } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido."
-                setError(errorMessage)
-                toast.error("Falha ao carregar detalhes", { description: errorMessage })
+                const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+                setError(errorMessage);
+                toast.error("Falha ao carregar dados do contrato", { description: errorMessage });
             } finally {
-                setIsLoading(false)
+                setIsLoading(false);
             }
-        }
+        };
 
-        fetchDetails()
-    }, [isOpen, contrato.id]) // Dependências: re-executa se o modal abrir ou o ID do contrato mudar
+        fetchAllDetails();
+    }, [isOpen, contrato.id]);
 
-    // --- DADOS PARA EXIBIÇÃO ---
-    // Usa os dados detalhados se já carregaram, senão, usa os dados do card como fallback
     const dataToShow = detailedData || contrato;
-
     const status = statusList.find(s => s.id === dataToShow.status_id) || { nome: 'Desconhecido' };
     const contratado = contratados.find(c => c.id === dataToShow.contratado_id) || { nome: 'Não encontrado', cnpj: 'N/A' };
     const gestor = usuarios.find(u => u.id === dataToShow.gestor_id) || { nome: `ID: ${dataToShow.gestor_id}` };
@@ -693,7 +756,7 @@ function ContratoDetailsViewer({
 
                 {!isLoading && !error && (
                     <div className="flex flex-col gap-6 py-4 text-sm">
-                        {/* Seções de Detalhes (usando dataToShow) */}
+                        {/* Seções de Detalhes */}
                         <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                             <DetailItem label="Status">{status.nome}</DetailItem>
                             <DetailItem label="Valor Anual">{formatCurrency(dataToShow.valor_anual)}</DetailItem>
@@ -719,7 +782,7 @@ function ContratoDetailsViewer({
                         </div>
                         <Separator />
 
-                        {/* --- NOVA SEÇÃO: RELATÓRIOS --- */}
+                        {/* Seção de Relatórios */}
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Relatórios</h4>
                             {detailedData?.relatorios && detailedData.relatorios.length > 0 ? (
@@ -733,7 +796,7 @@ function ContratoDetailsViewer({
                             )}
                         </div>
 
-                        {/* --- NOVA SEÇÃO: PENDÊNCIAS --- */}
+                        {/* Seção de Pendências */}
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Pendências</h4>
                             {detailedData?.pendencias && detailedData.pendencias.length > 0 ? (
@@ -749,8 +812,35 @@ function ContratoDetailsViewer({
                             )}
                         </div>
 
+                        {/* --- NOVA SEÇÃO DE ARQUIVOS --- */}
                         <Separator />
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">                            
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-2">Arquivos</h4>
+                            {arquivos.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {arquivos.map(arq => (
+                                        <li key={arq.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted">
+                                            <span className="text-muted-foreground">{arq.nome_arquivo}</span>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleDownloadArquivo(arq.id, arq.nome_arquivo)}
+                                                className="gap-2"
+                                            >
+                                                <IconDownload className="h-4 w-4" />
+                                                Baixar
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-muted-foreground">Nenhum arquivo encontrado para este contrato.</p>
+                            )}
+                        </div>
+
+
+                        <Separator />
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                             <DetailItem label="Criado em">{formatDateTime(dataToShow.created_at)}</DetailItem>
                             <DetailItem label="Atualizado em">{formatDateTime(dataToShow.updated_at)}</DetailItem>
                         </div>
