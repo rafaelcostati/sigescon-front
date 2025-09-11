@@ -128,11 +128,11 @@ export function NovoContrato() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-full mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Novo Contrato</h1>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white shadow-md rounded-2xl p-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-white shadow-md rounded-2xl p-6"
       >
         {/* Número do contrato */}
         <div className="col-span-1">
@@ -140,15 +140,76 @@ export function NovoContrato() {
           <input type="text" {...register("nr_contrato")} className="mt-1 border rounded-lg p-2 w-full" />
           {errors.nr_contrato && <p className="text-red-500 text-sm">{errors.nr_contrato.message}</p>}
         </div>
+        {/* Número do PAE */}          
+         <div className="col-span-1">
+          <label className="font-medium">PAE</label>
+          <input type="text" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        {/* Número do DOE */}
+        <div className="col-span-1">
+          <label className="font-medium">DOE</label>
+          <input type="text" {...register("doe")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+         {/* Data do DOE */}
+        <div className="col-span-1">
+          <label className="font-medium">Data DOE</label>
+          <input type="date" {...register("data_doe")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
 
         {/* Objeto */}
-        <div className="col-span-1 md:col-span-2">
+        <div className="col-span-1 md:col-span-2 lg:col-span-4">
           <label className="font-medium">Objeto</label>
           <textarea {...register("objeto")} className="mt-1 border rounded-lg p-2 w-full h-20" />
           {errors.objeto && <p className="text-red-500 text-sm">{errors.objeto.message}</p>}
         </div>
 
-        {/* Datas */}
+        {/* Contratado */}
+        <div className="md:col-span-1 lg:col-span-2">
+          <label className="font-medium">Contratado</label>
+          <select {...register("contratado_id")} className="mt-1 border rounded-lg p-2 w-full">
+            <option value="">Selecione</option>
+            {contratados.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+        </div>      
+
+        {/* Gestor do Contrato*/}
+
+        <div className="md:col-span-1 lg:col-span-2">
+          <label className="font-medium">Gestor</label>
+          <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>{u.nome}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Fiscal do Contrato*/}
+
+        <div className="md:col-span-1 lg:col-span-2">
+          <label className="font-medium">Fiscal</label>
+          <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>{u.nome}</option>
+            ))}
+          </select>
+        </div>
+
+       {/* Fiscal substituto (opcional) */}
+        <div className="md:col-span-1 lg:col-span-2">
+          <label className="font-medium">Fiscal Substituto</label>
+          <select {...register("fiscal_substituto_id")} className="mt-1 border rounded-lg p-2 w-full">
+            <option value="">Selecione</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>{u.nome}</option>
+            ))}
+          </select>
+        </div> 
+
+         {/* Datas */}
         <div>
           <label className="font-medium">Data Início</label>
           <input type="date" {...register("data_inicio")} className="mt-1 border rounded-lg p-2 w-full" />
@@ -160,16 +221,7 @@ export function NovoContrato() {
           {errors.data_fim && <p className="text-red-500 text-sm">{errors.data_fim.message}</p>}
         </div>
 
-        {/* Dropdowns obrigatórios */}
-        <div>
-          <label className="font-medium">Contratado</label>
-          <select {...register("contratado_id")} className="mt-1 border rounded-lg p-2 w-full">
-            <option value="">Selecione</option>
-            {contratados.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
-        </div>
+         {/* Modalidade */}    
 
         <div>
           <label className="font-medium">Modalidade</label>
@@ -189,38 +241,9 @@ export function NovoContrato() {
               <option key={s.id} value={s.id}>{s.nome}</option>
             ))}
           </select>
-        </div>
+        </div>    
 
-        <div>
-          <label className="font-medium">Gestor</label>
-          <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
-            <option value="">Selecione</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>{u.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="font-medium">Fiscal</label>
-          <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
-            <option value="">Selecione</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>{u.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Fiscal substituto (opcional) */}
-        <div>
-          <label className="font-medium">Fiscal Substituto</label>
-          <select {...register("fiscal_substituto_id")} className="mt-1 border rounded-lg p-2 w-full">
-            <option value="">Selecione</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>{u.nome}</option>
-            ))}
-          </select>
-        </div>
+        
 
         {/* Campos opcionais */}
         <div>
@@ -231,26 +254,15 @@ export function NovoContrato() {
           <label className="font-medium">Valor Global</label>
           <input type="number" step="0.01" {...register("valor_global")} className="mt-1 border rounded-lg p-2 w-full" />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-1 lg:col-span-2">
           <label className="font-medium">Base Legal</label>
           <input type="text" {...register("base_legal")} className="mt-1 border rounded-lg p-2 w-full" />
         </div>
-        <div className="md:col-span-2">
+        <div className="lg:col-span-4">
           <label className="font-medium">Termos Contratuais</label>
           <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
-        </div>
-        <div>
-          <label className="font-medium">PAE</label>
-          <input type="text" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
-        </div>
-        <div>
-          <label className="font-medium">DOE</label>
-          <input type="text" {...register("doe")} className="mt-1 border rounded-lg p-2 w-full" />
-        </div>
-        <div>
-          <label className="font-medium">Data DOE</label>
-          <input type="date" {...register("data_doe")} className="mt-1 border rounded-lg p-2 w-full" />
-        </div>
+        </div>      
+        
 
         {/* Upload */}
         <div className="md:col-span-2">
