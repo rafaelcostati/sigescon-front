@@ -33,7 +33,7 @@ export function NovoContrato() {
   const navigate = useNavigate();
   const [fileObj, setFileObj] = useState<File | null>(null);
 
-  // estados para dropdowns
+  // estados para os dropdowns
   const [contratados, setContratados] = useState<any[]>([]);
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [statusList, setStatusList] = useState<any[]>([]);
@@ -47,33 +47,28 @@ export function NovoContrato() {
     resolver: zodResolver(contractSchema),
   });
 
-  // carregar dados auxiliares
+  // carregar opções iniciais
   useEffect(() => {
     async function fetchData() {
       try {
         const token = localStorage.getItem("token") || "";
+        const headers = { Authorization: `Bearer ${token}` };
 
-        const [contratadosRes, modalidadesRes, statusRes, usuariosRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/contratados`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${import.meta.env.VITE_API_URL}/modalidades`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${import.meta.env.VITE_API_URL}/status`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${import.meta.env.VITE_API_URL}/usuarios`, { headers: { Authorization: `Bearer ${token}` } }),
+        const [c, m, s, u] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/contratados`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/modalidades`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/status`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/usuarios`, { headers }),
         ]);
 
-        if (!contratadosRes.ok || !modalidadesRes.ok || !statusRes.ok || !usuariosRes.ok) {
-          throw new Error("Erro ao carregar dados auxiliares");
-        }
-
-        setContratados(await contratadosRes.json());
-        setModalidades(await modalidadesRes.json());
-        setStatusList(await statusRes.json());
-        setUsuarios(await usuariosRes.json());
+        setContratados(await c.json());
+        setModalidades(await m.json());
+        setStatusList(await s.json());
+        setUsuarios(await u.json());
       } catch (err) {
-        console.error(err);
-        alert("Erro ao carregar dados dos selects");
+        console.error("Erro ao carregar opções:", err);
       }
     }
-
     fetchData();
   }, []);
 
@@ -86,11 +81,12 @@ export function NovoContrato() {
       formData.append("objeto", data.objeto);
       formData.append("data_inicio", data.data_inicio);
       formData.append("data_fim", data.data_fim);
-      formData.append("contratado_id", String(data.contratado_id));
-      formData.append("modalidade_id", String(data.modalidade_id));
-      formData.append("status_id", String(data.status_id));
-      formData.append("gestor_id", String(data.gestor_id));
-      formData.append("fiscal_id", String(data.fiscal_id));
+
+      formData.append("contratado_id", data.contratado_id);
+      formData.append("modalidade_id", data.modalidade_id);
+      formData.append("status_id", data.status_id);
+      formData.append("gestor_id", data.gestor_id);
+      formData.append("fiscal_id", data.fiscal_id);
 
       // opcionais
       if (data.fiscal_substituto_id) formData.append("fiscal_substituto_id", data.fiscal_substituto_id);
@@ -102,6 +98,7 @@ export function NovoContrato() {
       if (data.doe) formData.append("doe", data.doe);
       if (data.data_doe) formData.append("data_doe", data.data_doe);
 
+      // arquivo
       if (fileObj) {
         formData.append("documento_contrato", fileObj);
       }
@@ -116,9 +113,11 @@ export function NovoContrato() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || "Falha ao salvar contrato");
+        throw new Error(errorText || "Falha ao salvar o contrato");
       }
 
+      const json = await res.json();
+      console.log("Contrato criado:", json);
       alert("Contrato criado com sucesso!");
       navigate("/contratos");
     } catch (err: any) {
@@ -131,110 +130,103 @@ export function NovoContrato() {
     <div className="p-6">
       <h1 className="text-xl font-bold mb-4">Novo Contrato</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+        
+        {/* Número do contrato */}
         <div>
-          <label>Número do contrato</label>
+          <label className="block">Número do contrato</label>
           <input type="text" {...register("nr_contrato")} className="border p-2 w-full" />
           {errors.nr_contrato && <p className="text-red-500">{errors.nr_contrato.message}</p>}
         </div>
 
+        {/* Objeto */}
         <div>
-          <label>Objeto</label>
+          <label className="block">Objeto</label>
           <input type="text" {...register("objeto")} className="border p-2 w-full" />
           {errors.objeto && <p className="text-red-500">{errors.objeto.message}</p>}
         </div>
 
+        {/* Datas */}
         <div>
-          <label>Data Início</label>
+          <label className="block">Data Início</label>
           <input type="date" {...register("data_inicio")} className="border p-2 w-full" />
           {errors.data_inicio && <p className="text-red-500">{errors.data_inicio.message}</p>}
         </div>
-
         <div>
-          <label>Data Fim</label>
+          <label className="block">Data Fim</label>
           <input type="date" {...register("data_fim")} className="border p-2 w-full" />
           {errors.data_fim && <p className="text-red-500">{errors.data_fim.message}</p>}
         </div>
 
-        {/* selects obrigatórios */}
+        {/* Dropdowns obrigatórios */}
         <div>
-          <label>Contratado</label>
+          <label className="block">Contratado</label>
           <select {...register("contratado_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {contratados.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
+              <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
           {errors.contratado_id && <p className="text-red-500">{errors.contratado_id.message}</p>}
         </div>
 
         <div>
-          <label>Modalidade</label>
+          <label className="block">Modalidade</label>
           <select {...register("modalidade_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {modalidades.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nome}
-              </option>
+              <option key={m.id} value={m.id}>{m.nome}</option>
             ))}
           </select>
           {errors.modalidade_id && <p className="text-red-500">{errors.modalidade_id.message}</p>}
         </div>
 
         <div>
-          <label>Status</label>
+          <label className="block">Status</label>
           <select {...register("status_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {statusList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nome}
-              </option>
+              <option key={s.id} value={s.id}>{s.nome}</option>
             ))}
           </select>
           {errors.status_id && <p className="text-red-500">{errors.status_id.message}</p>}
         </div>
 
         <div>
-          <label>Gestor</label>
+          <label className="block">Gestor</label>
           <select {...register("gestor_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
+              <option key={u.id} value={u.id}>{u.nome}</option>
             ))}
           </select>
           {errors.gestor_id && <p className="text-red-500">{errors.gestor_id.message}</p>}
         </div>
 
         <div>
-          <label>Fiscal</label>
+          <label className="block">Fiscal</label>
           <select {...register("fiscal_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
+              <option key={u.id} value={u.id}>{u.nome}</option>
             ))}
           </select>
           {errors.fiscal_id && <p className="text-red-500">{errors.fiscal_id.message}</p>}
         </div>
 
+        {/* Fiscal substituto (opcional) */}
         <div>
-          <label>Fiscal Substituto</label>
+          <label className="block">Fiscal Substituto</label>
           <select {...register("fiscal_substituto_id")} className="border p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-              </option>
+              <option key={u.id} value={u.id}>{u.nome}</option>
             ))}
           </select>
         </div>
 
+        {/* Arquivo */}
         <div>
-          <label>Documento do contrato</label>
+          <label className="block">Documento do contrato</label>
           <input type="file" onChange={(e) => setFileObj(e.target.files?.[0] || null)} />
         </div>
 
