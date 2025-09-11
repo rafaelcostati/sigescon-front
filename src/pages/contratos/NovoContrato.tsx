@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Upload } from "lucide-react"; // ícone para upload
 
 // Schema de validação Zod
 const contractSchema = z.object({
@@ -127,96 +128,93 @@ export function NovoContrato() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Novo Contrato</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-        
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">Novo Contrato</h1>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white shadow-md rounded-2xl p-6"
+      >
         {/* Número do contrato */}
-        <div>
-          <label className="block">Número do contrato</label>
-          <input type="text" {...register("nr_contrato")} className="border p-2 w-full" />
-          {errors.nr_contrato && <p className="text-red-500">{errors.nr_contrato.message}</p>}
+        <div className="col-span-1">
+          <label className="font-medium">Número do contrato</label>
+          <input type="text" {...register("nr_contrato")} className="mt-1 border rounded-lg p-2 w-full" />
+          {errors.nr_contrato && <p className="text-red-500 text-sm">{errors.nr_contrato.message}</p>}
         </div>
 
         {/* Objeto */}
-        <div>
-          <label className="block">Objeto</label>
-          <input type="text" {...register("objeto")} className="border p-2 w-full" />
-          {errors.objeto && <p className="text-red-500">{errors.objeto.message}</p>}
+        <div className="col-span-1 md:col-span-2">
+          <label className="font-medium">Objeto</label>
+          <textarea {...register("objeto")} className="mt-1 border rounded-lg p-2 w-full h-20" />
+          {errors.objeto && <p className="text-red-500 text-sm">{errors.objeto.message}</p>}
         </div>
 
         {/* Datas */}
         <div>
-          <label className="block">Data Início</label>
-          <input type="date" {...register("data_inicio")} className="border p-2 w-full" />
-          {errors.data_inicio && <p className="text-red-500">{errors.data_inicio.message}</p>}
+          <label className="font-medium">Data Início</label>
+          <input type="date" {...register("data_inicio")} className="mt-1 border rounded-lg p-2 w-full" />
+          {errors.data_inicio && <p className="text-red-500 text-sm">{errors.data_inicio.message}</p>}
         </div>
         <div>
-          <label className="block">Data Fim</label>
-          <input type="date" {...register("data_fim")} className="border p-2 w-full" />
-          {errors.data_fim && <p className="text-red-500">{errors.data_fim.message}</p>}
+          <label className="font-medium">Data Fim</label>
+          <input type="date" {...register("data_fim")} className="mt-1 border rounded-lg p-2 w-full" />
+          {errors.data_fim && <p className="text-red-500 text-sm">{errors.data_fim.message}</p>}
         </div>
 
         {/* Dropdowns obrigatórios */}
         <div>
-          <label className="block">Contratado</label>
-          <select {...register("contratado_id")} className="border p-2 w-full">
+          <label className="font-medium">Contratado</label>
+          <select {...register("contratado_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {contratados.map((c) => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
-          {errors.contratado_id && <p className="text-red-500">{errors.contratado_id.message}</p>}
         </div>
 
         <div>
-          <label className="block">Modalidade</label>
-          <select {...register("modalidade_id")} className="border p-2 w-full">
+          <label className="font-medium">Modalidade</label>
+          <select {...register("modalidade_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {modalidades.map((m) => (
               <option key={m.id} value={m.id}>{m.nome}</option>
             ))}
           </select>
-          {errors.modalidade_id && <p className="text-red-500">{errors.modalidade_id.message}</p>}
         </div>
 
         <div>
-          <label className="block">Status</label>
-          <select {...register("status_id")} className="border p-2 w-full">
+          <label className="font-medium">Status</label>
+          <select {...register("status_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {statusList.map((s) => (
               <option key={s.id} value={s.id}>{s.nome}</option>
             ))}
           </select>
-          {errors.status_id && <p className="text-red-500">{errors.status_id.message}</p>}
         </div>
 
         <div>
-          <label className="block">Gestor</label>
-          <select {...register("gestor_id")} className="border p-2 w-full">
+          <label className="font-medium">Gestor</label>
+          <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
               <option key={u.id} value={u.id}>{u.nome}</option>
             ))}
           </select>
-          {errors.gestor_id && <p className="text-red-500">{errors.gestor_id.message}</p>}
         </div>
 
         <div>
-          <label className="block">Fiscal</label>
-          <select {...register("fiscal_id")} className="border p-2 w-full">
+          <label className="font-medium">Fiscal</label>
+          <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
               <option key={u.id} value={u.id}>{u.nome}</option>
             ))}
           </select>
-          {errors.fiscal_id && <p className="text-red-500">{errors.fiscal_id.message}</p>}
         </div>
 
         {/* Fiscal substituto (opcional) */}
         <div>
-          <label className="block">Fiscal Substituto</label>
-          <select {...register("fiscal_substituto_id")} className="border p-2 w-full">
+          <label className="font-medium">Fiscal Substituto</label>
+          <select {...register("fiscal_substituto_id")} className="mt-1 border rounded-lg p-2 w-full">
             <option value="">Selecione</option>
             {usuarios.map((u) => (
               <option key={u.id} value={u.id}>{u.nome}</option>
@@ -224,15 +222,62 @@ export function NovoContrato() {
           </select>
         </div>
 
-        {/* Arquivo */}
+        {/* Campos opcionais */}
         <div>
-          <label className="block">Documento do contrato</label>
-          <input type="file" onChange={(e) => setFileObj(e.target.files?.[0] || null)} />
+          <label className="font-medium">Valor Anual</label>
+          <input type="number" step="0.01" {...register("valor_anual")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        <div>
+          <label className="font-medium">Valor Global</label>
+          <input type="number" step="0.01" {...register("valor_global")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="font-medium">Base Legal</label>
+          <input type="text" {...register("base_legal")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="font-medium">Termos Contratuais</label>
+          <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
+        </div>
+        <div>
+          <label className="font-medium">PAE</label>
+          <input type="text" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        <div>
+          <label className="font-medium">DOE</label>
+          <input type="text" {...register("doe")} className="mt-1 border rounded-lg p-2 w-full" />
+        </div>
+        <div>
+          <label className="font-medium">Data DOE</label>
+          <input type="date" {...register("data_doe")} className="mt-1 border rounded-lg p-2 w-full" />
         </div>
 
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-          Salvar
-        </button>
+        {/* Upload */}
+        <div className="md:col-span-2">
+          <label className="font-medium">Documento do contrato</label>
+          <div className="mt-2 flex items-center gap-3">
+            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+              <Upload size={18} />
+              {fileObj ? "Trocar arquivo" : "Selecionar arquivo"}
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setFileObj(e.target.files?.[0] || null)}
+              />
+            </label>
+            {fileObj && <span className="text-sm text-gray-600">{fileObj.name}</span>}
+          </div>
+        </div>
+
+        {/* Botão */}
+        <div className="md:col-span-2 flex justify-end">
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow"
+          >
+            Salvar
+          </button>
+        </div>
       </form>
     </div>
   );
