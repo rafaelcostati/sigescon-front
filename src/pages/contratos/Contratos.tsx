@@ -36,9 +36,9 @@ import {
     type ColumnDef,
     type ColumnFiltersState,
     getCoreRowModel,
-    
+
     type SortingState,
-    useReactTable,    
+    useReactTable,
     type Table,
 } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -86,6 +86,17 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Pencil, PlusCircle, X } from 'lucide-react'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // ============================================================================
 // Schema e Tipos para Dados da API
@@ -342,20 +353,55 @@ function DraggableContratoCard({
     contratados,
     statusList,
     usuarios,
+    onContratoDeleted, // <-- NOVA PROP
 }: {
     contrato: Contrato
     contratados: ContratadoInfo[]
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
+    onContratoDeleted: (id: number) => void; // <-- TIPO DA NOVA PROP
 }) {
     const { transform, transition, setNodeRef, isDragging } = useSortable({
         id: contrato.id as UniqueIdentifier,
     });
-
     const navigate = useNavigate();
 
     const handleEditClick = () => {
         navigate(`/contratos/editar/${contrato.id}`);
+    };
+
+    // NOVA FUNÇÃO para exclusão
+    const handleDeleteContrato = async () => {
+        const toastId = toast.loading("Excluindo contrato...");
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error("Acesso não autorizado.");
+
+            const apiUrl = import.meta.env.VITE_API_URL;
+            if (!apiUrl) throw new Error("VITE_API_URL não está configurada.");
+
+            const response = await fetch(`${apiUrl}/contratos/${contrato.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.status === 204) {
+                toast.success("Contrato excluído com sucesso!", { id: toastId });
+                onContratoDeleted(contrato.id); // Avisa o componente pai
+            } else if (response.status === 404) {
+                throw new Error("Contrato não encontrado.");
+            } else if (response.status === 403) {
+                throw new Error("Você não tem permissão para excluir este contrato.");
+            } else {
+                throw new Error(`Falha ao excluir o contrato. Status: ${response.status}`);
+            }
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+            toast.error("Erro ao excluir", { description: errorMessage, id: toastId });
+        }
     };
 
     const getStatusIcon = (statusName: string) => {
@@ -380,28 +426,51 @@ function DraggableContratoCard({
                     <CardTitle className="text-base">{contrato.nr_contrato}</CardTitle>
                     <CardDescription className="line-clamp-2">{contrato.objeto}</CardDescription>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="text-muted-foreground h-8 w-8 p-0">
-                            <IconDotsVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer flex items-center gap-2">
-                            <Pencil className="h-4 w-4" />
-                            <span>Editar</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="flex items-center gap-2">
-                            <PlusCircle className="h-4 w-4" />
-                            <span>Criar Pendência</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="flex items-center gap-2 text-red-600 focus:text-red-600">
-                            <X className="h-4 w-4" />
-                            <span>Excluir</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* AlertDialog para confirmação de exclusão */}
+                <AlertDialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="text-muted-foreground h-8 w-8 p-0">
+                                <IconDotsVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer flex items-center gap-2">
+                                <Pencil className="h-4 w-4" />
+                                <span>Editar</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2">
+                                <PlusCircle className="h-4 w-4" />
+                                <span>Criar Pendência</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {/* O gatilho para o AlertDialog está aqui */}
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    className="flex items-center gap-2 text-red-600 focus:text-red-600 cursor-pointer"
+                                    onSelect={(e) => e.preventDefault()} // Evita que o menu feche ao clicar
+                                >
+                                    <X className="h-4 w-4" />
+                                    <span>Excluir</span>
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta ação irá desativar o contrato "{contrato.nr_contrato}". Ele não será permanentemente removido, mas ficará inativo. Você não poderá desfazer esta ação.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteContrato} className="bg-red-600 hover:bg-red-700">
+                                Sim, excluir
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardHeader>
             <CardContent className="flex flex-grow flex-col gap-4 text-sm">
                 <div className="flex flex-col gap-2">
@@ -477,6 +546,8 @@ export function ContratosDataTable() {
     const [sorting, setSorting] = React.useState<SortingState>([{ id: 'data_fim', desc: true }]) // Padrão
     const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 9 })
     const [paginationMeta, setPaginationMeta] = React.useState<PaginationMeta | null>(null);
+    const [fetchTrigger] = React.useState(0);
+
 
     // DND Kit
     const sortableId = React.useId()
@@ -526,17 +597,17 @@ export function ContratosDataTable() {
                 if (!res.ok) throw new Error(`Falha na requisição de contratos com status ${res.status}`);
 
                 const data = await res.json();
-                
-                // Mapeamento dos nomes (requer que 'contratados' e 'statusList' já estejam carregados)
-                 const statusMap = new Map(statusList.map((s: StatusInfo) => [s.id, s.nome]));
-                 const contratadosMap = new Map(contratados.map((c: ContratadoInfo) => [c.id, c.nome]));
 
-                 const contratosComNomes = (data.data || []).map((contrato: ContratoFromApi) => ({
+                // Mapeamento dos nomes (requer que 'contratados' e 'statusList' já estejam carregados)
+                const statusMap = new Map(statusList.map((s: StatusInfo) => [s.id, s.nome]));
+                const contratadosMap = new Map(contratados.map((c: ContratadoInfo) => [c.id, c.nome]));
+
+                const contratosComNomes = (data.data || []).map((contrato: ContratoFromApi) => ({
                     ...contrato,
                     status_nome: statusMap.get(contrato.status_id) || 'Desconhecido',
                     contratado_nome: contratadosMap.get(contrato.contratado_id) || 'Desconhecido',
                 }));
-                
+
                 setContratos(contratosComNomes);
                 setPaginationMeta(data.pagination);
 
@@ -555,7 +626,7 @@ export function ContratosDataTable() {
         if (statusList.length > 0 && contratados.length > 0) {
             fetchContratos();
         }
-    }, [columnFilters, pagination, sorting, statusList, contratados]); // Dependências do efeito
+    }, [columnFilters, pagination, sorting, statusList, contratados, fetchTrigger]); // Dependências do efeito
 
     // Efeito para buscar dados iniciais (status, contratados, usuários) apenas uma vez
     React.useEffect(() => {
@@ -581,13 +652,18 @@ export function ContratosDataTable() {
                 setStatusList(await statusRes.json());
                 setUsuarios(await usuariosRes.json());
             } catch (err) {
-                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
-                 setError(errorMessage);
-                 toast.error("Erro ao carregar dados de suporte: " + errorMessage);
+                const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+                setError(errorMessage);
+                toast.error("Erro ao carregar dados de suporte: " + errorMessage);
             }
         };
         fetchInitialData();
     }, []);
+
+    const handleContratoDeleted = () => {
+        // Força o recarregamento da página para garantir que todos os estados sejam atualizados.
+        window.location.reload();
+    };
 
     const dataIds = React.useMemo<UniqueIdentifier[]>(
         () => contratos?.map(({ id }) => id as UniqueIdentifier) || [],
@@ -649,86 +725,87 @@ export function ContratosDataTable() {
                 </div>
 
                 <TabsContent value="all" className="relative flex flex-col gap-4 mt-4">
-                     {isLoading && <div className="py-8 text-center">Carregando contratos...</div>}
-                    
+                    {isLoading && <div className="py-8 text-center">Carregando contratos...</div>}
+
                     {!isLoading && (
                         <>
-                        <DndContext
-                            collisionDetection={closestCenter}
-                            modifiers={[restrictToVerticalAxis]}
-                            onDragEnd={handleDragEnd}
-                            sensors={sensors}
-                            id={sortableId}
-                        >
-                            <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
-                                {table.getRowModel().rows?.length ? (
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                        {table.getRowModel().rows.map((row) => (
-                                            <DraggableContratoCard
-                                                key={row.original.id}
-                                                contrato={row.original}
-                                                contratados={contratados}
-                                                statusList={statusList}
-                                                usuarios={usuarios}
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex h-60 items-center justify-center rounded-lg border border-dashed">
-                                        <div className="text-center">
-                                            <h3 className="mt-4 text-lg font-semibold text-slate-800">Nenhum resultado encontrado</h3>
-                                            <p className="mt-1 text-sm text-slate-500">Tente ajustar os filtros para encontrar o que procura.</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </SortableContext>
-                        </DndContext>
-
-                        {/* Paginação */}
-                        <div className="flex items-center justify-between">
-                            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-                                Exibindo {table.getRowModel().rows.length} de {paginationMeta?.total_items ?? 0} contrato(s).
-                            </div>
-                            <div className="flex w-full items-center gap-6 lg:w-fit">
-                                <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium">Itens por página</p>
-                                    <Select
-                                        value={`${table.getState().pagination.pageSize}`}
-                                        onValueChange={(value) => {
-                                            table.setPageSize(Number(value))
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 w-[70px]">
-                                            <SelectValue placeholder={table.getState().pagination.pageSize} />
-                                        </SelectTrigger>
-                                        <SelectContent side="top">
-                                            {[9, 12, 24, 48].map((pageSize) => (
-                                                <SelectItem key={pageSize} value={`${pageSize}`}>
-                                                    {pageSize}
-                                                </SelectItem>
+                            <DndContext
+                                collisionDetection={closestCenter}
+                                modifiers={[restrictToVerticalAxis]}
+                                onDragEnd={handleDragEnd}
+                                sensors={sensors}
+                                id={sortableId}
+                            >
+                                <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
+                                    {table.getRowModel().rows?.length ? (
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                            {table.getRowModel().rows.map((row) => (
+                                                <DraggableContratoCard
+                                                    key={row.original.id}
+                                                    contrato={row.original}
+                                                    contratados={contratados}
+                                                    statusList={statusList}
+                                                    usuarios={usuarios}
+                                                    onContratoDeleted={handleContratoDeleted}
+                                                />
                                             ))}
-                                        </SelectContent>
-                                    </Select>
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-60 items-center justify-center rounded-lg border border-dashed">
+                                            <div className="text-center">
+                                                <h3 className="mt-4 text-lg font-semibold text-slate-800">Nenhum resultado encontrado</h3>
+                                                <p className="mt-1 text-sm text-slate-500">Tente ajustar os filtros para encontrar o que procura.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </SortableContext>
+                            </DndContext>
+
+                            {/* Paginação */}
+                            <div className="flex items-center justify-between">
+                                <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+                                    Exibindo {table.getRowModel().rows.length} de {paginationMeta?.total_items ?? 0} contrato(s).
                                 </div>
-                                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                                    Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
-                                </div>
-                                <div className="ml-auto flex items-center gap-2 lg:ml-0">
-                                    <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
-                                        <IconChevronsLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-                                        <IconChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-                                        <IconChevronRight className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
-                                        <IconChevronsRight className="h-4 w-4" />
-                                    </Button>
+                                <div className="flex w-full items-center gap-6 lg:w-fit">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium">Itens por página</p>
+                                        <Select
+                                            value={`${table.getState().pagination.pageSize}`}
+                                            onValueChange={(value) => {
+                                                table.setPageSize(Number(value))
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-[70px]">
+                                                <SelectValue placeholder={table.getState().pagination.pageSize} />
+                                            </SelectTrigger>
+                                            <SelectContent side="top">
+                                                {[9, 12, 24, 48].map((pageSize) => (
+                                                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                                                        {pageSize}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                                        Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-2 lg:ml-0">
+                                        <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
+                                            <IconChevronsLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+                                            <IconChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                                            <IconChevronRight className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
+                                            <IconChevronsRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         </>
                     )}
                 </TabsContent>
