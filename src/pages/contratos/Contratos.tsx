@@ -238,7 +238,12 @@ function ContratosFilters({
     const [gestorId, setGestorId] = React.useState((table.getColumn('gestor_id')?.getFilterValue() as string) ?? '');
     const [fiscalId, setFiscalId] = React.useState((table.getColumn('fiscal_id')?.getFilterValue() as string) ?? '');
 
-    const handleApplyFilters = () => {
+    const handleApplyFilters = (e?: React.FormEvent) => {
+        // Previne o recarregamento da página se o evento vier de um formulário
+        if (e) {
+            e.preventDefault();
+        }
+
         // Trata 'all' ou '' como ausência de filtro
         table.getColumn('objeto')?.setFilterValue(objeto || null);
         table.getColumn('nr_contrato')?.setFilterValue(nrContrato || null);
@@ -266,22 +271,23 @@ function ContratosFilters({
                 <CardTitle>Filtros de Contratos</CardTitle>
                 <CardDescription>Utilize os campos abaixo para refinar sua busca.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <form onSubmit={handleApplyFilters} className='p-4'>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                    {/* Filtro: Número do Contrato */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="nrContrato">Número do Contrato</Label>
+                        <Input id="nrContrato" placeholder="Ex: 99/2025" value={nrContrato} onChange={(e) => setNrContrato(e.target.value)} />
+                    </div>
                     {/* Filtro: Objeto */}
                     <div className="space-y-1.5">
                         <Label htmlFor="objeto">Objeto do Contrato</Label>
                         <Input id="objeto" placeholder="Pesquisar no objeto..." value={objeto} onChange={(e) => setObjeto(e.target.value)} />
                     </div>
-                    {/* Filtro: Número do Contrato */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="nrContrato">Número do Contrato</Label>
-                        <Input id="nrContrato" placeholder="Ex: 001/2025" value={nrContrato} onChange={(e) => setNrContrato(e.target.value)} />
-                    </div>
+                    
                     {/* Filtro: PAe */}
                     <div className="space-y-1.5">
-                        <Label htmlFor="pae">Processo (PAe)</Label>
-                        <Input id="pae" placeholder="Ex: 2024/12345" value={pae} onChange={(e) => setPae(e.target.value)} />
+                        <Label htmlFor="pae">Nº (PAE)</Label>
+                        <Input id="pae" placeholder="Ex: 2025/123456" value={pae} onChange={(e) => setPae(e.target.value)} />
                     </div>
                     {/* Filtro: Ano */}
                     <div className="space-y-1.5">
@@ -332,15 +338,15 @@ function ContratosFilters({
                     </div>
                     {/* Botões */}
                     <div className="flex flex-col md:flex-row gap-2 self-end">
-                        <Button type="button" onClick={handleApplyFilters} className="w-full md:w-auto">
+                        <Button type="submit" className="w-full md:w-auto">
                             <IconSearch className="h-4 w-4 mr-2" /> Pesquisar
                         </Button>
-                        <Button onClick={handleClearFilters} variant="outline" className="w-full md:w-auto">
+                        <Button type="button" onClick={handleClearFilters} variant="outline" className="w-full md:w-auto">
                             <IconX className="h-4 w-4 mr-2" /> Limpar
                         </Button>
                     </div>
                 </div>
-            </CardContent>
+            </form>
         </Card>
     )
 }
