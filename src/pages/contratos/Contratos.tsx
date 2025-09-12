@@ -30,25 +30,21 @@ import {
     IconPlus,
     IconX,
     IconSearch,
-    IconDownload, // Ícone adicionado para o botão de download
+    IconDownload,
 } from "@tabler/icons-react"
 import {
     type ColumnDef,
     type ColumnFiltersState,
     getCoreRowModel,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
+    
     type SortingState,
-    useReactTable,
-    type VisibilityState,
+    useReactTable,    
     type Table,
 } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { z } from "zod"
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+
 
 // Importe seus componentes de UI. Ajuste os caminhos se necessário.
 import { Badge } from "@/components/ui/badge"
@@ -89,7 +85,6 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useNavigate } from 'react-router-dom';
 import { Pencil, PlusCircle, X } from 'lucide-react'
 
 // ============================================================================
@@ -129,14 +124,12 @@ export const contratoSchema = z.object({
 });
 type ContratoFromApi = z.infer<typeof contratoSchema>
 
-// Novo tipo que inclui os nomes das entidades relacionadas
 type Contrato = ContratoFromApi & {
     modalidade_nome?: string;
     contratado_nome?: string;
     status_nome?: string;
 };
 
-// --- NOVOS SCHEMAS E TIPOS PARA DETALHES ---
 export const relatorioSchema = z.object({
     id: z.number(),
     descricao: z.string(),
@@ -151,7 +144,6 @@ export const pendenciaSchema = z.object({
 });
 export type Pendencia = z.infer<typeof pendenciaSchema>;
 
-// --- NOVO SCHEMA PARA ARQUIVOS ---
 export const arquivoSchema = z.object({
     id: z.number(),
     nome_arquivo: z.string(),
@@ -164,7 +156,6 @@ export const contratoDetalhadoSchema = contratoSchema.extend({
     pendencias: z.array(pendenciaSchema).optional(),
 });
 export type ContratoDetalhado = z.infer<typeof contratoDetalhadoSchema>;
-
 
 type ContratadoInfo = { id: number; nome: string; cnpj: string; cpf: string }
 type StatusInfo = { id: number; nome: string }
@@ -193,7 +184,7 @@ const formatCnpj = (cnpj: string | null | undefined) => {
     const digitsOnly = cnpj.replace(/\D/g, "");
 
     if (digitsOnly.length !== 14) {
-        return cnpj; // Retorna o valor original se não for um CNPJ válido
+        return cnpj;
     }
 
     return digitsOnly.replace(
@@ -207,23 +198,56 @@ const formatCpf = (cpf: string | null | undefined) => {
     const digitsOnly = cpf.replace(/\D/g, "");
 
     if (digitsOnly.length !== 11) {
-        return cpf; // Retorna o valor original se não for um CPF válido
+        return cpf;
     }
 
     return digitsOnly.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
+
 // ============================================================================
-// Componente: ContratosFilters
+// Componente: ContratosFilters (AJUSTADO)
 // ============================================================================
-function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statusList: StatusInfo[] }) {
-    const nrContratoFilter = (table.getColumn("nr_contrato")?.getFilterValue() as string) ?? ""
-    const objetoFilter = (table.getColumn("objeto")?.getFilterValue() as string) ?? ""
-    const statusFilter = (table.getColumn("status_id")?.getFilterValue() as string) ?? "all"
+function ContratosFilters({
+    table,
+    statusList,
+    usuarios,
+}: {
+    table: Table<Contrato>;
+    statusList: StatusInfo[];
+    usuarios: UsuarioInfo[];
+}) {
+    // Estados locais para controlar os inputs antes de aplicar o filtro
+    const [objeto, setObjeto] = React.useState((table.getColumn('objeto')?.getFilterValue() as string) ?? '');
+    const [nrContrato, setNrContrato] = React.useState((table.getColumn('nr_contrato')?.getFilterValue() as string) ?? '');
+    const [pae, setPae] = React.useState((table.getColumn('pae')?.getFilterValue() as string) ?? '');
+    const [ano, setAno] = React.useState((table.getColumn('ano')?.getFilterValue() as string) ?? '');
+    // O valor inicial '' faz o placeholder ser exibido
+    const [statusId, setStatusId] = React.useState((table.getColumn('status_id')?.getFilterValue() as string) ?? '');
+    const [gestorId, setGestorId] = React.useState((table.getColumn('gestor_id')?.getFilterValue() as string) ?? '');
+    const [fiscalId, setFiscalId] = React.useState((table.getColumn('fiscal_id')?.getFilterValue() as string) ?? '');
+
+    const handleApplyFilters = () => {
+        // Trata 'all' ou '' como ausência de filtro
+        table.getColumn('objeto')?.setFilterValue(objeto || null);
+        table.getColumn('nr_contrato')?.setFilterValue(nrContrato || null);
+        table.getColumn('pae')?.setFilterValue(pae || null);
+        table.getColumn('ano')?.setFilterValue(ano || null);
+        table.getColumn('status_id')?.setFilterValue(statusId === 'all' ? null : statusId || null);
+        table.getColumn('gestor_id')?.setFilterValue(gestorId === 'all' ? null : gestorId || null);
+        table.getColumn('fiscal_id')?.setFilterValue(fiscalId === 'all' ? null : fiscalId || null);
+    };
 
     const handleClearFilters = () => {
-        table.resetColumnFilters()
-    }
+        setObjeto('');
+        setNrContrato('');
+        setPae('');
+        setAno('');
+        setStatusId(''); // Resetar para '' exibe o placeholder
+        setGestorId('');
+        setFiscalId('');
+        table.resetColumnFilters();
+    };
 
     return (
         <Card>
@@ -233,47 +257,71 @@ function ContratosFilters({ table, statusList }: { table: Table<Contrato>; statu
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="nrContrato">Número do Contrato</Label>
-                        <Input
-                            id="nrContrato"
-                            placeholder="Ex: 001/2025"
-                            value={nrContratoFilter}
-                            onChange={(e) => table.getColumn("nr_contrato")?.setFilterValue(e.target.value)}
-                        />
-                    </div>
+                    {/* Filtro: Objeto */}
                     <div className="space-y-1.5">
                         <Label htmlFor="objeto">Objeto do Contrato</Label>
-                        <Input
-                            id="objeto"
-                            placeholder="Pesquisar no objeto..."
-                            value={objetoFilter}
-                            onChange={(e) => table.getColumn("objeto")?.setFilterValue(e.target.value)}
-                        />
+                        <Input id="objeto" placeholder="Pesquisar no objeto..." value={objeto} onChange={(e) => setObjeto(e.target.value)} />
                     </div>
+                    {/* Filtro: Número do Contrato */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="nrContrato">Número do Contrato</Label>
+                        <Input id="nrContrato" placeholder="Ex: 001/2025" value={nrContrato} onChange={(e) => setNrContrato(e.target.value)} />
+                    </div>
+                    {/* Filtro: PAe */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="pae">Processo (PAe)</Label>
+                        <Input id="pae" placeholder="Ex: 2024/12345" value={pae} onChange={(e) => setPae(e.target.value)} />
+                    </div>
+                    {/* Filtro: Ano */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ano">Ano Início</Label>
+                        <Input id="ano" type="number" placeholder="Ex: 2024" value={ano} onChange={(e) => setAno(e.target.value)} />
+                    </div>
+                    {/* Filtro: Status */}
                     <div className="space-y-1.5">
                         <Label>Status</Label>
-                        <Select
-                            value={statusFilter}
-                            onValueChange={(value) =>
-                                table.getColumn("status_id")?.setFilterValue(value === "all" ? null : value)
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Escolha um status" />
-                            </SelectTrigger>
+                        <Select value={statusId} onValueChange={setStatusId}>
+                            <SelectTrigger><SelectValue placeholder="Escolha um status" /></SelectTrigger>
                             <SelectContent>
+                                {/* CORREÇÃO APLICADA AQUI */}
                                 <SelectItem value="all">Todos os Status</SelectItem>
                                 {statusList.map((status) => (
-                                    <SelectItem key={status.id} value={String(status.id)}>
-                                        {status.nome}
-                                    </SelectItem>
+                                    <SelectItem key={status.id} value={String(status.id)}>{status.nome}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
+                    {/* Filtro: Gestor */}
+                    <div className="space-y-1.5">
+                        <Label>Gestor</Label>
+                        <Select value={gestorId} onValueChange={setGestorId}>
+                            <SelectTrigger><SelectValue placeholder="Escolha um gestor" /></SelectTrigger>
+                            <SelectContent>
+                                {/* CORREÇÃO APLICADA AQUI */}
+                                <SelectItem value="all">Todos os Gestores</SelectItem>
+                                {usuarios.map((user) => (
+                                    <SelectItem key={user.id} value={String(user.id)}>{user.nome}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {/* Filtro: Fiscal */}
+                    <div className="space-y-1.5">
+                        <Label>Fiscal</Label>
+                        <Select value={fiscalId} onValueChange={setFiscalId}>
+                            <SelectTrigger><SelectValue placeholder="Escolha um fiscal" /></SelectTrigger>
+                            <SelectContent>
+                                {/* CORREÇÃO APLICADA AQUI */}
+                                <SelectItem value="all">Todos os Fiscais</SelectItem>
+                                {usuarios.map((user) => (
+                                    <SelectItem key={user.id} value={String(user.id)}>{user.nome}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {/* Botões */}
                     <div className="flex flex-col md:flex-row gap-2 self-end">
-                        <Button type="button" className="w-full md:w-auto">
+                        <Button type="button" onClick={handleApplyFilters} className="w-full md:w-auto">
                             <IconSearch className="h-4 w-4 mr-2" /> Pesquisar
                         </Button>
                         <Button onClick={handleClearFilters} variant="outline" className="w-full md:w-auto">
@@ -295,7 +343,7 @@ function DraggableContratoCard({
     statusList,
     usuarios,
 }: {
-    contrato: any
+    contrato: Contrato
     contratados: ContratadoInfo[]
     statusList: StatusInfo[]
     usuarios: UsuarioInfo[]
@@ -305,7 +353,6 @@ function DraggableContratoCard({
     });
 
     const navigate = useNavigate();
-
 
     const handleEditClick = () => {
         navigate(`/contratos/editar/${contrato.id}`);
@@ -340,18 +387,18 @@ function DraggableContratoCard({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
+                        <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer flex items-center gap-2">
                             <Pencil className="h-4 w-4" />
-                            Editar
+                            <span>Editar</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem className="flex items-center gap-2">
                             <PlusCircle className="h-4 w-4" />
-                            Criar Pendência
+                            <span>Criar Pendência</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem variant="destructive">
+                        <DropdownMenuItem className="flex items-center gap-2 text-red-600 focus:text-red-600">
                             <X className="h-4 w-4" />
-                            Excluir
+                            <span>Excluir</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -359,11 +406,10 @@ function DraggableContratoCard({
             <CardContent className="flex flex-grow flex-col gap-4 text-sm">
                 <div className="flex flex-col gap-2">
                     <div>
-                        <Label className="text-xs text-muted-foreground">Modalidade</Label>
-
+                        <Label className="text-xs text-muted-foreground">Status</Label>
                         <Badge variant={"secondary"} className="gap-1.5 whitespace-nowrap">
-                            {getStatusIcon(contrato.modalidade_nome)}
-                            {contrato.modalidade_nome || "Não informado"}
+                            {getStatusIcon(contrato.status_nome || '')}
+                            {contrato.status_nome || "Não informado"}
                         </Badge>
                     </div>
                     <div>
@@ -372,7 +418,6 @@ function DraggableContratoCard({
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-
                     <div>
                         <Label className="text-xs text-muted-foreground">Vigência</Label>
                         <p className="whitespace-nowrap font-medium">
@@ -393,40 +438,58 @@ function DraggableContratoCard({
     )
 }
 
+// Definição das colunas para o useReactTable (usado para filtros)
 const columns: ColumnDef<Contrato>[] = [
-    { accessorKey: "nr_contrato" },
     { accessorKey: "objeto" },
-    { accessorKey: "status_id", filterFn: "equals" },
-    { accessorKey: "contratado_id", filterFn: "equals" },
+    { accessorKey: "nr_contrato" },
+    { accessorKey: "pae" },
+    { accessorKey: "ano" },
+    { accessorKey: "status_id" },
+    { accessorKey: "gestor_id" },
+    { accessorKey: "fiscal_id" },
+    // Colunas para ordenação
+    { accessorKey: "data_inicio" },
+    { accessorKey: "data_fim" },
 ]
 
+// Tipagem para os metadados da paginação da API
+type PaginationMeta = {
+    total_items: number;
+    total_pages: number;
+    current_page: number;
+    per_page: number;
+}
+
 // ============================================================================
-// Componente Principal: ContratosDataTable
+// Componente Principal: ContratosDataTable (AJUSTADO)
 // ============================================================================
 export function ContratosDataTable() {
+    // Estados de dados
     const [contratos, setContratos] = React.useState<Contrato[]>([])
     const [contratados, setContratados] = React.useState<ContratadoInfo[]>([])
     const [statusList, setStatusList] = React.useState<StatusInfo[]>([])
     const [usuarios, setUsuarios] = React.useState<UsuarioInfo[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
-    const [rowSelection, setRowSelection] = React.useState({})
-    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+
+    // Estados da Tabela (controlados para API)
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-    const [sorting, setSorting] = React.useState<SortingState>([])
+    const [sorting, setSorting] = React.useState<SortingState>([{ id: 'data_fim', desc: true }]) // Padrão
     const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 9 })
+    const [paginationMeta, setPaginationMeta] = React.useState<PaginationMeta | null>(null);
+
+    // DND Kit
     const sortableId = React.useId()
     const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor), useSensor(KeyboardSensor))
 
+    // Efeito para buscar dados da API sempre que os filtros, paginação ou ordenação mudarem
     React.useEffect(() => {
-        const fetchInitialData = async () => {
-            setIsLoading(true)
-            setError(null)
+        const fetchContratos = async () => {
+            setIsLoading(true);
+            setError(null);
             try {
                 const token = localStorage.getItem('token');
-                if (!token) {
-                    throw new Error("Acesso não autorizado. Por favor, faça o login.");
-                }
+                if (!token) throw new Error("Acesso não autorizado. Por favor, faça o login.");
 
                 const headers = {
                     'Authorization': `Bearer ${token}`,
@@ -434,67 +497,95 @@ export function ContratosDataTable() {
                 };
 
                 const apiUrl = import.meta.env.VITE_API_URL;
-                if (!apiUrl) {
-                    throw new Error("VITE_API_URL não está configurada.");
+                if (!apiUrl) throw new Error("VITE_API_URL não está configurada.");
+
+                // Constrói os parâmetros da query
+                const params = new URLSearchParams();
+
+                // Paginação
+                params.append('page', String(pagination.pageIndex + 1));
+                params.append('per_page', String(pagination.pageSize));
+
+                // Ordenação
+                if (sorting.length > 0) {
+                    params.append('sortBy', sorting[0].id);
+                    params.append('order', sorting[0].desc ? 'desc' : 'asc');
                 }
 
-                const [
-                    contratosRes,
-                    contratadosRes,
-                    statusRes,
-                    usuariosRes,
-                ] = await Promise.all([
-                    fetch(`${apiUrl}/contratos`, { headers }),
-                    fetch(`${apiUrl}/contratados`, { headers }),
-                    fetch(`${apiUrl}/status`, { headers }),
-                    fetch(`${apiUrl}/usuarios`, { headers }),
-                ]);
-
-
-                const responses = [contratosRes, contratadosRes, statusRes, usuariosRes];
-                for (const res of responses) {
-                    if (res.status === 401) {
-                        throw new Error("Sua sessão expirou ou o token é inválido. Faça o login novamente.");
+                // Filtros
+                columnFilters.forEach(filter => {
+                    if (filter.value) {
+                        params.append(filter.id, String(filter.value));
                     }
-                    if (!res.ok) {
-                        throw new Error(`Falha na requisição para ${res.url} com status ${res.status}`);
-                    }
-                }
+                });
 
+                // Busca os contratos com os parâmetros
+                const res = await fetch(`${apiUrl}/contratos?${params.toString()}`, { headers });
 
-                const contratosData = await contratosRes.json();
-                const contratadosData = await contratadosRes.json(); // Correção de bug: estava usando contratosRes
-                const statusData = await statusRes.json();
-                const usuariosData = await usuariosRes.json();
+                if (res.status === 401) throw new Error("Sua sessão expirou. Faça o login novamente.");
+                if (!res.ok) throw new Error(`Falha na requisição de contratos com status ${res.status}`);
 
-                // Mapeamento dos dados para incluir nomes
-                const statusMap = new Map(statusData.map((s: StatusInfo) => [s.id, s.nome]));
-                const contratadosMap = new Map(contratadosData.map((c: ContratadoInfo) => [c.id, c.nome]));
+                const data = await res.json();
+                
+                // Mapeamento dos nomes (requer que 'contratados' e 'statusList' já estejam carregados)
+                 const statusMap = new Map(statusList.map((s: StatusInfo) => [s.id, s.nome]));
+                 const contratadosMap = new Map(contratados.map((c: ContratadoInfo) => [c.id, c.nome]));
 
-                const contratosComNomes = (contratosData.data || []).map((contrato: ContratoFromApi) => ({
+                 const contratosComNomes = (data.data || []).map((contrato: ContratoFromApi) => ({
                     ...contrato,
                     status_nome: statusMap.get(contrato.status_id) || 'Desconhecido',
                     contratado_nome: contratadosMap.get(contrato.contratado_id) || 'Desconhecido',
-                    // Assumindo que a API não retorna modalidade_nome diretamente na lista principal
-                    modalidade_nome: 'Não Carregado', // Será carregado no modal de detalhes
                 }));
-
+                
                 setContratos(contratosComNomes);
-                setContratados(contratadosData || []);
-                setStatusList(statusData || []);
-                setUsuarios(usuariosData || []);
+                setPaginationMeta(data.pagination);
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
                 setError(errorMessage);
-                toast.error("Erro ao carregar dados: " + errorMessage);
-                // Importante: garantir que o estado não fique inconsistente em caso de erro
+                toast.error("Erro ao carregar contratos: " + errorMessage);
                 setContratos([]);
+                setPaginationMeta(null);
             } finally {
                 setIsLoading(false);
             }
         };
 
+        // Só busca os contratos se os dados de suporte (status, etc.) já foram carregados
+        if (statusList.length > 0 && contratados.length > 0) {
+            fetchContratos();
+        }
+    }, [columnFilters, pagination, sorting, statusList, contratados]); // Dependências do efeito
+
+    // Efeito para buscar dados iniciais (status, contratados, usuários) apenas uma vez
+    React.useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) throw new Error("Acesso não autorizado.");
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const apiUrl = import.meta.env.VITE_API_URL;
+                if (!apiUrl) throw new Error("VITE_API_URL não configurada.");
+
+                const [contratadosRes, statusRes, usuariosRes] = await Promise.all([
+                    fetch(`${apiUrl}/contratados`, { headers }),
+                    fetch(`${apiUrl}/status`, { headers }),
+                    fetch(`${apiUrl}/usuarios`, { headers }),
+                ]);
+
+                if (!contratadosRes.ok || !statusRes.ok || !usuariosRes.ok) {
+                    throw new Error("Falha ao carregar dados de suporte.");
+                }
+
+                setContratados(await contratadosRes.json());
+                setStatusList(await statusRes.json());
+                setUsuarios(await usuariosRes.json());
+            } catch (err) {
+                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+                 setError(errorMessage);
+                 toast.error("Erro ao carregar dados de suporte: " + errorMessage);
+            }
+        };
         fetchInitialData();
     }, []);
 
@@ -506,20 +597,19 @@ export function ContratosDataTable() {
     const table = useReactTable({
         data: contratos,
         columns,
-        state: { sorting, columnVisibility, rowSelection, columnFilters, pagination },
+        pageCount: paginationMeta?.total_pages ?? -1,
+        state: { sorting, columnFilters, pagination },
+        // Configuração para controle manual
+        manualPagination: true,
+        manualSorting: true,
+        manualFiltering: true,
+        // Handlers
         onColumnFiltersChange: setColumnFilters,
-        getRowId: (row) => row.id.toString(),
         onPaginationChange: setPagination,
-        enableRowSelection: true,
-        onRowSelectionChange: setRowSelection,
         onSortingChange: setSorting,
-        onColumnVisibilityChange: setColumnVisibility,
+        // Outras configs
+        getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFacetedRowModel: getFacetedRowModel(),
-        getFacetedUniqueValues: getFacetedUniqueValues(),
     })
 
     function handleDragEnd(event: DragEndEvent) {
@@ -532,20 +622,16 @@ export function ContratosDataTable() {
             if (oldIndex === -1 || newIndex === -1) return currentData
             return arrayMove(currentData, oldIndex, newIndex)
         })
-        toast.success("Ordem dos contratos atualizada localmente.")
+        toast.info("A ordem dos contratos foi alterada apenas nesta visualização.")
     }
 
-    if (isLoading) {
-        return <div className="p-8 text-center">Carregando dados dos contratos...</div>;
-    }
-
-    if (error) {
+    if (error && contratos.length === 0) {
         return <div className="p-8 text-center text-red-600"><strong>Erro ao carregar:</strong> {error}</div>;
     }
 
     return (
         <div className="w-full flex flex-col justify-start gap-4 p-4">
-            <ContratosFilters table={table} statusList={statusList} />
+            <ContratosFilters table={table} statusList={statusList} usuarios={usuarios} />
 
             <Tabs defaultValue="all" className="w-full mt-4">
                 <div className="flex items-center justify-between">
@@ -563,81 +649,88 @@ export function ContratosDataTable() {
                 </div>
 
                 <TabsContent value="all" className="relative flex flex-col gap-4 mt-4">
-                    <DndContext
-                        collisionDetection={closestCenter}
-                        modifiers={[restrictToVerticalAxis]}
-                        onDragEnd={handleDragEnd}
-                        sensors={sensors}
-                        id={sortableId}
-                    >
-                        <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
-                            {table.getRowModel().rows?.length ? (
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                    {table.getRowModel().rows.map((row) => (
-                                        <DraggableContratoCard
-                                            key={row.original.id}
-                                            contrato={row.original}
-                                            contratados={contratados}
-                                            statusList={statusList}
-                                            usuarios={usuarios}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex h-60 items-center justify-center rounded-lg border border-dashed">
-                                    <div className="text-center">
-                                        <h3 className="mt-4 text-lg font-semibold text-slate-800">Nenhum resultado encontrado</h3>
-                                        <p className="mt-1 text-sm text-slate-500">Tente ajustar os filtros para encontrar o que procura.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </SortableContext>
-                    </DndContext>
-
-                    <div className="flex items-center justify-between">
-                        <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-                            {table.getFilteredRowModel().rows.length} de {contratos.length} contrato(s) exibido(s).
-                        </div>
-                        <div className="flex w-full items-center gap-6 lg:w-fit">
-                            <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">Itens por página</p>
-                                <Select
-                                    value={`${table.getState().pagination.pageSize}`}
-                                    onValueChange={(value) => {
-                                        table.setPageSize(Number(value))
-                                    }}
-                                >
-                                    <SelectTrigger className="h-8 w-[70px]">
-                                        <SelectValue placeholder={table.getState().pagination.pageSize} />
-                                    </SelectTrigger>
-                                    <SelectContent side="top">
-                                        {[9, 12, 24, 48].map((pageSize) => (
-                                            <SelectItem key={pageSize} value={`${pageSize}`}>
-                                                {pageSize}
-                                            </SelectItem>
+                     {isLoading && <div className="py-8 text-center">Carregando contratos...</div>}
+                    
+                    {!isLoading && (
+                        <>
+                        <DndContext
+                            collisionDetection={closestCenter}
+                            modifiers={[restrictToVerticalAxis]}
+                            onDragEnd={handleDragEnd}
+                            sensors={sensors}
+                            id={sortableId}
+                        >
+                            <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
+                                {table.getRowModel().rows?.length ? (
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                        {table.getRowModel().rows.map((row) => (
+                                            <DraggableContratoCard
+                                                key={row.original.id}
+                                                contrato={row.original}
+                                                contratados={contratados}
+                                                statusList={statusList}
+                                                usuarios={usuarios}
+                                            />
                                         ))}
-                                    </SelectContent>
-                                </Select>
+                                    </div>
+                                ) : (
+                                    <div className="flex h-60 items-center justify-center rounded-lg border border-dashed">
+                                        <div className="text-center">
+                                            <h3 className="mt-4 text-lg font-semibold text-slate-800">Nenhum resultado encontrado</h3>
+                                            <p className="mt-1 text-sm text-slate-500">Tente ajustar os filtros para encontrar o que procura.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </SortableContext>
+                        </DndContext>
+
+                        {/* Paginação */}
+                        <div className="flex items-center justify-between">
+                            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+                                Exibindo {table.getRowModel().rows.length} de {paginationMeta?.total_items ?? 0} contrato(s).
                             </div>
-                            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                                Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
-                            </div>
-                            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-                                <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
-                                    <IconChevronsLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-                                    <IconChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-                                    <IconChevronRight className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
-                                    <IconChevronsRight className="h-4 w-4" />
-                                </Button>
+                            <div className="flex w-full items-center gap-6 lg:w-fit">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium">Itens por página</p>
+                                    <Select
+                                        value={`${table.getState().pagination.pageSize}`}
+                                        onValueChange={(value) => {
+                                            table.setPageSize(Number(value))
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-8 w-[70px]">
+                                            <SelectValue placeholder={table.getState().pagination.pageSize} />
+                                        </SelectTrigger>
+                                        <SelectContent side="top">
+                                            {[9, 12, 24, 48].map((pageSize) => (
+                                                <SelectItem key={pageSize} value={`${pageSize}`}>
+                                                    {pageSize}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                                    Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+                                </div>
+                                <div className="ml-auto flex items-center gap-2 lg:ml-0">
+                                    <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
+                                        <IconChevronsLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+                                        <IconChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                                        <IconChevronRight className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
+                                        <IconChevronsRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        </>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>
@@ -655,7 +748,7 @@ const DetailItem = ({ label, children }: { label: string; children: React.ReactN
 )
 
 // ============================================================================
-// Componente: ContratoDetailsViewer (Modal) - VERSÃO AJUSTADA
+// Componente: ContratoDetailsViewer (Modal)
 // ============================================================================
 function ContratoDetailsViewer({
     contrato,
@@ -670,11 +763,10 @@ function ContratoDetailsViewer({
 }) {
     const [isOpen, setIsOpen] = React.useState(false)
     const [detailedData, setDetailedData] = React.useState<ContratoDetalhado | null>(null)
-    const [arquivos, setArquivos] = React.useState<Arquivo[]>([]) // NOVO ESTADO PARA ARQUIVOS
+    const [arquivos, setArquivos] = React.useState<Arquivo[]>([])
     const [isLoading, setIsLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    // --- NOVA FUNÇÃO PARA DOWNLOAD DE ARQUIVO ---
     const handleDownloadArquivo = async (arquivoId: number, nomeOriginal: string) => {
         const toastId = toast.loading(`Baixando "${nomeOriginal}"...`);
         try {
@@ -716,8 +808,6 @@ function ContratoDetailsViewer({
         }
     };
 
-
-    // --- EFEITO AJUSTADO PARA BUSCAR DETALHES E ARQUIVOS ---
     React.useEffect(() => {
         if (!isOpen) {
             setDetailedData(null);
@@ -739,7 +829,7 @@ function ContratoDetailsViewer({
 
                 const [detailsRes, arquivosRes] = await Promise.all([
                     fetch(`${apiUrl}/contratos/${contrato.id}`, { headers }),
-                    fetch(`${apiUrl}/contratos/${contrato.id}/arquivos`, { headers }), // Busca os arquivos
+                    fetch(`${apiUrl}/contratos/${contrato.id}/arquivos`, { headers }),
                 ]);
 
                 if (!detailsRes.ok) throw new Error(`Erro ao buscar detalhes: ${detailsRes.statusText}`);
@@ -747,8 +837,6 @@ function ContratoDetailsViewer({
 
                 const detailsData = await detailsRes.json();
                 const arquivosData = await arquivosRes.json();
-
-                console.log("Resposta da API de ARQUIVOS:", arquivosData);
 
                 const validatedDetails = contratoDetalhadoSchema.parse(detailsData);
                 const validatedArquivos = z.array(arquivoSchema).parse(arquivosData);
@@ -793,12 +881,10 @@ function ContratoDetailsViewer({
 
                 {!isLoading && !error && (
                     <div className="flex flex-col gap-6 py-4 text-sm">
-                        {/* Seções de Detalhes */}
                         <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                             <DetailItem label="Status">{status.nome}</DetailItem>
                             <DetailItem label="Modalidade">
                                 {
-                                    // Usar o nome da modalidade dos dados detalhados, se disponíveis
                                     (detailedData as any)?.modalidade?.nome ||
                                     contrato.modalidade_nome || "Não informado"
                                 }
@@ -806,7 +892,6 @@ function ContratoDetailsViewer({
                             <DetailItem label="Valor Anual">{formatCurrency(dataToShow.valor_anual)}</DetailItem>
                             <DetailItem label="Valor Global">{formatCurrency(dataToShow.valor_global)}</DetailItem>
                             <DetailItem label="Vigência">{`${formatDate(dataToShow.data_inicio)} a ${formatDate(dataToShow.data_fim)}`}</DetailItem>
-
                         </div>
                         <Separator />
                         <h4 className="font-semibold text-foreground">Contratado</h4>
@@ -831,8 +916,6 @@ function ContratoDetailsViewer({
                             <DetailItem label="Fiscal Substituto">{fiscalSubstituto?.nome ?? "N/A"}</DetailItem>
                         </div>
                         <Separator />
-
-                        {/* Seção de Relatórios */}
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Relatórios</h4>
                             {detailedData?.relatorios && detailedData.relatorios.length > 0 ? (
@@ -845,8 +928,6 @@ function ContratoDetailsViewer({
                                 <p className="text-muted-foreground">Nenhum relatório associado.</p>
                             )}
                         </div>
-
-                        {/* Seção de Pendências */}
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Pendências</h4>
                             {detailedData?.pendencias && detailedData.pendencias.length > 0 ? (
@@ -861,8 +942,6 @@ function ContratoDetailsViewer({
                                 <p className="text-muted-foreground">Nenhuma pendência encontrada.</p>
                             )}
                         </div>
-
-                        {/* --- NOVA SEÇÃO DE ARQUIVOS --- */}
                         <Separator />
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Arquivos</h4>
@@ -887,7 +966,6 @@ function ContratoDetailsViewer({
                                 <p className="text-muted-foreground">Nenhum arquivo encontrado para este contrato.</p>
                             )}
                         </div>
-
                     </div>
                 )}
 
