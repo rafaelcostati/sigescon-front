@@ -90,7 +90,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useNavigate } from 'react-router-dom';
-import { Pencil } from 'lucide-react'
+import { Pencil, PlusCircle, X } from 'lucide-react'
 
 // ============================================================================
 // Schema e Tipos para Dados da API
@@ -159,7 +159,7 @@ export const contratoDetalhadoSchema = contratoSchema.extend({
 export type ContratoDetalhado = z.infer<typeof contratoDetalhadoSchema>;
 
 
-type ContratadoInfo = { id: number; nome: string; cnpj: string }
+type ContratadoInfo = { id: number; nome: string; cnpj: string; cpf: string }
 type StatusInfo = { id: number; nome: string }
 type UsuarioInfo = { id: number; nome: string; perfil: string }
 
@@ -179,11 +179,6 @@ const formatDate = (dateString: string | null | undefined) => {
         month: "2-digit",
         year: "numeric",
     })
-}
-
-const formatDateTime = (dateString: string | null | undefined) => {
-    if (!dateString) return "N/A"
-    return new Date(dateString).toLocaleString("pt-BR", { timeZone: "UTC" })
 }
 
 // ============================================================================
@@ -317,9 +312,15 @@ function DraggableContratoCard({
                             <Pencil className="h-4 w-4" />
                             Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Ver Documento</DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <PlusCircle className="h-4 w-4" />
+                            Criar Pendência
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Excluir</DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive">
+                            <X className="h-4 w-4" />
+                            Excluir
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </CardHeader>
@@ -417,7 +418,7 @@ export function ContratosDataTable() {
                     fetch(`${apiUrl}/usuarios`, { headers }),
                 ]);
 
-                // Verificação de erros foi mantida
+                
                 const responses = [contratosRes, contratadosRes, statusRes, usuariosRes];
                 for (const res of responses) {
                     if (res.status === 401) {
@@ -428,7 +429,7 @@ export function ContratosDataTable() {
                     }
                 }
                 
-                // --- AJUSTE PRINCIPAL AQUI ---
+               
                 const contratosData = await contratosRes.json();
                 const contratadosData = await contratadosRes.json(); // Correção de bug: estava usando contratosRes
                 const statusData = await statusRes.json();
@@ -437,12 +438,10 @@ export function ContratosDataTable() {
                 
                  
 
-                // Se a API retorna { "contratos": [...] }, use contratosData.contratos
-                // Se a API retorna { "data": [...] }, use contratosData.data
-                // O '|| []' garante que, se a propriedade não existir, será um array vazio, evitando erros.
+               
                 setContratos(contratosData.data || []); 
 
-                setContratados(contratadosData || []); // Assumindo que contratados, status e usuarios retornam arrays diretos
+                setContratados(contratadosData || []); 
                 setStatusList(statusData || []);
                 setUsuarios(usuariosData || []);
 
@@ -733,7 +732,7 @@ function ContratoDetailsViewer({
 
     const dataToShow = detailedData || contrato;
     const status = statusList.find(s => s.id === dataToShow.status_id) || { nome: 'Desconhecido' };
-    const contratado = contratados.find(c => c.id === dataToShow.contratado_id) || { nome: 'Não encontrado', cnpj: 'N/A' };
+    const contratado = contratados.find(c => c.id === dataToShow.contratado_id) || { nome: 'Não encontrado', cnpj: 'N/A', cpf: 'N/A' };
     const gestor = usuarios.find(u => u.id === dataToShow.gestor_id) || { nome: `ID: ${dataToShow.gestor_id}` };
     const fiscal = usuarios.find(u => u.id === dataToShow.fiscal_id) || { nome: `ID: ${dataToShow.fiscal_id}` };
     const fiscalSubstituto = usuarios.find(u => u.id === dataToShow.fiscal_substituto_id) || null;
@@ -764,6 +763,7 @@ function ContratoDetailsViewer({
                             <DetailItem label="Vigência">{`${formatDate(dataToShow.data_inicio)} a ${formatDate(dataToShow.data_fim)}`}</DetailItem>
                             <DetailItem label="Contratado">{contratado.nome}</DetailItem>
                             <DetailItem label="CNPJ do Contratado">{contratado.cnpj}</DetailItem>
+                            <DetailItem label="CPF do Contratado">{contratado.cpf}</DetailItem>
                         </div>
                         <Separator />
                         <h4 className="font-semibold text-foreground">Documentação e Processos</h4>
@@ -837,13 +837,7 @@ function ContratoDetailsViewer({
                                 <p className="text-muted-foreground">Nenhum arquivo encontrado para este contrato.</p>
                             )}
                         </div>
-
-
-                        <Separator />
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                            <DetailItem label="Criado em">{formatDateTime(dataToShow.created_at)}</DetailItem>
-                            <DetailItem label="Atualizado em">{formatDateTime(dataToShow.updated_at)}</DetailItem>
-                        </div>
+                       
                     </div>
                 )}
 
