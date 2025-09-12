@@ -36,8 +36,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-// ALTERADO: Ícone 'Pencil' removido pois não será mais usado
-import { Trash2, LoaderCircle, CirclePlus } from "lucide-react";
+import { Trash2, LoaderCircle, CirclePlus, Pencil } from "lucide-react";
 
 //================================================================================
 // SECTION: TIPOS E SCHEMAS
@@ -131,9 +130,81 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
 //================================================================================
 // SECTION: COMPONENTES DE AÇÕES (APENAS EXCLUIR)
 //================================================================================
+function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Modalidade, onModalidadeUpdated: () => void }) {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ModalidadeForm>({
+        resolver: zodResolver(modalidadeSchema),
+        defaultValues: {
+            nome: modalidade.nome,
+        }
+    });
 
-// REMOVIDO: O componente 'EditarModalidade' foi completamente removido.
+    // Reseta o formulário para os valores atuais da modalidade quando o diálogo é aberto
+    useEffect(() => {
+        if (isDialogOpen) {
+            reset({ nome: modalidade.nome });
+        }
+    }, [isDialogOpen, modalidade, reset]);
 
+    async function handleUpdate(data: ModalidadeForm) {
+        if (data.nome === modalidade.nome) {
+            toast.info("Nenhuma alteração foi feita.");
+            setIsDialogOpen(false);
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/modalidades/${modalidade.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                toast.success('Modalidade atualizada com sucesso!');
+                setIsDialogOpen(false);
+                onModalidadeUpdated();
+            } else {
+                const result = await response.json();
+                toast.error(result.error || 'Erro ao atualizar modalidade.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error('Ocorreu um erro no servidor. Tente novamente.');
+        }
+    }
+
+    return (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="p-2 rounded-lg">
+                    <Pencil className="w-5 h-5" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleSubmit(handleUpdate)}>
+                    <DialogHeader>
+                        <DialogTitle>Editar Modalidade</DialogTitle>
+                        <DialogDescription>Altere o nome da modalidade.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="nome-edit" className="text-right">Nome</Label>
+                            <div className="col-span-3">
+                                <Input id="nome-edit" {...register('nome')} />
+                                {errors.nome && <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button disabled={isSubmitting} type="submit">{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
 // --- Componente de Exclusão ---
 function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalidade: Modalidade, onModalidadeDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -208,7 +279,7 @@ export default function Modalidades() {
             });
 
             if (!response.ok) throw new Error('Falha ao buscar modalidades.');
-            
+
             const data: Modalidade[] = await response.json();
             setModalidades(data);
         } catch (error) {
@@ -254,7 +325,7 @@ export default function Modalidades() {
                                     <TableCell className="font-medium">{modalidade.nome}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex gap-2 justify-end">
-                                            {/* ALTERADO: Apenas o botão de excluir é renderizado aqui */}
+                                            <EditarModalidade modalidade={modalidade} onModalidadeUpdated={fetchModalidades} />
                                             <ExcluirModalidadeDialog modalidade={modalidade} onModalidadeDeleted={fetchModalidades} />
                                         </div>
                                     </TableCell>
