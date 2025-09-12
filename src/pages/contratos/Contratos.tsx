@@ -127,7 +127,14 @@ export const contratoSchema = z.object({
     created_at: z.string(),
     updated_at: z.string(),
 });
-type Contrato = z.infer<typeof contratoSchema>
+type ContratoFromApi = z.infer<typeof contratoSchema>
+
+// Novo tipo que inclui os nomes das entidades relacionadas
+type Contrato = ContratoFromApi & {
+    modalidade_nome?: string;
+    contratado_nome?: string;
+    status_nome?: string;
+};
 
 // --- NOVOS SCHEMAS E TIPOS PARA DETALHES ---
 export const relatorioSchema = z.object({
@@ -180,6 +187,31 @@ const formatDate = (dateString: string | null | undefined) => {
         year: "numeric",
     })
 }
+
+const formatCnpj = (cnpj: string | null | undefined) => {
+    if (!cnpj) return "N/A";
+    const digitsOnly = cnpj.replace(/\D/g, "");
+
+    if (digitsOnly.length !== 14) {
+        return cnpj; // Retorna o valor original se não for um CNPJ válido
+    }
+
+    return digitsOnly.replace(
+        /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+        "$1.$2.$3/$4-$5"
+    );
+};
+
+const formatCpf = (cpf: string | null | undefined) => {
+    if (!cpf) return "N/A";
+    const digitsOnly = cpf.replace(/\D/g, "");
+
+    if (digitsOnly.length !== 11) {
+        return cpf; // Retorna o valor original se não for um CPF válido
+    }
+
+    return digitsOnly.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
 
 // ============================================================================
 // Componente: ContratosFilters
@@ -418,7 +450,7 @@ export function ContratosDataTable() {
                     fetch(`${apiUrl}/usuarios`, { headers }),
                 ]);
 
-                
+
                 const responses = [contratosRes, contratadosRes, statusRes, usuariosRes];
                 for (const res of responses) {
                     if (res.status === 401) {
@@ -428,29 +460,35 @@ export function ContratosDataTable() {
                         throw new Error(`Falha na requisição para ${res.url} com status ${res.status}`);
                     }
                 }
-                
-               
+
+
                 const contratosData = await contratosRes.json();
                 const contratadosData = await contratadosRes.json(); // Correção de bug: estava usando contratosRes
                 const statusData = await statusRes.json();
                 const usuariosData = await usuariosRes.json();
 
-                
-                 
+                // Mapeamento dos dados para incluir nomes
+                const statusMap = new Map(statusData.map((s: StatusInfo) => [s.id, s.nome]));
+                const contratadosMap = new Map(contratadosData.map((c: ContratadoInfo) => [c.id, c.nome]));
 
-               
-                setContratos(contratosData.data || []); 
+                const contratosComNomes = (contratosData.data || []).map((contrato: ContratoFromApi) => ({
+                    ...contrato,
+                    status_nome: statusMap.get(contrato.status_id) || 'Desconhecido',
+                    contratado_nome: contratadosMap.get(contrato.contratado_id) || 'Desconhecido',
+                    // Assumindo que a API não retorna modalidade_nome diretamente na lista principal
+                    modalidade_nome: 'Não Carregado', // Será carregado no modal de detalhes
+                }));
 
-                setContratados(contratadosData || []); 
+                setContratos(contratosComNomes);
+                setContratados(contratadosData || []);
                 setStatusList(statusData || []);
                 setUsuarios(usuariosData || []);
-
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
                 setError(errorMessage);
                 toast.error("Erro ao carregar dados: " + errorMessage);
-                 // Importante: garantir que o estado não fique inconsistente em caso de erro
+                // Importante: garantir que o estado não fique inconsistente em caso de erro
                 setContratos([]);
             } finally {
                 setIsLoading(false);
@@ -758,12 +796,24 @@ function ContratoDetailsViewer({
                         {/* Seções de Detalhes */}
                         <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                             <DetailItem label="Status">{status.nome}</DetailItem>
+                            <DetailItem label="Modalidade">
+                                {
+                                    // Usar o nome da modalidade dos dados detalhados, se disponíveis
+                                    (detailedData as any)?.modalidade?.nome ||
+                                    contrato.modalidade_nome || "Não informado"
+                                }
+                            </DetailItem>
                             <DetailItem label="Valor Anual">{formatCurrency(dataToShow.valor_anual)}</DetailItem>
                             <DetailItem label="Valor Global">{formatCurrency(dataToShow.valor_global)}</DetailItem>
                             <DetailItem label="Vigência">{`${formatDate(dataToShow.data_inicio)} a ${formatDate(dataToShow.data_fim)}`}</DetailItem>
+
+                        </div>
+                        <Separator />
+                        <h4 className="font-semibold text-foreground">Contratado</h4>
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                             <DetailItem label="Contratado">{contratado.nome}</DetailItem>
-                            <DetailItem label="CNPJ do Contratado">{contratado.cnpj}</DetailItem>
-                            <DetailItem label="CPF do Contratado">{contratado.cpf}</DetailItem>
+                            <DetailItem label="CNPJ do Contratado">{formatCnpj(contratado.cnpj)}</DetailItem>
+                            <DetailItem label="CPF do Contratado">{formatCpf(contratado.cpf)}</DetailItem>
                         </div>
                         <Separator />
                         <h4 className="font-semibold text-foreground">Documentação e Processos</h4>
@@ -837,7 +887,7 @@ function ContratoDetailsViewer({
                                 <p className="text-muted-foreground">Nenhum arquivo encontrado para este contrato.</p>
                             )}
                         </div>
-                       
+
                     </div>
                 )}
 
