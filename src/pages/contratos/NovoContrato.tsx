@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, SquareX, Upload, Trash2 } from "lucide-react"; // Ícones adicionados
+import { Save, SquareX, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 
 // Schema de validação Zod (inalterado)
@@ -29,9 +29,23 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
+// NOVO: Constante com os tipos de arquivo permitidos (MIME types)
+const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet'
+];
+
+// NOVO: String para o atributo 'accept' do input
+const ACCEPT_STRING = ALLOWED_FILE_TYPES.join(',');
+
 export function NovoContrato() {
     const navigate = useNavigate();
-    // 1. ALTERAÇÃO: Estado para armazenar um array de arquivos
     const [files, setFiles] = useState<File[]>([]);
 
     // estados para os dropdowns
@@ -77,15 +91,12 @@ export function NovoContrato() {
         try {
             const formData = new FormData();
 
-            // Adiciona todos os campos do formulário ao FormData (inalterado)
             Object.entries(data).forEach(([key, value]) => {
                 if (value) {
                     formData.append(key, value as string);
                 }
             });
 
-            // 2. ALTERAÇÃO: Adicionar múltiplos arquivos ao FormData
-            // A API espera vários arquivos com a mesma chave "documentos_contrato"
             if (files.length > 0) {
                 files.forEach(file => {
                     formData.append("documentos_contrato", file);
@@ -114,11 +125,28 @@ export function NovoContrato() {
         }
     }
     
-    // 3. ALTERAÇÃO: Funções para manipular a lista de arquivos
+    // ALTERADO: Função para manipular a lista de arquivos com validação
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
-            const newFiles = Array.from(event.target.files);
-            setFiles(prevFiles => [...prevFiles, ...newFiles]); // Adiciona os novos arquivos à lista existente
+            const allSelectedFiles = Array.from(event.target.files);
+
+            // Filtra apenas os arquivos com tipo permitido
+            const validFiles = allSelectedFiles.filter(file => ALLOWED_FILE_TYPES.includes(file.type));
+            
+            // Informa o usuário sobre arquivos inválidos (opcional, mas recomendado)
+            const invalidFiles = allSelectedFiles.filter(file => !ALLOWED_FILE_TYPES.includes(file.type));
+            if (invalidFiles.length > 0) {
+                const invalidNames = invalidFiles.map(f => f.name).join(', ');
+                alert(`Os seguintes arquivos têm um formato não permitido e não foram adicionados: ${invalidNames}`);
+            }
+
+            // Adiciona apenas os arquivos válidos ao estado
+            if (validFiles.length > 0) {
+                setFiles(prevFiles => [...prevFiles, ...validFiles]);
+            }
+            
+            // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente
+            event.target.value = '';
         }
     };
 
@@ -134,6 +162,7 @@ export function NovoContrato() {
                 onSubmit={handleSubmit(onSubmit)}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-white shadow-md rounded-2xl p-6"
             >
+                {/* ... (resto do seu formulário inalterado) */}
                 {/* Número do contrato */}
                 <div className="col-span-1">
                     <label className="font-medium">Número do contrato</label>
@@ -257,20 +286,18 @@ export function NovoContrato() {
                     <label className="font-medium">Termos Contratuais</label>
                     <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
                 </div>
-
-
-                {/* 4. ALTERAÇÃO: Nova interface para upload de múltiplos arquivos */}
+                
+                {/* Interface de upload */}
                 <div className="lg:col-span-4">
                     <label className="font-medium">Documentos do Contrato</label>
                     <div className="mt-2 p-4 border-2 border-dashed rounded-lg">
-                        {/* Lista de arquivos selecionados */}
                         {files.length > 0 && (
                             <ul className="mb-4 space-y-2">
                                 {files.map((file, index) => (
                                     <li key={index} className="flex justify-between items-center text-sm bg-gray-100 p-2 rounded">
                                         <span className="truncate pr-2">{file.name}</span>
                                         <button
-                                            type="button" // Previne o envio do formulário
+                                            type="button"
                                             onClick={() => handleRemoveFile(index)}
                                             className="text-red-500 hover:text-red-700"
                                             aria-label={`Remover ${file.name}`}
@@ -281,22 +308,23 @@ export function NovoContrato() {
                                 ))}
                             </ul>
                         )}
-
-                        {/* Botão para adicionar mais arquivos */}
+                        
                         <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
                             <Upload size={18} />
                             Adicionar Arquivo(s)
                             <input
                                 type="file"
-                                multiple // Permite a seleção de múltiplos arquivos
+                                multiple
                                 className="hidden"
                                 onChange={handleFileChange}
+                                // ALTERADO: Adiciona o atributo 'accept' para filtrar na janela de seleção
+                                accept={ACCEPT_STRING}
                             />
                         </label>
                     </div>
                 </div>
 
-                {/* Botão */}
+                {/* Botões */}
                 <div className="flex gap-4 justify-center col-span-4 mt-4">
                     <Button
                         type="submit"
@@ -305,7 +333,6 @@ export function NovoContrato() {
                         <Save className="h-5 w-5" />
                         Salvar
                     </Button>
-
                     <Button variant="destructive" onClick={() => navigate('/contratos')}>
                         <SquareX className="h-5 w-5" />
                         Cancelar
