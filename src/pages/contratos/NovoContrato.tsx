@@ -166,13 +166,13 @@ export function NovoContrato() {
                 {/* Número do contrato */}
                 <div className="col-span-1">
                     <label className="font-medium">Número do contrato</label>
-                    <input type="text" {...register("nr_contrato")} className="mt-1 border rounded-lg p-2 w-full" />
+                    <input type="text" placeholder="Ex: PGE Nº 99/2025" {...register("nr_contrato")} className="mt-1 border rounded-lg p-2 w-full" />
                     {errors.nr_contrato && <p className="text-red-500 text-sm">{errors.nr_contrato.message}</p>}
                 </div>
                 {/* Número do PAE */}
                 <div className="col-span-1">
                     <label className="font-medium">PAE</label>
-                    <input type="text" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
+                    <input type="text" placeholder="Ex: PAE nº 2025/123456" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
                 {/* Número do DOE */}
                 <div className="col-span-1">

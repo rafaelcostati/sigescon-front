@@ -598,17 +598,8 @@ export function ContratosDataTable() {
 
                 const data = await res.json();
 
-                // Mapeamento dos nomes (requer que 'contratados' e 'statusList' já estejam carregados)
-                const statusMap = new Map(statusList.map((s: StatusInfo) => [s.id, s.nome]));
-                const contratadosMap = new Map(contratados.map((c: ContratadoInfo) => [c.id, c.nome]));
-
-                const contratosComNomes = (data.data || []).map((contrato: ContratoFromApi) => ({
-                    ...contrato,
-                    status_nome: statusMap.get(contrato.status_id) || 'Desconhecido',
-                    contratado_nome: contratadosMap.get(contrato.contratado_id) || 'Desconhecido',
-                }));
-
-                setContratos(contratosComNomes);
+                // A API já retorna os nomes, então podemos usar os dados diretamente.
+                setContratos(data.data || []);
                 setPaginationMeta(data.pagination);
 
             } catch (err) {
