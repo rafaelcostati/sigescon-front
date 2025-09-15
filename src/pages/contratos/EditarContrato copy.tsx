@@ -5,9 +5,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, SquareX, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner'; // **NOVA IMPORTAÇÃO**
 
-// Schema de validação (inalterado)
+// Schema de validação Zod para os dados do formulário
 const contractSchema = z.object({
     nr_contrato: z.string().min(1, "Número do contrato é obrigatório"),
     objeto: z.string().min(1, "Objeto é obrigatório"),
@@ -43,11 +42,8 @@ export function EditarContrato() {
     const [newFiles, setNewFiles] = useState<File[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [fileWasDeleted, setFileWasDeleted] = useState(false);
-    
-    // **NOVO ESTADO** para controlar o envio do formulário
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Estados para os dropdowns (inalterado)
+    // Estados para os dropdowns
     const [contratados, setContratados] = useState<any[]>([]);
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
@@ -83,15 +79,19 @@ export function EditarContrato() {
                 const contractRes = await fetch(`${import.meta.env.VITE_API_URL}/contratos/${id}`, { headers });
                 if (!contractRes.ok) throw new Error("Contrato não encontrado.");
                 const contractData = await contractRes.json();
-                
+
+                // Lógica de formatação de dados mais robusta para preencher o formulário
                 const formattedData = {
                     ...contractData,
+                    // Garante que todos os IDs sejam strings para compatibilidade com o <select>
                     contratado_id: String(contractData.contratado_id || ""),
                     modalidade_id: String(contractData.modalidade_id || ""),
                     status_id: String(contractData.status_id || ""),
                     gestor_id: String(contractData.gestor_id || ""),
                     fiscal_id: String(contractData.fiscal_id || ""),
                     fiscal_substituto_id: String(contractData.fiscal_substituto_id || ""),
+
+                    // Garante que o valor da data seja sempre uma string 'YYYY-MM-DD' ou ''
                     data_inicio: contractData.data_inicio ? new Date(contractData.data_inicio).toISOString().split('T')[0] : '',
                     data_fim: contractData.data_fim ? new Date(contractData.data_fim).toISOString().split('T')[0] : '',
                     data_doe: contractData.data_doe ? new Date(contractData.data_doe).toISOString().split('T')[0] : '',
@@ -105,8 +105,7 @@ export function EditarContrato() {
 
             } catch (err) {
                 console.error("Erro ao carregar dados:", err);
-                // **AJUSTE AQUI**
-                toast.error("Falha ao carregar os dados do contrato.");
+                alert("Falha ao carregar os dados do contrato.");
                 navigate("/contratos");
             } finally {
                 setIsLoading(false);
@@ -115,18 +114,14 @@ export function EditarContrato() {
         loadContractData();
     }, [id, navigate, reset]);
 
-    // **FUNÇÃO onSubmit TOTALMENTE ATUALIZADA**
     async function onSubmit(data: ContractFormData) {
         const hasFormChanges = Object.keys(dirtyFields).length > 0;
         const hasNewFiles = newFiles.length > 0;
 
         if (!hasFormChanges && !hasNewFiles && !fileWasDeleted) {
-            toast.info("Nenhuma alteração foi realizada para salvar.");
+            alert("Nenhuma alteração foi realizada para salvar.");
             return;
         }
-
-        setIsSubmitting(true);
-        const toastId = toast.loading("Salvando alterações...");
 
         try {
             const formData = new FormData();
@@ -149,8 +144,8 @@ export function EditarContrato() {
             });
 
             if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Falha ao atualizar o contrato");
+                const errorText = await res.text();
+                throw new Error(errorText || "Falha ao atualizar o contrato");
             }
 
             let successMessage = "Contrato atualizado com sucesso!";
@@ -160,80 +155,57 @@ export function EditarContrato() {
                 successMessage = "Novos arquivos adicionados com sucesso!";
             }
 
-            toast.success(successMessage, { id: toastId });
+            alert(successMessage);
             navigate("/contratos");
-            
         } catch (err: any) {
             console.error(err);
-            toast.error(err.message || "Erro ao atualizar contrato", { id: toastId });
-        } finally {
-            setIsSubmitting(false);
+            alert(err.message || "Erro ao atualizar contrato");
         }
     }
 
-    // **FUNÇÃO handleDeleteExistingFile ATUALIZADA**
-    const handleDeleteExistingFile = (fileId: number) => {
-        const proceedWithDelete = async () => {
-            const toastId = toast.loading("Excluindo arquivo...");
-            try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/arquivos/${fileId}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-                });
+    const handleDeleteExistingFile = async (fileId: number) => {
+        if (!window.confirm("Tem certeza que deseja excluir este arquivo?")) return;
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/arquivos/${fileId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+            });
 
-                if (res.status === 204) {
-                    setExistingFiles(prev => prev.filter(file => file.id !== fileId));
-                    setFileWasDeleted(true);
-                    toast.success("Arquivo excluído com sucesso!", { id: toastId });
-                } else {
-                    const errorText = await res.text();
-                    throw new Error(errorText || "Falha ao excluir o arquivo.");
-                }
-            } catch (err: any) {
-                console.error("Erro ao deletar arquivo:", err);
-                toast.error(err.message, { id: toastId });
+            if (res.status === 204) {
+                setExistingFiles(prev => prev.filter(file => file.id !== fileId));
+                setFileWasDeleted(true);
+            } else {
+                const errorText = await res.text();
+                throw new Error(errorText || "Falha ao excluir o arquivo.");
             }
-        };
-
-        toast.warning("Tem certeza que deseja excluir este arquivo?", {
-            action: {
-                label: "Excluir",
-                onClick: () => proceedWithDelete(),
-            },
-            cancel: {
-                label: "Cancelar",
-                onClick: () => {}
-            },
-            duration: 10000,
-        });
+        } catch (err: any) {
+            console.error("Erro ao deletar arquivo:", err);
+            alert(err.message);
+        }
     };
 
     const handleCancel = () => {
         const hasChanges = isDirty || newFiles.length > 0 || fileWasDeleted;
         if (hasChanges) {
-             toast("Você possui alterações não salvas.", {
-                description: "Deseja realmente sair e descartá-las?",
-                action: {
-                    label: "Sair e Descartar",
-                    onClick: () => navigate('/contratos'),
-                },
-                cancel: {
-                    label: "Continuar Editando",
-                    onClick: () => {}
-                }
-            });
+            if (window.confirm("Você possui alterações não salvas. Deseja realmente cancelar e descartá-las?")) {
+                navigate('/contratos');
+            }
         } else {
             navigate('/contratos');
         }
     };
-    
-    // Funções de manipulação de novos arquivos (inalteradas)
-    const handleAddNewFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const filesToAdd = Array.from(e.target.files);
-        setNewFiles(prev => [...prev, ...filesToAdd]);
-    };
 
+    // A versão corrigida e mais segura
+const handleAddNewFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 1. Se não houver arquivos, interrompe a função imediatamente.
+    if (!e.target.files) {
+        return;
+    }
+    
+    // 2. Agora o TypeScript sabe que e.target.files não é nulo.
+    const filesToAdd = Array.from(e.target.files);
+    setNewFiles(prev => [...prev, ...filesToAdd]);
+};
     const handleRemoveNewFile = (indexToRemove: number) => {
         setNewFiles(prev => prev.filter((_, i) => i !== indexToRemove));
     };
@@ -247,29 +219,36 @@ export function EditarContrato() {
             <h1 className="text-2xl font-bold mb-6 text-gray-800">Editar Contrato</h1>
             <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-white shadow-md rounded-2xl p-6">
 
-                {/* --- CAMPOS DO FORMULÁRIO (inalterados) --- */}
+                {/* Número do contrato */}
                 <div className="col-span-1">
                     <label className="font-medium">Número do contrato</label>
                     <input type="text" {...register("nr_contrato")} className="mt-1 border rounded-lg p-2 w-full" />
                     {errors.nr_contrato && <p className="text-red-500 text-sm">{errors.nr_contrato.message}</p>}
                 </div>
+                {/* Número do PAE */}
                 <div className="col-span-1">
                     <label className="font-medium">PAE</label>
                     <input type="text" {...register("pae")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
+                {/* Número do DOE */}
                 <div className="col-span-1">
                     <label className="font-medium">DOE</label>
                     <input type="text" {...register("doe")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
+                {/* Data do DOE */}
                 <div className="col-span-1">
                     <label className="font-medium">Data DOE</label>
                     <input type="date" {...register("data_doe")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
+
+                {/* Objeto */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-4">
                     <label className="font-medium">Objeto</label>
                     <textarea {...register("objeto")} className="mt-1 border rounded-lg p-2 w-full h-20" />
                     {errors.objeto && <p className="text-red-500 text-sm">{errors.objeto.message}</p>}
                 </div>
+
+                {/* Contratado */}
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Contratado</label>
                     <select {...register("contratado_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -279,6 +258,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Gestor do Contrato */}
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Gestor</label>
                     <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -288,6 +269,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Fiscal do Contrato */}
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Fiscal</label>
                     <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -297,6 +280,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Fiscal substituto (opcional) */}
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Fiscal Substituto</label>
                     <select {...register("fiscal_substituto_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -306,6 +291,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Datas */}
                 <div>
                     <label className="font-medium">Data Início</label>
                     <input type="date" {...register("data_inicio")} className="mt-1 border rounded-lg p-2 w-full" />
@@ -316,6 +303,8 @@ export function EditarContrato() {
                     <input type="date" {...register("data_fim")} className="mt-1 border rounded-lg p-2 w-full" />
                     {errors.data_fim && <p className="text-red-500 text-sm">{errors.data_fim.message}</p>}
                 </div>
+
+                {/* Modalidade */}
                 <div>
                     <label className="font-medium">Modalidade</label>
                     <select {...register("modalidade_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -325,6 +314,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Status */}
                 <div>
                     <label className="font-medium">Status</label>
                     <select {...register("status_id")} className="mt-1 border rounded-lg p-2 w-full">
@@ -334,6 +325,8 @@ export function EditarContrato() {
                         ))}
                     </select>
                 </div>
+
+                {/* Campos opcionais */}
                 <div>
                     <label className="font-medium">Valor Anual</label>
                     <input type="number" step="0.01" {...register("valor_anual")} className="mt-1 border rounded-lg p-2 w-full" />
@@ -351,7 +344,7 @@ export function EditarContrato() {
                     <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
                 </div>
 
-                {/* --- GERENCIAMENTO DE ARQUIVOS (inalterado) --- */}
+                {/* Seção para gerenciar arquivos existentes */}
                 <div className="lg:col-span-4">
                     <label className="font-medium">Documentos Atuais</label>
                     <div className="mt-2 p-4 border rounded-lg">
@@ -367,6 +360,8 @@ export function EditarContrato() {
                         ) : <p className="text-sm text-gray-500">Nenhum documento anexado.</p>}
                     </div>
                 </div>
+
+                {/* Seção para adicionar NOVOS arquivos */}
                 <div className="lg:col-span-4">
                     <label className="font-medium">Adicionar Novos Documentos</label>
                     <div className="mt-2 p-4 border-2 border-dashed rounded-lg">
@@ -387,24 +382,13 @@ export function EditarContrato() {
                     </div>
                 </div>
 
-                {/* **BOTÕES DE AÇÃO ATUALIZADOS** */}
+                {/* Botões de Ação */}
                 <div className="flex gap-4 justify-center col-span-4 mt-4">
-                    <Button 
-                        type="submit" 
-                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow flex items-center gap-2"
-                        disabled={isSubmitting}
-                    >
-                        <Save className="h-5 w-5" />
-                        {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+                    <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow">
+                        <Save className="h-5 w-5" /> Salvar Alterações
                     </Button>
-                    <Button 
-                        type="button" 
-                        variant="destructive" 
-                        onClick={handleCancel}
-                        disabled={isSubmitting}
-                    >
-                        <SquareX className="h-5 w-5" /> 
-                        Cancelar
+                    <Button type="button" variant="destructive" onClick={handleCancel}>
+                        <SquareX className="h-5 w-5" /> Cancelar
                     </Button>
                 </div>
             </form>
