@@ -473,16 +473,19 @@ function CriarPendenciaDialog({
                             required
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="data_prazo">Data Prazo</Label>
-                        <Input
-                            id="data_prazo"
-                            type="date"
-                            value={dataPrazo}
-                            onChange={(e) => setDataPrazo(e.target.value)}
-                            required
+                    <div>
+                        <label htmlFor="data_prazo">Data Prazo</label>
+                        <input
+                        id="data_prazo" 
+                        type="date" 
+                        className="mt-1 border rounded-lg p-2 w-full"
+                        value={dataPrazo}                         
+                        onChange={(e) => setDataPrazo(e.target.value)}
+                        required 
                         />
+
                     </div>
+                   
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button type="button" variant="outline" disabled={isSubmitting}>
