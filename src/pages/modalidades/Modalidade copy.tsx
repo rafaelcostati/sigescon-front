@@ -15,14 +15,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -31,6 +23,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -42,6 +35,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+
 import { Trash2, LoaderCircle, CirclePlus, Pencil } from "lucide-react";
 
 //================================================================================
@@ -60,6 +54,7 @@ const modalidadeSchema = z.object({
 });
 
 type ModalidadeForm = z.infer<typeof modalidadeSchema>;
+
 
 //================================================================================
 // SECTION: COMPONENTE NOVA MODALIDADE (MODAL)
@@ -101,7 +96,7 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
             <DialogTrigger asChild>
                 <Button variant="default">
                     <CirclePlus className="h-4 w-4" />
-                    <span className="hidden lg:inline ml-2">Nova Modalidade</span>
+                    <span className="hidden sm:inline ml-2">Nova Modalidade</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -133,9 +128,8 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
 }
 
 //================================================================================
-// SECTION: COMPONENTE EDITAR MODALIDADE
+// SECTION: COMPONENTES DE AÇÕES (APENAS EXCLUIR)
 //================================================================================
-
 function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Modalidade, onModalidadeUpdated: () => void }) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ModalidadeForm>({
@@ -145,6 +139,7 @@ function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Mod
         }
     });
 
+    // Reseta o formulário para os valores atuais da modalidade quando o diálogo é aberto
     useEffect(() => {
         if (isDialogOpen) {
             reset({ nome: modalidade.nome });
@@ -183,8 +178,8 @@ function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Mod
     return (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="p-2 h-8 w-8">
-                    <Pencil className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="p-2 rounded-lg">
+                    <Pencil className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -203,20 +198,14 @@ function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Mod
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button disabled={isSubmitting} type="submit">
-                            {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
-                        </Button>
+                        <Button disabled={isSubmitting} type="submit">{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
     );
 }
-
-//================================================================================
-// SECTION: COMPONENTE EXCLUIR MODALIDADE
-//================================================================================
-
+// --- Componente de Exclusão ---
 function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalidade: Modalidade, onModalidadeDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -247,8 +236,8 @@ function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalida
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="p-2 h-8 w-8">
-                    <Trash2 className="w-4 h-4" />
+                <Button variant="destructive" size="sm" className="p-2 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -270,88 +259,32 @@ function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalida
 }
 
 //================================================================================
-// SECTION: COMPONENTE CARD MÓVEL
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM)
 //================================================================================
-
-function ModalidadeMobileCard({ modalidade, onModalidadeUpdated, onModalidadeDeleted }: { 
-    modalidade: Modalidade, 
-    onModalidadeUpdated: () => void, 
-    onModalidadeDeleted: () => void 
-}) {
-    return (
-        <Card className="w-full">
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{modalidade.nome}</CardTitle>
-                        <CardDescription className="text-sm text-muted-foreground">
-                            ID: {modalidade.id}
-                        </CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                        Modalidade
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="flex gap-2 pt-3">
-                    <EditarModalidade modalidade={modalidade} onModalidadeUpdated={onModalidadeUpdated} />
-                    <ExcluirModalidadeDialog modalidade={modalidade} onModalidadeDeleted={onModalidadeDeleted} />
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
-
-//================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE)
-//================================================================================
-
-export default function ModalidadesDataTable() {
-    const [modalidades, setModalidades] = useState<Modalidade[]>([]);    
+export default function Modalidades() {
+    const [modalidades, setModalidades] = useState<Modalidade[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchModalidades = useCallback(async (searchQuery = "") => {
+    const fetchModalidades = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
             if (!token) {
                 toast.error("Acesso não autorizado.");
-                setLoading(false);
                 return;
             }
 
-            const modalidadesUrl = new URL(`${import.meta.env.VITE_API_URL}/modalidades`);
-            if (searchQuery) {
-                modalidadesUrl.searchParams.append('nome', searchQuery);
-            }
-
-            const response = await fetch(modalidadesUrl.toString(), {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/modalidades`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                throw new Error('Não autorizado');
-            }
 
             if (!response.ok) throw new Error('Falha ao buscar modalidades.');
 
             const data: Modalidade[] = await response.json();
-            
-            // Filtra no frontend se a API não suportar filtro por nome
-            const filteredModalidades = searchQuery 
-                ? data.filter(modalidade => 
-                    modalidade.nome.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                : data;
-                
-            setModalidades(filteredModalidades);
+            setModalidades(data);
         } catch (error) {
             console.error("Erro ao carregar modalidades:", error);
-            if (!(error instanceof Error && error.message === 'Não autorizado')) {
-                toast.error("Não foi possível carregar a lista de modalidades.");
-            }
+            toast.error("Não foi possível carregar a lista de modalidades.");
         } finally {
             setLoading(false);
         }
@@ -360,7 +293,6 @@ export default function ModalidadesDataTable() {
     useEffect(() => {
         fetchModalidades();
     }, [fetchModalidades]);
-    
 
     if (loading) {
         return (
@@ -373,72 +305,42 @@ export default function ModalidadesDataTable() {
 
     return (
         <div className="w-full mx-auto p-6">
-            {/* Barra de Filtro e Ações */}
-            <div className="flex items-center justify-between py-4 gap-4">
+            <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Gerenciar Modalidades</h1>
-                <NovaModalidade onModalidadeAdded={() => fetchModalidades()} />
+                <NovaModalidade onModalidadeAdded={fetchModalidades} />
             </div>
 
-            {modalidades.length === 0 ? (
-                <div className="text-center py-10">
-                    <p className="text-gray-500 dark:text-gray-300">Nenhuma modalidade encontrada.</p>
-                </div>
-            ) : (
-                <>
-                    {/* DataTable para telas maiores */}
-                    <div className="hidden md:block">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="font-semibold">Nome</TableHead>
-                                        <TableHead className="font-semibold text-end pr-8">Ações</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {modalidades.map((modalidade, index) => (
-                                        <TableRow 
-                                            key={modalidade.id} 
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
-                                        >
-                                            
-                                            <TableCell className="font-medium">
-                                                {modalidade.nome}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <EditarModalidade 
-                                                        modalidade={modalidade} 
-                                                        onModalidadeUpdated={() => fetchModalidades()} 
-                                                    />
-                                                    <ExcluirModalidadeDialog 
-                                                        modalidade={modalidade} 
-                                                        onModalidadeDeleted={() => fetchModalidades()} 
-                                                    />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-
-                    {/* Cards para telas menores */}
-                    <div className="md:hidden space-y-4">
-                        {modalidades.map((modalidade) => (
-                            <ModalidadeMobileCard
-                                key={modalidade.id}
-                                modalidade={modalidade}
-                                onModalidadeUpdated={() => fetchModalidades()}
-                                onModalidadeDeleted={() => fetchModalidades()}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+            <div className="border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="text-right w-[100px]">Ações</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {modalidades.length > 0 ? (
+                            modalidades.map((modalidade) => (
+                                <TableRow key={modalidade.id}>
+                                    <TableCell className="font-medium">{modalidade.nome}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex gap-2 justify-end">
+                                            <EditarModalidade modalidade={modalidade} onModalidadeUpdated={fetchModalidades} />
+                                            <ExcluirModalidadeDialog modalidade={modalidade} onModalidadeDeleted={fetchModalidades} />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={2} className="text-center h-24">
+                                    Nenhuma modalidade encontrada.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }
