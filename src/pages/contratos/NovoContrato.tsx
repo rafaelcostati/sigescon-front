@@ -5,6 +5,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, SquareX, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import React from 'react';
+import { toast } from 'sonner';
 
 // Schema de validação Zod (inalterado)
 const contractSchema = z.object({
@@ -53,6 +55,7 @@ export function NovoContrato() {
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
     const [usuarios, setUsuarios] = useState<any[]>([]);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const {
         register,
@@ -61,6 +64,7 @@ export function NovoContrato() {
     } = useForm<ContractFormData>({
         resolver: zodResolver(contractSchema),
     });
+    
 
     // carregar opções iniciais (inalterado)
     useEffect(() => {
@@ -88,6 +92,9 @@ export function NovoContrato() {
     }, []);
 
     async function onSubmit(data: ContractFormData) {
+        setIsSubmitting(true);
+        const toastId = toast.loading("Criando contrato...");
+
         try {
             const formData = new FormData();
 
@@ -112,19 +119,24 @@ export function NovoContrato() {
             });
 
             if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(errorText || "Falha ao salvar o contrato");
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Falha ao salvar o contrato");
             }
 
             await res.json();
-            alert("Contrato criado com sucesso!");
+            toast.success("Contrato criado com sucesso!", { id: toastId });
             navigate("/contratos");
+
         } catch (err: any) {
             console.error(err);
-            alert(err.message || "Erro ao criar contrato");
+            toast.error(err.message || "Erro ao criar contrato", { id: toastId });
+
+        } finally {
+            // Garante que o estado de 'submitting' seja resetado
+            setIsSubmitting(false);
         }
     }
-    
+
     // ALTERADO: Função para manipular a lista de arquivos com validação
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -132,7 +144,7 @@ export function NovoContrato() {
 
             // Filtra apenas os arquivos com tipo permitido
             const validFiles = allSelectedFiles.filter(file => ALLOWED_FILE_TYPES.includes(file.type));
-            
+
             // Informa o usuário sobre arquivos inválidos (opcional, mas recomendado)
             const invalidFiles = allSelectedFiles.filter(file => !ALLOWED_FILE_TYPES.includes(file.type));
             if (invalidFiles.length > 0) {
@@ -144,7 +156,7 @@ export function NovoContrato() {
             if (validFiles.length > 0) {
                 setFiles(prevFiles => [...prevFiles, ...validFiles]);
             }
-            
+
             // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente
             event.target.value = '';
         }
@@ -286,7 +298,7 @@ export function NovoContrato() {
                     <label className="font-medium">Termos Contratuais</label>
                     <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
                 </div>
-                
+
                 {/* Interface de upload */}
                 <div className="lg:col-span-4">
                     <label className="font-medium">Documentos do Contrato</label>
@@ -308,7 +320,7 @@ export function NovoContrato() {
                                 ))}
                             </ul>
                         )}
-                        
+
                         <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
                             <Upload size={18} />
                             Adicionar Arquivo(s)
@@ -326,12 +338,14 @@ export function NovoContrato() {
 
                 {/* Botões */}
                 <div className="flex gap-4 justify-center col-span-4 mt-4">
+                    {/* **BOTÃO SALVAR ATUALIZADO** */}
                     <Button
                         type="submit"
-                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow"
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow flex items-center gap-2"
+                        disabled={isSubmitting}
                     >
                         <Save className="h-5 w-5" />
-                        Salvar
+                        {isSubmitting ? "Salvando..." : "Salvar"}
                     </Button>
                     <Button variant="destructive" onClick={() => navigate('/contratos')}>
                         <SquareX className="h-5 w-5" />
