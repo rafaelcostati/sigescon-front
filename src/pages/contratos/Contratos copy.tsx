@@ -36,6 +36,7 @@ import {
     type ColumnDef,
     type ColumnFiltersState,
     getCoreRowModel,
+
     type SortingState,
     useReactTable,
     type Table,
@@ -43,7 +44,7 @@ import {
 import { toast } from "sonner"
 import { z } from "zod"
 import { NavLink, useNavigate } from 'react-router-dom'
-import { jwtDecode } from "jwt-decode"; 
+
 
 // Importe seus componentes de UI. Ajuste os caminhos se necessário.
 import { Badge } from "@/components/ui/badge"
@@ -96,7 +97,6 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Textarea } from "@/components/ui/textarea" // **NOVA IMPORTAÇÃO** para a descrição
 
 // ============================================================================
 // Schema e Tipos para Dados da API
@@ -148,19 +148,12 @@ export const relatorioSchema = z.object({
 });
 export type Relatorio = z.infer<typeof relatorioSchema>;
 
-// **SCHEMA ATUALIZADO para corresponder à API**
 export const pendenciaSchema = z.object({
     id: z.number(),
-    contrato_id: z.number(),
     descricao: z.string(),
-    data_prazo: z.string(),
-    status_pendencia_id: z.number(),
-    criado_por_usuario_id: z.number(),
-    status_nome: z.string().optional(), // opcional, vem do GET
-    criado_por_nome: z.string().optional(), // opcional, vem do GET
+    resolvida: z.boolean(),
 });
 export type Pendencia = z.infer<typeof pendenciaSchema>;
-
 
 export const arquivoSchema = z.object({
     id: z.number(),
@@ -171,7 +164,7 @@ export type Arquivo = z.infer<typeof arquivoSchema>;
 
 export const contratoDetalhadoSchema = contratoSchema.extend({
     relatorios: z.array(relatorioSchema).optional(),
-    pendencias: z.array(z.any()).optional(), // Usando z.any() temporariamente
+    pendencias: z.array(pendenciaSchema).optional(),
 });
 export type ContratoDetalhado = z.infer<typeof contratoDetalhadoSchema>;
 
@@ -222,23 +215,9 @@ const formatCpf = (cpf: string | null | undefined) => {
     return digitsOnly.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
-// **NOVA FUNÇÃO AUXILIAR** para obter ID do usuário do token
-const getCurrentUserId = (): number | null => {
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) return null;
-        const decoded: { sub: number } = jwtDecode(token); // 'sub' é o padrão para ID de usuário em JWT
-        return decoded.sub;
-    } catch (error) {
-        console.error("Failed to decode token:", error);
-        toast.error("Sessão inválida ou expirada. Faça login novamente.");
-        return null;
-    }
-};
-
 
 // ============================================================================
-// Componente: ContratosFilters (SEM ALTERAÇÕES)
+// Componente: ContratosFilters (AJUSTADO)
 // ============================================================================
 function ContratosFilters({
     table,
@@ -373,134 +352,7 @@ function ContratosFilters({
 }
 
 // ============================================================================
-// **NOVO COMPONENTE**: CriarPendenciaDialog
-// ============================================================================
-function CriarPendenciaDialog({
-    contratoId,
-    contratoNumero,
-    onPendenciaCriada,
-    children,
-}: {
-    contratoId: number;
-    contratoNumero: string;
-    onPendenciaCriada: () => void;
-    children: React.ReactNode;
-}) {
-    const [isOpen, setIsOpen] = React.useState(false);
-    const [descricao, setDescricao] = React.useState("");
-    const [dataPrazo, setDataPrazo] = React.useState("");
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!descricao.trim() || !dataPrazo) {
-            toast.error("Erro de Validação", {
-                description: "Por favor, preencha a descrição e a data prazo.",
-            });
-            return;
-        }
-
-        const adminId = getCurrentUserId();
-        if (!adminId) {
-            toast.error("Erro de Autenticação", {
-                description: "Não foi possível identificar o usuário. Faça o login novamente.",
-            });
-            return;
-        }
-
-        setIsSubmitting(true);
-        const toastId = toast.loading("Criando pendência...");
-
-        try {
-            const token = localStorage.getItem("token");
-            const apiUrl = import.meta.env.VITE_API_URL;
-            if (!apiUrl || !token) throw new Error("Configuração ou autenticação ausente.");
-
-            const requestBody = {
-                descricao: descricao.trim(),
-                data_prazo: dataPrazo,
-                status_pendencia_id: 1, // Conforme a API, 1 = "Pendente"
-                criado_por_usuario_id: adminId,
-            };
-
-            const response = await fetch(`${apiUrl}/contratos/${contratoId}/pendencias`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (response.status === 201) {
-                toast.success("Pendência criada com sucesso!", { id: toastId });
-                onPendenciaCriada();
-                setDescricao(""); // Limpa o formulário
-                setDataPrazo("");
-                setIsOpen(false); // Fecha o modal
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Falha ao criar pendência. Status: ${response.status}`);
-            }
-
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
-            toast.error("Erro ao criar pendência", { description: errorMessage, id: toastId });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>{children}</DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Criar Nova Pendência</DialogTitle>
-                    <DialogDescription>
-                        Para o contrato: <strong>{contratoNumero}</strong>
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="descricao">Descrição da Pendência</Label>
-                        <Textarea
-                            id="descricao"
-                            placeholder="Ex: Relatório referente ao primeiro trimestre de 2024"
-                            value={descricao}
-                            onChange={(e) => setDescricao(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="data_prazo">Data Prazo</Label>
-                        <Input
-                            id="data_prazo"
-                            type="date"
-                            value={dataPrazo}
-                            onChange={(e) => setDataPrazo(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="outline" disabled={isSubmitting}>
-                                Cancelar
-                            </Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? "Salvando..." : "Salvar Pendência"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-// ============================================================================
-// Componente: DraggableContratoCard (COM ALTERAÇÕES)
+// Componente: DraggableContratoCard
 // ============================================================================
 function DraggableContratoCard({
     contrato,
@@ -593,24 +445,10 @@ function DraggableContratoCard({
                                 <Pencil className="h-4 w-4" />
                                 <span>Editar</span>
                             </DropdownMenuItem>
-                            
-                            {/* **NOVA IMPLEMENTAÇÃO AQUI** */}
-                            <CriarPendenciaDialog
-                                contratoId={contrato.id}
-                                contratoNumero={contrato.nr_contrato}
-                                onPendenciaCriada={() => {
-                                    /* Opcional: pode adicionar lógica aqui, como recarregar detalhes */
-                                }}
-                            >
-                                <DropdownMenuItem
-                                    onSelect={(e) => e.preventDefault()} // Impede o fechamento do menu ao abrir o diálogo
-                                    className="cursor-pointer flex items-center gap-2"
-                                >
-                                    <PlusCircle className="h-4 w-4" />
-                                    <span>Criar Pendência</span>
-                                </DropdownMenuItem>
-                            </CriarPendenciaDialog>
-
+                            <DropdownMenuItem className="flex items-center gap-2">
+                                <PlusCircle className="h-4 w-4" />
+                                <span>Criar Pendência</span>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {/* O gatilho para o AlertDialog está aqui */}
                             <AlertDialogTrigger asChild>
@@ -675,11 +513,7 @@ function DraggableContratoCard({
     )
 }
 
-// O restante do arquivo permanece igual...
-
-// ============================================================================
-// Componente: Definição de Colunas e Tipos de Paginação (SEM ALTERAÇÕES)
-// ============================================================================
+// Definição das colunas para o useReactTable (usado para filtros)
 const columns: ColumnDef<Contrato>[] = [
     { accessorKey: "objeto" },
     { accessorKey: "nr_contrato" },
@@ -693,6 +527,7 @@ const columns: ColumnDef<Contrato>[] = [
     { accessorKey: "data_fim" },
 ]
 
+// Tipagem para os metadados da paginação da API
 type PaginationMeta = {
     total_items: number;
     total_pages: number;
@@ -701,7 +536,7 @@ type PaginationMeta = {
 }
 
 // ============================================================================
-// Componente Principal: ContratosDataTable (SEM ALTERAÇÕES)
+// Componente Principal: ContratosDataTable (AJUSTADO)
 // ============================================================================
 export function ContratosDataTable() {
     // Estados de dados
@@ -977,7 +812,7 @@ export function ContratosDataTable() {
 }
 
 // ============================================================================
-// Componente: DetailItem (Helper para Modal) (SEM ALTERAÇÕES)
+// Componente: DetailItem (Helper para Modal)
 // ============================================================================
 const DetailItem = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="flex flex-col gap-1">
@@ -987,7 +822,7 @@ const DetailItem = ({ label, children }: { label: string; children: React.ReactN
 )
 
 // ============================================================================
-// Componente: ContratoDetailsViewer (Modal) (COM PEQUENA ALTERAÇÃO NO SCHEMA)
+// Componente: ContratoDetailsViewer (Modal)
 // ============================================================================
 function ContratoDetailsViewer({
     contrato,
@@ -1005,8 +840,6 @@ function ContratoDetailsViewer({
     const [arquivos, setArquivos] = React.useState<Arquivo[]>([])
     const [isLoading, setIsLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
-    // **NOVO ESTADO** para pendências
-    const [pendencias, setPendencias] = React.useState<Pendencia[]>([])
 
     const handleDownloadArquivo = async (arquivoId: number, nomeOriginal: string) => {
         const toastId = toast.loading(`Baixando "${nomeOriginal}"...`);
@@ -1053,7 +886,6 @@ function ContratoDetailsViewer({
         if (!isOpen) {
             setDetailedData(null);
             setArquivos([]);
-            setPendencias([]); // Limpa as pendências ao fechar
             return;
         }
 
@@ -1069,28 +901,22 @@ function ContratoDetailsViewer({
 
                 const headers = { Authorization: `Bearer ${token}` };
 
-                // **Busca de pendências adicionada**
-                const [detailsRes, arquivosRes, pendenciasRes] = await Promise.all([
+                const [detailsRes, arquivosRes] = await Promise.all([
                     fetch(`${apiUrl}/contratos/${contrato.id}`, { headers }),
                     fetch(`${apiUrl}/contratos/${contrato.id}/arquivos`, { headers }),
-                    fetch(`${apiUrl}/contratos/${contrato.id}/pendencias`, { headers }), // NOVA REQUISIÇÃO
                 ]);
 
                 if (!detailsRes.ok) throw new Error(`Erro ao buscar detalhes: ${detailsRes.statusText}`);
                 if (!arquivosRes.ok) throw new Error(`Erro ao buscar arquivos: ${arquivosRes.statusText}`);
-                if (!pendenciasRes.ok) throw new Error(`Erro ao buscar pendências: ${pendenciasRes.statusText}`);
 
                 const detailsData = await detailsRes.json();
                 const arquivosData = await arquivosRes.json();
-                const pendenciasData = await pendenciasRes.json(); // Novos dados
 
                 const validatedDetails = contratoDetalhadoSchema.parse(detailsData);
                 const validatedArquivos = z.array(arquivoSchema).parse(arquivosData);
-                const validatedPendencias = z.array(pendenciaSchema).parse(pendenciasData); // Validação
 
                 setDetailedData(validatedDetails);
                 setArquivos(validatedArquivos);
-                setPendencias(validatedPendencias); // Seta no estado
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
@@ -1178,12 +1004,11 @@ function ContratoDetailsViewer({
                         </div>
                         <div>
                             <h4 className="font-semibold text-foreground mb-2">Pendências</h4>
-                            {/* **LISTAGEM DE PENDÊNCIAS ATUALIZADA** */}
-                            {pendencias.length > 0 ? (
+                            {detailedData?.pendencias && detailedData.pendencias.length > 0 ? (
                                 <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                                    {pendencias.map(pend => (
-                                        <li key={pend.id} className={pend.status_nome !== 'Pendente' ? 'line-through' : ''}>
-                                            {pend.descricao} (Prazo: {formatDate(pend.data_prazo)}) - Status: <strong>{pend.status_nome}</strong>
+                                    {detailedData.pendencias.map(pend => (
+                                        <li key={pend.id} className={pend.resolvida ? 'line-through' : ''}>
+                                            {pend.descricao}
                                         </li>
                                     ))}
                                 </ul>
