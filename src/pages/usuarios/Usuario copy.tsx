@@ -16,6 +16,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,22 +28,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Trash2, LoaderCircle, CirclePlus, X } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
@@ -246,7 +232,7 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 }
 
 //================================================================================
-// SECTION: COMPONENTE DE EXCLUSÃO
+// SECTION: NOVO COMPONENTE DE EXCLUSÃO
 //================================================================================
 
 function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDeleted: () => void }) {
@@ -265,7 +251,7 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
 
             if (response.ok) {
                 toast.success(`Usuário "${user.nome}" excluído com sucesso.`);
-                onUserDeleted();
+                onUserDeleted(); // Recarrega a lista de usuários no componente pai
             } else {
                 const result = await response.json();
                 toast.error(result.error || 'Falha ao excluir usuário.');
@@ -275,14 +261,14 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
             toast.error('Ocorreu um erro de rede. Tente novamente.');
         } finally {
             setIsDeleting(false);
-        }
+                    }
     };
 
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="p-2 h-8 w-8">
-                    <Trash2 className="w-4 h-4" />
+                <Button variant="destructive" size="sm" className="p-2 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -303,52 +289,18 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE CARD MÓVEL
-//================================================================================
 
-function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, onUserUpdated: () => void, onUserDeleted: () => void }) {
-    return (
-        <Card className="w-full">
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{user.nome}</CardTitle>
-                        <CardDescription className="text-sm lowercase truncate">{user.email}</CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                        {user.perfil}
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                <div className="text-sm text-muted-foreground">
-                    <strong>CPF:</strong> {formatCPF(user.cpf)}
-                </div>
-                {user.matricula && (
-                    <div className="text-sm text-muted-foreground">
-                        <strong>Matrícula:</strong> {user.matricula}
-                    </div>
-                )}
-                <div className="flex gap-2 pt-3">
-                    <UserEditar user={user} onUserUpdated={onUserUpdated} />
-                    <ExcluirUsuarioDialog user={user} onUserDeleted={onUserDeleted} />
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE)
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM) - MODIFICADO
 //================================================================================
-
-export default function UserDataTable() {
+export default function UserCard() {
     const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
 
     const fetchUsersAndPerfis = useCallback(async (searchQuery = "") => {
+        // ... (esta função permanece exatamente a mesma do seu código original)
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -372,7 +324,7 @@ export default function UserDataTable() {
             if (searchQuery) {
                 usersUrl.searchParams.append('nome', searchQuery);
             }
-
+            
             const [usersResponse, perfisResponse] = await Promise.all([
                 fetch(usersUrl.toString(), fetchOptions),
                 fetch(`${import.meta.env.VITE_API_URL}/perfis`, fetchOptions)
@@ -409,20 +361,22 @@ export default function UserDataTable() {
             setLoading(false);
         }
     }, []);
-
+    
     useEffect(() => {
         fetchUsersAndPerfis();
     }, [fetchUsersAndPerfis]);
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+        event.preventDefault(); 
         fetchUsersAndPerfis(searchTerm);
     };
 
+    // NOVO: Função para limpar o filtro de busca
     const handleClearFilter = () => {
-        setSearchTerm("");
-        fetchUsersAndPerfis("");
+        setSearchTerm(""); 
+        fetchUsersAndPerfis(""); 
     };
+
 
     if (loading) {
         return (
@@ -435,7 +389,6 @@ export default function UserDataTable() {
 
     return (
         <div className="w-full mx-auto p-6">
-            {/* Barra de Filtro e Ações */}
             <div className="flex items-center justify-between py-4 gap-4">
                 <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center flex-grow">
                     <Input
@@ -445,85 +398,50 @@ export default function UserDataTable() {
                         className="max-w-sm"
                     />
                     <Button type="submit">Buscar</Button>
+
+                    {/* NOVO: Botão para remover o filtro, que só aparece se searchTerm não for vazio */}
                     {searchTerm && (
                         <Button
-                            type="button"
+                            type="button" // Importante para não submeter o formulário
                             variant="outline"
                             size="icon"
                             onClick={handleClearFilter}
                         >
-                            <X className="h-4 w-4" />
+                           <X className="h-4 w-4" />
                         </Button>
                     )}
                 </form>
                 <NovoUsuario onUserAdded={() => fetchUsersAndPerfis()} />
             </div>
 
-            {users.length === 0 ? (
-                <div className="text-center py-10">
-                    <p className="text-gray-500 dark:text-gray-300">Nenhum usuário encontrado.</p>
-                </div>
-            ) : (
-                <>
-                    {/* DataTable para telas maiores */}
-                    <div className="hidden md:block">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="font-semibold">Nome</TableHead>
-                                        <TableHead className="font-semibold">Email</TableHead>
-                                        <TableHead className="font-semibold">CPF</TableHead>
-                                        <TableHead className="font-semibold hidden lg:table-cell">Matrícula</TableHead>
-                                        <TableHead className="font-semibold">Perfil</TableHead>
-                                        <TableHead className="font-semibold text-center">Ações</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {users.map((user, index) => (
-                                        <TableRow 
-                                            key={user.id} 
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
-                                        >
-                                            <TableCell className="font-medium">{user.nome}</TableCell>
-                                            <TableCell className="text-muted-foreground lowercase">{user.email}</TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">{formatCPF(user.cpf)}</TableCell>
-                                            <TableCell className="hidden text-muted-foreground lg:table-cell">
-                                                {user.matricula || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {user.perfil}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <UserEditar user={user} onUserUpdated={() => fetchUsersAndPerfis()} />
-                                                    <ExcluirUsuarioDialog user={user} onUserDeleted={() => fetchUsersAndPerfis()} />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+            {/* O restante do seu JSX para renderizar os cards permanece o mesmo */}
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {users.length > 0 ? (
+                    users.map((user) => (
+                        <div key={user.id} className="backdrop-blur-sm bg-white/40 dark:bg-gray-900/40 border border-white/30 dark:border-gray-700/50 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between transform hover:-translate-y-1">
+                            <div className="mb-4">
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-1 truncate">{user.nome}</h2>
+                                <p className="text-gray-500 dark:text-gray-300 text-sm lowercase truncate">{user.email}</p>
+                                <p className="text-gray-500 dark:text-gray-300 text-sm">CPF: {formatCPF(user.cpf)}</p>
+                                {user.matricula && (
+                                    <p className="text-gray-500 dark:text-gray-300 text-sm">
+                                        Matrícula: {user.matricula}
+                                    </p>
+                                )}
+                                <p className="text-gray-500 dark:text-gray-300 text-sm">Perfil: {user.perfil}</p>
+                            </div>
+                            <div className="flex items-center justify-between mt-auto">
+                                <div className="flex gap-2">
+                                    <UserEditar user={user} onUserUpdated={() => fetchUsersAndPerfis()} />
+                                    <ExcluirUsuarioDialog user={user} onUserDeleted={() => fetchUsersAndPerfis()} />
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Cards para telas menores */}
-                    <div className="md:hidden space-y-4">
-                        {users.map((user) => (
-                            <UserMobileCard
-                                key={user.id}
-                                user={user}
-                                onUserUpdated={() => fetchUsersAndPerfis()}
-                                onUserDeleted={() => fetchUsersAndPerfis()}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+                    ))
+                ) : (
+                    <p className="col-span-full text-center text-gray-500 dark:text-gray-300 py-10">Nenhum usuário encontrado.</p>
+                )}
+            </div>
         </div>
     );
 }
