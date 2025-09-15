@@ -43,7 +43,7 @@ import {
 import { toast } from "sonner"
 import { z } from "zod"
 import { NavLink, useNavigate } from 'react-router-dom'
-import { jwtDecode } from "jwt-decode"; 
+import { jwtDecode } from "jwt-decode";
 
 // Importe seus componentes de UI. Ajuste os caminhos se necessário.
 import { Badge } from "@/components/ui/badge"
@@ -304,7 +304,7 @@ function ContratosFilters({
                         <Label htmlFor="objeto">Objeto do Contrato</Label>
                         <Input id="objeto" placeholder="Pesquisar no objeto..." value={objeto} onChange={(e) => setObjeto(e.target.value)} />
                     </div>
-                    
+
                     {/* Filtro: PAe */}
                     <div className="space-y-1.5">
                         <Label htmlFor="pae">Nº (PAE)</Label>
@@ -476,16 +476,16 @@ function CriarPendenciaDialog({
                     <div>
                         <label htmlFor="data_prazo">Data Prazo</label>
                         <input
-                        id="data_prazo" 
-                        type="date" 
-                        className="mt-1 border rounded-lg p-2 w-full"
-                        value={dataPrazo}                         
-                        onChange={(e) => setDataPrazo(e.target.value)}
-                        required 
+                            id="data_prazo"
+                            type="date"
+                            className="mt-1 border rounded-lg p-2 w-full"
+                            value={dataPrazo}
+                            onChange={(e) => setDataPrazo(e.target.value)}
+                            required
                         />
 
                     </div>
-                   
+
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button type="button" variant="outline" disabled={isSubmitting}>
@@ -596,7 +596,7 @@ function DraggableContratoCard({
                                 <Pencil className="h-4 w-4" />
                                 <span>Editar</span>
                             </DropdownMenuItem>
-                            
+
                             {/* **NOVA IMPLEMENTAÇÃO AQUI** */}
                             <CriarPendenciaDialog
                                 contratoId={contrato.id}
@@ -1183,7 +1183,7 @@ function ContratoDetailsViewer({
                             <h4 className="font-semibold text-foreground mb-2">Pendências</h4>
                             {/* **LISTAGEM DE PENDÊNCIAS ATUALIZADA** */}
                             {pendencias.length > 0 ? (
-                                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                                <ul className="list-disc pl-5 space-y-1 text-red-600">
                                     {pendencias.map(pend => (
                                         <li key={pend.id} className={pend.status_nome !== 'Pendente' ? 'line-through' : ''}>
                                             {pend.descricao} (Prazo: {formatDate(pend.data_prazo)}) - Status: <strong>{pend.status_nome}</strong>
