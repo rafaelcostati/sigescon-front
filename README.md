@@ -1,69 +1,78 @@
-# React + TypeScript + Vite
+# SIGESCON - Sistema de Gestão de Contratos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![Logo do Projeto](src/assets/logo.svg)
 
-Currently, two official plugins are available:
+[![React](https://img.shields.io/badge/React-19.1-blue?style=for-the-badge&logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7.1-purple?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1-green?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
+[![Licença](https://img.shields.io/badge/licença-MIT-green?style=for-the-badge)](LICENSE)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+##  sobre o projeto
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+O **SIGESCON** (Sistema de Gestão de Contratos) é uma aplicação moderna desenvolvida para otimizar e centralizar a administração de contratos. Construído com as mais recentes tecnologias de front-end, o sistema oferece uma interface de usuário intuitiva e responsiva para gerenciar contratos, fornecedores, modalidades e usuários de forma eficiente.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+O dashboard principal fornece uma visão geral e interativa dos dados mais importantes, permitindo um acompanhamento rápido e eficaz do status dos contratos e outras métricas relevantes.
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## ✨ Funcionalidades
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+-   **Dashboard Interativo:** Gráficos e cartões informativos para uma visão rápida da situação dos contratos.
+-   **Gestão de Contratos:** Crie, edite, visualize e remova contratos detalhados.
+-   **Gerenciamento de Entidades:** Administração completa de Fornecedores (Contratados), Modalidades e Status.
+-   **Controle de Acesso:** Sistema de autenticação e rotas privadas baseadas em perfis de usuário (Administrador, Gestor, Fiscal).
+-   **Interface Responsiva:** Layout adaptável para uma ótima experiência em desktops e dispositivos móveis.
+-   **Componentes Reutilizáveis:** Construído com base no `shadcn/ui` para uma UI consistente e de alta qualidade.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🚀 Tecnologias Utilizadas
+
+Este projeto foi construído utilizando as seguintes tecnologias:
+
+-   **React 19:** Biblioteca principal para a construção da interface de usuário.
+-   **Vite:** Ferramenta de build extremamente rápida para desenvolvimento front-end.
+-   **TypeScript:** Superset do JavaScript que adiciona tipagem estática.
+-   **React Router DOM:** Para gerenciamento de rotas na aplicação.
+-   **Tailwind CSS:** Framework CSS utility-first para estilização.
+-   **shadcn/ui:** Coleção de componentes de UI reutilizáveis.
+-   **Zod:** Para validação de schemas e formulários.
+-   **React Hook Form:** Para gerenciamento de formulários.
+-   **TanStack Table:** Para criação de tabelas e data grids poderosos.
+-   **Recharts:** Para a criação de gráficos interativos.
+-   **Lucide React:** Pacote de ícones.
+
+---
+
+## ▶️ Começando
+
+Siga as instruções abaixo para configurar e rodar o projeto em seu ambiente local.
+
+### Pré-requisitos
+
+Você vai precisar ter o [Node.js](https://nodejs.org/) (versão 18 ou superior) e um gerenciador de pacotes ([npm](https://www.npmjs.com/), [yarn](https://yarnpkg.com/) ou [pnpm](https://pnpm.io/)) instalados.
+
+### Instalação
+
+1.  Clone o repositório:
+    ```bash
+    git clone [https://github.com/seu-usuario/sigescon.git](https://github.com/seu-usuario/sigescon.git)
+    ```
+2.  Navegue até o diretório do projeto:
+    ```bash
+    cd sigescon
+    ```
+3.  Instale as dependências:
+    ```bash
+    npm install
+    ```
+
+### Variáveis de Ambiente
+
+Antes de rodar a aplicação, você precisa configurar as variáveis de ambiente. Renomeie o arquivo `.env.example` para `.env` e preencha com a URL da sua API:
+
+```env
+VITE_API_URL="[http://sua-api-aqui.com/api](http://sua-api-aqui.com/api)"
