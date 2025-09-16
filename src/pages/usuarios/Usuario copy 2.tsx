@@ -505,13 +505,8 @@ export default function UserDataTable() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.map((user, index) => (
-                                        <TableRow 
-                                            key={user.id}
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
-                                        >
+                                    {users.map((user) => (
+                                        <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                                             <TableCell className="font-medium">{user.nome}</TableCell>
                                             <TableCell className="text-muted-foreground lowercase">{user.email}</TableCell>
                                             <TableCell className="hidden text-muted-foreground lg:table-cell">
