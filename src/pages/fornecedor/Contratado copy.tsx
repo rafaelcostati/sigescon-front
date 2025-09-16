@@ -26,24 +26,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/alert-dialog"
 
 import { Trash2, LoaderCircle, CirclePlus, Pencil, X } from "lucide-react";
 
@@ -104,6 +87,7 @@ function validateCNPJ(cnpj: string): boolean {
     if (result !== parseInt(digits.charAt(1))) return false;
     return true;
 }
+
 
 // --- Schema Zod para o formulário de novo contratado ---
 const contratadoSchema = z.object({
@@ -197,69 +181,63 @@ function EditarContratado({ contratado, onContratadoUpdated }: ContratadoEditarP
         loadContratadoData();
     }, [isDialogOpen, contratado.id, reset]);
 
-    async function handleUpdate(data: ContratadoForm) {
-        const payload: { [key: string]: string | null } = {};
+   async function handleUpdate(data: ContratadoForm) {
+    const payload: { [key: string]: string | null } = {};
 
-        const numericFields = ['cpf', 'cnpj', 'telefone'];
+    const numericFields: (keyof ContratadoForm)[] = ['cpf', 'cnpj', 'telefone'];
 
-        Object.keys(data).forEach((key) => {
-            const formKey = key as keyof ContratadoForm;
-            const formValue = data[formKey];
-            const originalValue = originalContratadoData[formKey as keyof Contratado];
+    for (const key in data) {
+        const formKey = key as keyof ContratadoForm;
+        const formValue = data[formKey] || "";
+        const originalValue = originalContratadoData[formKey as keyof Contratado] || "";
 
-            const normalizedFormValue = formValue ?? "";
-            const normalizedOriginalValue = originalValue ?? "";
-
-            if (numericFields.includes(formKey)) {
-                const cleanFormValue = String(normalizedFormValue).replace(/\D/g, '');
-                const cleanOriginalValue = String(normalizedOriginalValue).replace(/\D/g, '');
-                
-                if (cleanFormValue !== cleanOriginalValue) {
-                    payload[formKey] = cleanFormValue === "" ? null : cleanFormValue;
-                }
-            } else {
-                if (String(normalizedFormValue).trim() !== String(normalizedOriginalValue).trim()) {
-                    payload[formKey] = normalizedFormValue === "" ? null : String(normalizedFormValue);
-                }
+        if (numericFields.includes(formKey)) {
+            // Compara apenas números
+            if (String(formValue).replace(/\D/g, '') !== String(originalValue).replace(/\D/g, '')) {
+                payload[formKey] = formValue === "" ? null : formValue;
             }
-        });
-
-        if (Object.keys(payload).length === 0) {
-            toast.info("Nenhuma alteração foi feita.");
-            setIsDialogOpen(false);
-            return;
-        }
-
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados/${contratado.id}`, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                toast.success('Contratado atualizado com sucesso!');
-                setIsDialogOpen(false);
-                onContratadoUpdated();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Erro ao atualizar contratado.');
+        } else {
+            // Compara como texto normal
+            if (String(formValue).trim() !== String(originalValue).trim()) {
+                payload[formKey] = formValue === "" ? null : formValue;
             }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro no servidor. Tente novamente.');
         }
     }
+
+    if (Object.keys(payload).length === 0) {
+        toast.info("Nenhuma alteração foi feita.");
+        setIsDialogOpen(false);
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados/${contratado.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            toast.success('Contratado atualizado com sucesso!');
+            setIsDialogOpen(false);
+            onContratadoUpdated();
+        } else {
+            const result = await response.json();
+            toast.error(result.error || 'Erro ao atualizar contratado.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        toast.error('Ocorreu um erro no servidor. Tente novamente.');
+    }
+}
+
 
     return (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="p-2 rounded-lg">
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[480px]">
@@ -334,16 +312,12 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
                 ...data,
                 cpf: data.cpf ? data.cpf.replace(/\D/g, '') : null,
                 cnpj: data.cnpj ? data.cnpj.replace(/\D/g, '') : null,
-                telefone: data.telefone ? data.telefone.replace(/\D/g, '') : null,
             };
 
             const token = localStorage.getItem('token');
             const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
 
@@ -367,7 +341,7 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
             <DialogTrigger asChild>
                 <Button variant="default">
                     <CirclePlus className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-2">Novo Contratado</span>
+                    <span className="hidden lg:inline ml-2">Novo Contratado</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[480px]">
@@ -431,54 +405,16 @@ function ExcluirContratadoDialog({ contratado, onContratadoDeleted }: { contrata
                 toast.success(`Contratado "${contratado.nome}" excluído com sucesso.`);
                 onContratadoDeleted();
             } else if (response.status === 409) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    try {
-                        const result = await response.json();
-                        const contratos = result.contratos;
-                        if (Array.isArray(contratos) && contratos.length > 0) {
-                            const contractList = contratos.map((c: any) => {
-                                if (c && typeof c === 'object' && 'nr_contrato' in c) {
-                                    return c.nr_contrato;
-                                }
-                                if (typeof c === 'string') {
-                                    return c;
-                                }
-                                return 'Contrato sem número';
-                            }).join(', ');
-                            
-                            toast.error(result.error || 'Contratado possui vínculos', {
-                                description: `Vinculado aos contratos: ${contractList}`,
-                                duration: 8000
-                            });
-                        } else {
-                            toast.error(result.error || 'Contratado possui vínculos ativos.');
-                        }
-                    } catch (jsonError) {
-                        console.error('Erro ao fazer parse do JSON:', jsonError);
-                        toast.error('Contratado possui vínculos ativos e não pode ser excluído.');
-                    }
-                } else {
-                    toast.error('Contratado possui vínculos ativos e não pode ser excluído.');
-                }
-            } else if (response.status === 500) {
-                console.error('Erro 500 ao excluir contratado');
-                toast.error('Erro interno do servidor. Entre em contato com o suporte.', {
-                    description: 'O contratado pode possuir vínculos que impedem a exclusão.',
+                const result = await response.json();
+                const contractList = result.contratos.map((c: { nr_contrato: string }) => c.nr_contrato).join(', ');
+                toast.error(result.error, {
+                    description: `Vinculado aos contratos: ${contractList}`,
                     duration: 8000
                 });
-            } else {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    try {
-                        const result = await response.json();
-                        toast.error(result.error || 'Falha ao excluir contratado.');
-                    } catch (jsonError) {
-                        toast.error('Falha ao excluir contratado.');
-                    }
-                } else {
-                    toast.error('Falha ao excluir contratado.');
-                }
+            }
+            else {
+                const result = await response.json();
+                toast.error(result.error || 'Falha ao excluir contratado.');
             }
         } catch (error) {
             console.error('Erro ao excluir contratado:', error);
@@ -492,7 +428,7 @@ function ExcluirContratadoDialog({ contratado, onContratadoDeleted }: { contrata
         <AlertDialog>
             <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="p-2 rounded-lg">
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5" />
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -513,61 +449,17 @@ function ExcluirContratadoDialog({ contratado, onContratadoDeleted }: { contrata
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE CARD MÓVEL
-//================================================================================
-
-function ContratadoMobileCard({ contratado, onContratadoUpdated, onContratadoDeleted }: { 
-    contratado: Contratado, 
-    onContratadoUpdated: () => void, 
-    onContratadoDeleted: () => void 
-}) {
-    return (
-        <Card className="w-full">
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{contratado.nome}</CardTitle>
-                        <CardDescription className="text-sm lowercase truncate">{contratado.email}</CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                        {contratado.cpf ? 'CPF' : contratado.cnpj ? 'CNPJ' : 'Contato'}
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {contratado.cpf && (
-                    <div className="text-sm text-muted-foreground">
-                        <strong>CPF:</strong> {cpfMask(contratado.cpf)}
-                    </div>
-                )}
-                {contratado.cnpj && (
-                    <div className="text-sm text-muted-foreground">
-                        <strong>CNPJ:</strong> {cnpjMask(contratado.cnpj)}
-                    </div>
-                )}
-                {contratado.telefone && (
-                    <div className="text-sm text-muted-foreground">
-                        <strong>Telefone:</strong> {phoneMask(contratado.telefone)}
-                    </div>
-                )}
-                <div className="flex gap-2 pt-3">
-                    <EditarContratado contratado={contratado} onContratadoUpdated={onContratadoUpdated} />
-                    <ExcluirContratadoDialog contratado={contratado} onContratadoDeleted={onContratadoDeleted} />
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (DATATABLE)
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM)
 //================================================================================
 export default function Contratados() {
     const [contratados, setContratados] = useState<Contratado[]>([]);
+    // ALTERADO: Renomeado de 'filter' para 'searchTerm' para clareza
     const [searchTerm, setSearchTerm] = useState(""); 
     const [loading, setLoading] = useState(true);
 
+    // ALTERADO: Função agora usa useCallback e aceita um parâmetro de busca
     const fetchContratados = useCallback(async (searchQuery = "") => {
         setLoading(true);
         try {
@@ -578,8 +470,10 @@ export default function Contratados() {
                 return;
             }
 
+            // Constrói a URL dinamicamente
             const url = new URL(`${import.meta.env.VITE_API_URL}/contratados`);
             if (searchQuery) {
+                // Adiciona o parâmetro de busca 'nome' se houver um termo de pesquisa
                 url.searchParams.append('nome', searchQuery);
             }
 
@@ -591,41 +485,35 @@ export default function Contratados() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const apiResponse = await response.json();
-            
-            // --- CÓDIGO CORRIGIDO ---
-            // Verifica se a resposta contém a propriedade 'data' e se ela é um array
-            if (apiResponse && Array.isArray(apiResponse.data)) {
-                setContratados(apiResponse.data); // Acessa a lista de contratados
-            } else {
-                console.error("A propriedade 'data' na resposta da API não é um array:", apiResponse);
-                setContratados([]);
-                toast.error("Formato de dados inválido recebido do servidor.");
-            }
-            // --- FIM DA CORREÇÃO ---
+            const data: Contratado[] = await response.json();
+            setContratados(data);
 
         } catch (error) {
             console.error("Erro ao carregar contratados:", error);
             toast.error("Não foi possível carregar a lista de contratados.");
-            setContratados([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, []); // useCallback com dependência vazia, pois não depende de props ou state
 
     useEffect(() => {
         fetchContratados();
     }, [fetchContratados]);
 
+    // NOVO: Função para lidar com a submissão do formulário de busca
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+        event.preventDefault(); // Impede o recarregamento da página
         fetchContratados(searchTerm);
     };
 
+    // NOVO: Função para limpar o filtro de busca
     const handleClearFilter = () => {
         setSearchTerm("");
-        fetchContratados("");
+        fetchContratados(""); // Busca a lista completa novamente
     };
+
+    // REMOVIDO: A filtragem agora é feita no backend, então esta linha não é mais necessária.
+    // const filteredContratados = contratados.filter(...);
 
     if (loading) {
         return (
@@ -638,8 +526,8 @@ export default function Contratados() {
 
     return (
         <div className="w-full mx-auto p-6">
-            {/* Barra de Filtro e Ações */}
             <div className="flex items-center justify-between py-4 gap-4">
+                {/* NOVO: Input e botões agora dentro de um formulário */}
                 <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center flex-grow">
                     <Input
                         placeholder="Filtrar por nome..."
@@ -648,6 +536,8 @@ export default function Contratados() {
                         className="max-w-sm"
                     />
                     <Button type="submit">Buscar</Button>
+                    
+                    {/* NOVO: Botão para remover o filtro */}
                     {searchTerm && (
                         <Button
                             type="button"
@@ -655,88 +545,38 @@ export default function Contratados() {
                             size="icon"
                             onClick={handleClearFilter}
                         >
-                            <X className="h-4 w-4" />
+                           <X className="h-4 w-4" />
                         </Button>
                     )}
                 </form>
                 <NovoContratado onContratadoAdded={() => fetchContratados()} />
             </div>
 
-            {contratados.length === 0 ? (
-                <div className="text-center py-10">
-                    <p className="text-gray-500 dark:text-gray-300">Nenhum contratado encontrado.</p>
-                </div>
-            ) : (
-                <>
-                    {/* DataTable para telas maiores */}
-                    <div className="hidden md:block">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="font-semibold">Nome</TableHead>
-                                        <TableHead className="font-semibold">E-mail</TableHead>
-                                        <TableHead className="font-semibold hidden lg:table-cell">CPF</TableHead>
-                                        <TableHead className="font-semibold hidden xl:table-cell">CNPJ</TableHead>
-                                        <TableHead className="font-semibold hidden 2xl:table-cell">Telefone</TableHead>
-                                        <TableHead className="font-semibold text-center">Ações</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {contratados.map((contratado, index) => (
-                                        <TableRow 
-                                            key={contratado.id}
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
-                                        >
-                                            <TableCell className="font-medium truncate max-w-[200px]">
-                                                {contratado.nome}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground lowercase truncate max-w-[200px]">
-                                                {contratado.email}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">
-                                                {contratado.cpf ? cpfMask(contratado.cpf) : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm hidden xl:table-cell">
-                                                {contratado.cnpj ? cnpjMask(contratado.cnpj) : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm hidden 2xl:table-cell">
-                                                {contratado.telefone ? phoneMask(contratado.telefone) : '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <EditarContratado 
-                                                        contratado={contratado} 
-                                                        onContratadoUpdated={() => fetchContratados(searchTerm)} 
-                                                    />
-                                                    <ExcluirContratadoDialog 
-                                                        contratado={contratado} 
-                                                        onContratadoDeleted={() => fetchContratados(searchTerm)} 
-                                                    />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {/* ALTERADO: Mapeia 'contratados' diretamente, pois a API já retorna os dados filtrados */}
+                {contratados.length > 0 ? (
+                    contratados.map((contratado) => (
+                        <div key={contratado.id} className="backdrop-blur-sm bg-white/40 dark:bg-gray-900/40 border border-white/30 dark:border-gray-700/50 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between transform hover:-translate-y-1">
+                            <div className="mb-4">
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-1 truncate">{contratado.nome}</h2>
+                                <p className="text-gray-500 dark:text-gray-300 text-sm lowercase truncate">{contratado.email}</p>
+                                {contratado.cpf && <p className="text-gray-500 dark:text-gray-300 text-sm">CPF: {cpfMask(contratado.cpf)}</p>}
+                                {contratado.cnpj && <p className="text-gray-500 dark:text-gray-300 text-sm">CNPJ: {cnpjMask(contratado.cnpj)}</p>}
+                                {contratado.telefone && <p className="text-gray-500 dark:text-gray-300 text-sm">Telefone: {phoneMask(contratado.telefone)}</p>}
+                            </div>
+                            <div className="flex items-center justify-between mt-auto">
+                                <div className="flex gap-2">
+                                    <EditarContratado contratado={contratado} onContratadoUpdated={() => fetchContratados()} />
+                                    <ExcluirContratadoDialog contratado={contratado} onContratadoDeleted={() => fetchContratados()} />
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Cards para telas menores */}
-                    <div className="md:hidden space-y-4">
-                        {contratados.map((contratado) => (
-                            <ContratadoMobileCard
-                                key={contratado.id}
-                                contratado={contratado}
-                                onContratadoUpdated={() => fetchContratados(searchTerm)}
-                                onContratadoDeleted={() => fetchContratados(searchTerm)}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+                    ))
+                ) : (
+                    <p className="col-span-full text-center text-gray-500 dark:text-gray-300 py-10">Nenhum contratado encontrado.</p>
+                )}
+            </div>
         </div>
     );
 }
+
