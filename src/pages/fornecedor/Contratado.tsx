@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { Trash2, LoaderCircle, CirclePlus, Pencil, X } from "lucide-react";
+import { Trash2, LoaderCircle, CirclePlus, Pencil, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 //================================================================================
 // SECTION: TIPOS E SCHEMAS
@@ -59,6 +59,15 @@ export type Contratado = {
     cnpj?: string | null;
     cpf?: string | null;
     telefone?: string | null;
+};
+
+// --- Tipo para a resposta da API com paginação ---
+type ApiResponse = {
+    data: Contratado[];
+    total_items: number;
+    total_pages: number;
+    current_page: number;
+    per_page: number;
 };
 
 // --- Funções de validação ---
@@ -330,6 +339,12 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
 
     async function handleCriarContratado(data: ContratadoForm) {
         try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error("Acesso não autorizado. Faça o login novamente.");
+                return;
+            }
+
             const payload = {
                 ...data,
                 cpf: data.cpf ? data.cpf.replace(/\D/g, '') : null,
@@ -337,7 +352,6 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
                 telefone: data.telefone ? data.telefone.replace(/\D/g, '') : null,
             };
 
-            const token = localStorage.getItem('token');
             const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados`, {
                 method: 'POST',
                 headers: { 
@@ -346,6 +360,11 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
                 },
                 body: JSON.stringify(payload),
             });
+
+            if (response.status === 401) {
+                toast.error("Sua sessão expirou. Faça o login novamente.");
+                return;
+            }
 
             if (response.status === 201) {
                 toast.success('Contratado cadastrado com sucesso.');
@@ -561,14 +580,20 @@ function ContratadoMobileCard({ contratado, onContratadoUpdated, onContratadoDel
 }
 
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (DATATABLE)
+// SECTION: COMPONENTE PRINCIPAL COM PAGINAÇÃO
 //================================================================================
 export default function Contratados() {
     const [contratados, setContratados] = useState<Contratado[]>([]);
     const [searchTerm, setSearchTerm] = useState(""); 
     const [loading, setLoading] = useState(true);
 
-    const fetchContratados = useCallback(async (searchQuery = "") => {
+    // --- NOVOS ESTADOS PARA PAGINAÇÃO ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
+    const [perPage, setPerPage] = useState(10); // Valor padrão
+
+    const fetchContratados = useCallback(async (page = 1, limit = 10, search = "") => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -578,53 +603,70 @@ export default function Contratados() {
                 return;
             }
 
-            const url = new URL(`${import.meta.env.VITE_API_URL}/contratados`);
-            if (searchQuery) {
-                url.searchParams.append('nome', searchQuery);
+            // --- Construção da URL com parâmetros de paginação e filtro ---
+            const contratadosUrl = new URL(`${import.meta.env.VITE_API_URL}/contratados/`);
+            contratadosUrl.searchParams.append('page', String(page));
+            contratadosUrl.searchParams.append('per_page', String(limit));
+            if (search) {
+                contratadosUrl.searchParams.append('nome', search);
             }
 
-            const response = await fetch(url.toString(), {
+            const response = await fetch(contratadosUrl.toString(), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
+            if (response.status === 401) {
+                toast.error("Sua sessão expirou. Faça o login novamente.");
+                throw new Error('Não autorizado');
+            }
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('Falha ao buscar dados da API.');
             }
 
-            const apiResponse = await response.json();
-            
-            // --- CÓDIGO CORRIGIDO ---
-            // Verifica se a resposta contém a propriedade 'data' e se ela é um array
-            if (apiResponse && Array.isArray(apiResponse.data)) {
-                setContratados(apiResponse.data); // Acessa a lista de contratados
-            } else {
-                console.error("A propriedade 'data' na resposta da API não é um array:", apiResponse);
-                setContratados([]);
-                toast.error("Formato de dados inválido recebido do servidor.");
-            }
-            // --- FIM DA CORREÇÃO ---
+            // --- Processa a nova estrutura de resposta da API ---
+            const result: ApiResponse = await response.json();
+
+            setContratados(result.data);
+            setTotalPages(result.total_pages);
+            setCurrentPage(result.current_page);
+            setTotalItems(result.total_items);
+            setPerPage(result.per_page);
 
         } catch (error) {
             console.error("Erro ao carregar contratados:", error);
-            toast.error("Não foi possível carregar a lista de contratados.");
-            setContratados([]);
+            if (!(error instanceof Error && error.message === 'Não autorizado')) {
+                toast.error("Não foi possível carregar a lista de contratados.");
+            }
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchContratados();
-    }, [fetchContratados]);
+        fetchContratados(currentPage, perPage, searchTerm);
+    }, [fetchContratados]); // Apenas na montagem inicial
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        fetchContratados(searchTerm);
+        setCurrentPage(1); // Reseta para a primeira página ao buscar
+        fetchContratados(1, perPage, searchTerm);
     };
 
     const handleClearFilter = () => {
         setSearchTerm("");
-        fetchContratados("");
+        setCurrentPage(1); // Reseta para a primeira página
+        fetchContratados(1, perPage, "");
+    };
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+            fetchContratados(newPage, perPage, searchTerm);
+        }
+    };
+
+    const refreshCurrentPage = () => {
+        fetchContratados(currentPage, perPage, searchTerm);
     };
 
     if (loading) {
@@ -659,7 +701,7 @@ export default function Contratados() {
                         </Button>
                     )}
                 </form>
-                <NovoContratado onContratadoAdded={() => fetchContratados()} />
+                <NovoContratado onContratadoAdded={refreshCurrentPage} />
             </div>
 
             {contratados.length === 0 ? (
@@ -709,11 +751,11 @@ export default function Contratados() {
                                                 <div className="flex items-center justify-center gap-2">
                                                     <EditarContratado 
                                                         contratado={contratado} 
-                                                        onContratadoUpdated={() => fetchContratados(searchTerm)} 
+                                                        onContratadoUpdated={refreshCurrentPage} 
                                                     />
                                                     <ExcluirContratadoDialog 
                                                         contratado={contratado} 
-                                                        onContratadoDeleted={() => fetchContratados(searchTerm)} 
+                                                        onContratadoDeleted={refreshCurrentPage} 
                                                     />
                                                 </div>
                                             </TableCell>
@@ -730,10 +772,40 @@ export default function Contratados() {
                             <ContratadoMobileCard
                                 key={contratado.id}
                                 contratado={contratado}
-                                onContratadoUpdated={() => fetchContratados(searchTerm)}
-                                onContratadoDeleted={() => fetchContratados(searchTerm)}
+                                onContratadoUpdated={refreshCurrentPage}
+                                onContratadoDeleted={refreshCurrentPage}
                             />
                         ))}
+                    </div>
+
+                    {/* --- CONTROLES DE PAGINAÇÃO --- */}
+                    <div className="flex items-center justify-between space-x-2 py-4">
+                        <div className="text-sm text-muted-foreground">
+                            Total de {totalItems} contratado(s).
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-muted-foreground">
+                                Página {currentPage} de {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage <= 1}
+                            >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Anterior
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage >= totalPages}
+                            >
+                                Próxima
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
                     </div>
                 </>
             )}
