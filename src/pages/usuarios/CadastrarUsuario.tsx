@@ -58,37 +58,37 @@ const cpfMask = (value: string) => {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
-// --- AJUSTE 1: Atualização do Schema Zod ---
 const signUpForm = z.object({
     nome: z.string().min(1, "Nome é obrigatório"),
     email: z.string().email("E-mail inválido"),
     senha: z.string().min(1, "Senha é obrigatória"),
-    perfil_id: z.string().min(1, "Perfil é obrigatório"), // Alterado de 'perfil' para 'perfil_id'
+    perfil_id: z.string().min(1, "Perfil é obrigatório"),
     cpf: z
         .string()
         .transform((val) => val.replace(/\D/g, ''))
-        .refine((val) => val.length === 11, { 
-            message: "CPF deve conter 11 números" 
+        .refine((val) => val.length === 11, {
+            message: "CPF deve conter 11 números"
         })
-        .refine((val) => validateCPF(val), { 
-            message: "CPF inválido" 
+        .refine((val) => validateCPF(val), {
+            message: "CPF inválido"
         }),
-    matricula: z.string().optional(), // Adicionado campo opcional 'matricula'
+    matricula: z.string().optional(),
 });
 
 type SignUpForm = z.infer<typeof signUpForm>;
 
-// Interface para os perfis que serão carregados da API
 interface Perfil {
     id: number;
     nome: string;
+    ativo: boolean;
 }
 
 export function NovoUsuario() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [perfis, setPerfis] = useState<Perfil[]>([]);
+    const [loadingPerfis, setLoadingPerfis] = useState(false);
 
-    const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<SignUpForm>({
+    const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<SignUpForm>({
         resolver: zodResolver(signUpForm),
     });
 
@@ -96,58 +96,124 @@ export function NovoUsuario() {
     useEffect(() => {
         if (isDialogOpen) {
             const fetchPerfis = async () => {
+                setLoadingPerfis(true);
                 try {
-                    // --- AJUSTE 2: Busca dinâmica dos perfis ---
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis`);
-                    if (!response.ok) {
-                        throw new Error('Falha ao buscar perfis.');
-                    }
-                    const data = await response.json();
+                    const token = localStorage.getItem('token');
+                    console.log('=== DEBUG PERFIS ===');
+                    console.log('Token presente:', !!token);
+                    console.log('Token valor:', token ? `${token.substring(0, 20)}...` : 'null');
+                    console.log('API URL:', import.meta.env.VITE_API_URL);
+                    console.log('URL completa:', `${import.meta.env.VITE_API_URL}/api/v1/perfis/`);
                     
-                    // Mapeia os dados da API para o formato esperado pelo Select
-                    const perfisFormatados = data.map((item: any) => ({
-                        id: item.id,
-                        nome: item.nome 
-                    }));
+                    if (!token) {
+                        throw new Error('Token de autenticação não encontrado. Faça login novamente.');
+                    }
 
-                    setPerfis(perfisFormatados);
+                    // Teste direto no navegador - você pode copiar esta URL e testar
+                    console.log('Teste esta URL no Postman/Insomnia com Bearer token:', `${import.meta.env.VITE_API_URL}/api/v1/perfis/`);
+                    
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/perfis/`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    });
+                    
+                    console.log('Status da resposta:', response.status);
+                    console.log('Headers da resposta:', response.headers);
+                    
+                    // Log mais detalhado da resposta
+                    const responseText = await response.text();
+                    console.log('Resposta completa (texto):', responseText);
+                    
+                    if (response.status === 401) {
+                        console.error('Token rejeitado pela API - pode estar expirado');
+                        // Não remover o token ainda, vamos investigar
+                        throw new Error('Token rejeitado pela API. Verifique se não expirou.');
+                    }
+                    
+                    if (!response.ok) {
+                        console.error('Erro HTTP:', response.status, response.statusText);
+                        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    // Tentar parsear JSON
+                    let data;
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('Erro ao parsear JSON:', parseError);
+                        console.error('Texto recebido:', responseText);
+                        throw new Error('Resposta não é um JSON válido');
+                    }
+                    
+                    console.log('Perfis carregados (JSON):', data);
+                    console.log('Tipo de dados recebidos:', typeof data, Array.isArray(data));
+                    console.log('Quantidade de perfis:', Array.isArray(data) ? data.length : 'N/A');
+                    
+                    // Verifica se data é um array
+                    if (!Array.isArray(data)) {
+                        console.error('Dados recebidos não são um array:', data);
+                        throw new Error('Formato de dados inválido recebido da API');
+                    }
+                    
+                    // Log de cada perfil
+                    data.forEach((perfil, index) => {
+                        console.log(`Perfil ${index}:`, perfil);
+                    });
+                    
+                    // Filtra apenas perfis ativos
+                    const perfisAtivos = data.filter((perfil: Perfil) => perfil.ativo);
+                    console.log('Perfis ativos filtrados:', perfisAtivos);
+                    console.log('Quantidade de perfis ativos:', perfisAtivos.length);
+                    
+                    setPerfis(perfisAtivos);
+                    console.log('=== FIM DEBUG PERFIS ===');
 
-                } catch (error) {
-                    console.error("Erro ao buscar perfis:", error);
-                    toast.error("Não foi possível carregar os perfis de usuário.");
+                } catch (error: any) {
+                    console.error("=== ERRO AO BUSCAR PERFIS ===");
+                    console.error("Tipo do erro:", typeof error);
+                    console.error("Erro completo:", error);
+                    console.error("Message:", error.message);
+                    console.error("Stack:", error.stack);
+                    
+                    if (error.message?.includes('Token rejeitado') || error.message?.includes('Token')) {
+                        toast.error("Problema com autenticação. Verifique se o token não expirou.");
+                    } else {
+                        toast.error("Não foi possível carregar os perfis de usuário.");
+                    }
+                } finally {
+                    setLoadingPerfis(false);
                 }
             };
             fetchPerfis();
         }
     }, [isDialogOpen]);
 
-
     async function handleSignUp(data: SignUpForm) {
         try {
-            // --- AJUSTE 3: Montagem do Payload ---
             const payload = {
                 ...data,
-                perfil_id: parseInt(data.perfil_id, 10), // Converte perfil_id para integer
-                cpf: data.cpf.replace(/\D/g, '') // Garante que o CPF não tenha máscara
+                perfil_id: parseInt(data.perfil_id, 10),
+                cpf: data.cpf.replace(/\D/g, '')
             };
 
             const token = localStorage.getItem('token');
-            // --- AJUSTE 4: Correção do Endpoint da API ---
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios`, { // Endpoint corrigido
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // A documentação diz que a API está aberta, mas manter o token é uma boa prática para o futuro [cite: 11]
                     'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
 
-            if (response.status === 201) { // Verifica o status code 201 Created [cite: 15]
+            if (response.status === 201) {
                 toast.success('Usuário cadastrado com sucesso.');
+                reset(); // Limpa o formulário
                 setIsDialogOpen(false);
-                // Opcional: Adicionar um delay ou usar um método de atualização de dados mais moderno que window.location.reload()
-                setTimeout(() => window.location.reload(), 1000); 
+                setTimeout(() => window.location.reload(), 1000);
             } else {
                 const result = await response.json();
                 toast.error(result.error || 'Cadastro inválido, favor verificar todos os campos.');
@@ -159,7 +225,12 @@ export function NovoUsuario() {
     }
 
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+                reset(); // Limpa o formulário quando o diálogo é fechado
+            }
+        }}>
             <DialogTrigger asChild>
                 <Button variant="default" onClick={() => setIsDialogOpen(true)}>
                     <CirclePlus className="h-4 w-4" />
@@ -174,7 +245,6 @@ export function NovoUsuario() {
                             Cadastre um novo usuário aqui. Clique em finalizar cadastro quando terminar.
                         </DialogDescription>
                     </DialogHeader>
-                    {/* --- AJUSTE 5: Estrutura do Formulário e Exibição de Erros --- */}
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="nome" className="text-right">Nome</Label>
@@ -230,7 +300,13 @@ export function NovoUsuario() {
                                     render={({ field }) => (
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Escolha um perfil" />
+                                                <SelectValue placeholder={
+                                                    loadingPerfis 
+                                                        ? "Carregando perfis..." 
+                                                        : perfis.length === 0 
+                                                            ? "Nenhum perfil disponível" 
+                                                            : "Escolha um perfil"
+                                                } />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {perfis.map(perfil => (
@@ -254,7 +330,7 @@ export function NovoUsuario() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button disabled={isSubmitting} type="submit">
+                        <Button disabled={isSubmitting || loadingPerfis} type="submit">
                             {isSubmitting ? 'Salvando...' : 'Finalizar Cadastro'}
                         </Button>
                     </DialogFooter>

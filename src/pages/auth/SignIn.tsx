@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { api } from "@/lib/axios";
+import { authApi } from "@/lib/api";
 import logo from "@/assets/logo.svg";
 import { LockKeyhole, LucideUser } from "lucide-react";
 import axios from 'axios';
 
+// O schema permanece o mesmo, mas note que o campo é 'username'
 const signInFormSchema = z.object({
-    email: z.string().email("E-mail inválido"),
-    senha: z.string().min(1, "Senha é obrigatória"),
+    username: z.string().email("E-mail inválido"),
+    password: z.string().min(1, "Senha é obrigatória"),
 });
 
 type SignInForm = z.infer<typeof signInFormSchema>;
@@ -30,35 +31,33 @@ export function SignIn() {
         resolver: zodResolver(signInFormSchema),
     });
 
-    const handleLogin = async ({ email, senha }: SignInForm) => {
+    const handleLogin = async ({ username, password }: SignInForm) => {
         try {
-            const response = await api.post("/auth/login", {
-                email,
-                senha,
+            // 1. Criar o corpo da requisição no formato x-www-form-urlencoded
+            const params = new URLSearchParams();
+            params.append('grant_type', 'password');
+            params.append('username', username);
+            params.append('password', password);
+
+            // 2. Fazer a requisição POST com o corpo e o cabeçalho corretos
+            const response = await authApi.post("/auth/login", params, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             });
 
-            const { token, usuario } = response.data;
-            const { perfil } = usuario;
+            // 3. Tratar a nova resposta da API
+            const { access_token } = response.data;
 
-            localStorage.setItem("token", token);
-            localStorage.setItem("userProfile", JSON.stringify(perfil));
+            // 4. Salvar o token no localStorage
+            localStorage.setItem("token", access_token);
 
-            console.log("Login bem-sucedido. Perfil:", perfil); // Depuração
+            // IMPORTANTE: A API não retorna mais o perfil do usuário no login.
+            // O ideal é buscar os dados do usuário em outra rota após o login.
+            // Por enquanto, vamos redirecionar para uma página padrão.
+            console.log("Login bem-sucedido. Redirecionando...");
+            navigate("/home", { replace: true });
 
-            switch (perfil) {
-                case "Administrador":
-                    navigate("/home", { replace: true });
-                    break;
-                case "Gestor":
-                    navigate("/homegestor", { replace: true });
-                    break;
-                case "Fiscal":
-                    navigate("/homefiscal", { replace: true });
-                    break;
-                default:
-                    navigate("/", { replace: true });
-                    break;
-            }
         } catch (err) {
             console.error("Erro na autenticação:", err);
             if (axios.isAxiosError(err) && err.response) {
@@ -71,7 +70,6 @@ export function SignIn() {
     };
 
     return (
-        // Seu JSX do formulário...
         <div className="space-y-6 rounded-2xl border border-slate-700 bg-slate-950/60 p-8 backdrop-blur-md">
             <div className=" -mx-8 -mt-8 mb-6 rounded-t-xl bg-teal-700/80 py-3 text-center">
                 <h1 className="text-lg font-semibold tracking-wide text-slate-50">
@@ -84,43 +82,44 @@ export function SignIn() {
                     SIGESCON - Sistema de Gestão de Contratos
                 </p>
             </div>
-            {/* ... restante do seu JSX ... */}
+            
             <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
-                {/* ... seus inputs e labels ... */}
                 <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-300">
+                    <Label htmlFor="username" className="text-slate-300">
                         E-mail
                     </Label>
                     <div className="relative">
                         <LucideUser className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-teal-400" />
                         <Input
-                            id="email"
+                            id="username"
                             className="border-b-2 border-teal-500 bg-transparent pl-10 text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus-visible:ring-0"
                             placeholder="seu@email.com"
                             type="email"
-                            {...register("email")}
+                            // 5. Corrigido: o nome aqui deve ser 'username', igual no schema Zod
+                            {...register("username")} 
                         />
                     </div>
-                    {errors.email && (
-                        <p className="text-sm text-red-400">{errors.email.message}</p>
+                    {errors.username && (
+                        <p className="text-sm text-red-400">{errors.username.message}</p>
                     )}
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="senha" className="text-slate-300">
+                    <Label htmlFor="password" className="text-slate-300">
                         Senha
                     </Label>
                     <div className="relative">
                         <LockKeyhole className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-teal-400" />
                         <Input
-                            id="senha"
+                            id="password"
                             className="border-b-2 border-teal-500 bg-transparent pl-10 text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus-visible:ring-0"
                             placeholder="Sua senha"
                             type="password"
-                            {...register("senha")}
+                            // 5. Corrigido: o nome aqui deve ser 'password', igual no schema Zod
+                            {...register("password")}
                         />
                     </div>
-                    {errors.senha && (
-                        <p className="text-sm text-red-400">{errors.senha.message}</p>
+                    {errors.password && (
+                        <p className="text-sm text-red-400">{errors.password.message}</p>
                     )}
                 </div>
                 {error && <p className="text-sm text-red-400">{error}</p>}

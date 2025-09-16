@@ -43,29 +43,30 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, LoaderCircle, CirclePlus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, LoaderCircle, CirclePlus, X } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
 //================================================================================
 // SECTION: TIPOS E SCHEMAS
 //================================================================================
 
-// --- Tipos para a listagem de usuários (conforme nova API) ---
+// --- Tipos para a listagem de usuários ---
+type ApiUser = {
+    id: number;
+    nome: string;
+    email: string;
+    cpf: string;
+    perfil_id: number;
+    matricula?: string;
+};
+
 export type User = {
     id: number;
     nome: string;
     email: string;
-    perfil_nome: string;
+    perfil: string;
+    cpf: string;
     matricula?: string;
-};
-
-// --- Tipo para a resposta da API com paginação ---
-type ApiResponse = {
-    data: User[];
-    total_items: number;
-    total_pages: number;
-    current_page: number;
-    per_page: number;
 };
 
 type Perfil = {
@@ -73,7 +74,7 @@ type Perfil = {
     nome: string;
 };
 
-// --- Schema Zod para o formulário de novo usuário (mantido como estava) ---
+// --- Schema Zod para o formulário de novo usuário ---
 const signUpForm = z.object({
     nome: z.string().min(1, "Nome é obrigatório"),
     email: z.string().email("E-mail inválido"),
@@ -88,11 +89,11 @@ const signUpForm = z.object({
 
 type SignUpForm = z.infer<typeof signUpForm>;
 
-
 //================================================================================
-// SECTION: FUNÇÕES AUXILIARES (mantidas como estavam)
+// SECTION: FUNÇÕES AUXILIARES
 //================================================================================
 
+// --- Validação de CPF ---
 function validateCPF(cpf: string): boolean {
     cpf = cpf.replace(/\D/g, '');
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
@@ -109,6 +110,7 @@ function validateCPF(cpf: string): boolean {
     return true;
 }
 
+// --- Máscara de CPF ---
 const cpfMask = (value: string) => {
     return value
         .replace(/\D/g, '')
@@ -117,8 +119,18 @@ const cpfMask = (value: string) => {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
+// --- Formatação de CPF para exibição ---
+function formatCPF(cpf: string): string {
+    if (!cpf) return "";
+    const numericCPF = cpf.replace(/\D/g, "");
+    return numericCPF
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
 //================================================================================
-// SECTION: COMPONENTE NOVO USUÁRIO (MODAL - CORRIGIDO)
+// SECTION: COMPONENTE NOVO USUÁRIO (MODAL)
 //================================================================================
 
 function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
@@ -133,30 +145,13 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
         if (isDialogOpen) {
             const fetchPerfis = async () => {
                 try {
-                    // CORRIGIDO: Adicionando Authorization header para buscar perfis
                     const token = localStorage.getItem('token');
-                    if (!token) {
-                        toast.error("Acesso não autorizado. Faça o login novamente.");
-                        return;
-                    }
-
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis/`, {
-                        method: 'GET',
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis`, {
                         headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
+                            'Authorization': `Bearer ${token}`
                         }
                     });
-
-                    if (response.status === 401) {
-                        toast.error("Sua sessão expirou. Faça o login novamente.");
-                        return;
-                    }
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao buscar perfis da API.');
-                    }
-
+                    if (!response.ok) throw new Error('Falha ao buscar perfis.');
                     const data = await response.json();
                     setPerfis(data);
                 } catch (error) {
@@ -170,32 +165,17 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 
     async function handleSignUp(data: SignUpForm) {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado. Faça o login novamente.");
-                return;
-            }
-
             const payload = {
                 ...data,
                 perfil_id: parseInt(data.perfil_id, 10),
                 cpf: data.cpf.replace(/\D/g, '')
             };
-
-            // CORRIGIDO: Usando fetch com Authorization header para criar o usuário
+            const token = localStorage.getItem('token');
             const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload),
             });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                return;
-            }
 
             if (response.status === 201) {
                 toast.success('Usuário cadastrado com sucesso.');
@@ -204,12 +184,11 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
                 onUserAdded();
             } else {
                 const result = await response.json();
-                const errorMessage = result.detail || result.error || 'Erro ao cadastrar usuário.';
-                toast.error(errorMessage);
+                toast.error(result.error || 'Cadastro inválido.');
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error:', error);
-            toast.error('Ocorreu um erro de rede. Tente novamente.');
+            toast.error('Erro ao cadastrar usuário.');
         }
     }
 
@@ -267,8 +246,9 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 }
 
 //================================================================================
-// SECTION: COMPONENTE DE EXCLUSÃO (sem alterações)
+// SECTION: COMPONENTE DE EXCLUSÃO
 //================================================================================
+
 function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -288,7 +268,7 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
                 onUserDeleted();
             } else {
                 const result = await response.json();
-                toast.error(result.detail || result.error || 'Falha ao excluir usuário.');
+                toast.error(result.error || 'Falha ao excluir usuário.');
             }
         } catch (error) {
             console.error('Erro ao excluir usuário:', error);
@@ -322,8 +302,9 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
         </AlertDialog>
     );
 }
+
 //================================================================================
-// SECTION: COMPONENTE CARD MÓVEL (Atualizado para nova estrutura de User)
+// SECTION: COMPONENTE CARD MÓVEL
 //================================================================================
 
 function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, onUserUpdated: () => void, onUserDeleted: () => void }) {
@@ -336,20 +317,20 @@ function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, on
                         <CardDescription className="text-sm lowercase truncate">{user.email}</CardDescription>
                     </div>
                     <Badge variant="secondary" className="ml-2 text-xs">
-                        {user.perfil_nome} {/* <-- ATUALIZADO */}
+                        {user.perfil}
                     </Badge>
                 </div>
             </CardHeader>
             <CardContent className="space-y-2">
-                {/* O CPF foi removido pois não é mais retornado pela API de listagem */}
+                <div className="text-sm text-muted-foreground">
+                    <strong>CPF:</strong> {formatCPF(user.cpf)}
+                </div>
                 {user.matricula && (
                     <div className="text-sm text-muted-foreground">
                         <strong>Matrícula:</strong> {user.matricula}
                     </div>
                 )}
                 <div className="flex gap-2 pt-3">
-                    {/* ATENÇÃO: O componente UserEditar pode precisar ser ajustado se ele depende do CPF vindo da listagem. */}
-                    {/* É recomendado que UserEditar busque os dados completos do usuário pelo ID. */}
                     <UserEditar user={user} onUserUpdated={onUserUpdated} />
                     <ExcluirUsuarioDialog user={user} onUserDeleted={onUserDeleted} />
                 </div>
@@ -359,7 +340,7 @@ function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, on
 }
 
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE) - GRANDES MUDANÇAS
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE)
 //================================================================================
 
 export default function UserDataTable() {
@@ -367,51 +348,58 @@ export default function UserDataTable() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
 
-    // --- NOVOS ESTADOS PARA PAGINAÇÃO ---
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(0);
-    const [totalItems, setTotalItems] = useState(0);
-    const [perPage, setPerPage] = useState(10); // Valor padrão
-
-    const fetchUsers = useCallback(async (page = 1, limit = 10, search = "") => {
+    const fetchUsersAndPerfis = useCallback(async (searchQuery = "") => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            if (!token) {
+            const perfil = localStorage.getItem('userProfile');
+
+            if (!token || !perfil) {
                 toast.error("Acesso não autorizado. Faça o login novamente.");
                 setLoading(false);
                 return;
             }
 
-            // --- Construção da URL com parâmetros de paginação e filtro ---
-            const usersUrl = new URL(`${import.meta.env.VITE_API_URL}/usuarios/`);
-            usersUrl.searchParams.append('page', String(page));
-            usersUrl.searchParams.append('per_page', String(limit));
-            if (search) {
-                usersUrl.searchParams.append('nome', search);
+            const fetchOptions = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-User-Profile': perfil,
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            const usersUrl = new URL(`${import.meta.env.VITE_API_URL}/usuarios`);
+            if (searchQuery) {
+                usersUrl.searchParams.append('nome', searchQuery);
             }
 
-            const response = await fetch(usersUrl.toString(), {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const [usersResponse, perfisResponse] = await Promise.all([
+                fetch(usersUrl.toString(), fetchOptions),
+                fetch(`${import.meta.env.VITE_API_URL}/perfis`, fetchOptions)
+            ]);
 
-            if (response.status === 401) {
+            if (usersResponse.status === 401 || perfisResponse.status === 401) {
                 toast.error("Sua sessão expirou. Faça o login novamente.");
                 throw new Error('Não autorizado');
             }
-            if (!response.ok) {
+
+            if (!usersResponse.ok || !perfisResponse.ok) {
                 throw new Error('Falha ao buscar dados da API.');
             }
 
-            // --- Processa a nova estrutura de resposta da API ---
-            const result: ApiResponse = await response.json();
+            const usersData: ApiUser[] = await usersResponse.json();
+            const perfisData: Perfil[] = await perfisResponse.json();
+            const perfisMap = new Map(perfisData.map(p => [p.id, p.nome]));
 
-            setUsers(result.data);
-            setTotalPages(result.total_pages);
-            setCurrentPage(result.current_page);
-            setTotalItems(result.total_items);
-            setPerPage(result.per_page);
-
+            const mappedUsers: User[] = usersData.map((user) => ({
+                id: user.id,
+                nome: user.nome,
+                email: user.email,
+                cpf: user.cpf,
+                matricula: user.matricula,
+                perfil: perfisMap.get(user.perfil_id) || "Desconhecido",
+            }));
+            setUsers(mappedUsers);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
             if (!(error instanceof Error && error.message === 'Não autorizado')) {
@@ -423,32 +411,18 @@ export default function UserDataTable() {
     }, []);
 
     useEffect(() => {
-        fetchUsers(currentPage, perPage, searchTerm);
-    }, [fetchUsers]); // Apenas na montagem inicial
+        fetchUsersAndPerfis();
+    }, [fetchUsersAndPerfis]);
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setCurrentPage(1); // Reseta para a primeira página ao buscar
-        fetchUsers(1, perPage, searchTerm);
+        fetchUsersAndPerfis(searchTerm);
     };
 
     const handleClearFilter = () => {
         setSearchTerm("");
-        setCurrentPage(1); // Reseta para a primeira página
-        fetchUsers(1, perPage, "");
+        fetchUsersAndPerfis("");
     };
-
-    const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            setCurrentPage(newPage);
-            fetchUsers(newPage, perPage, searchTerm);
-        }
-    };
-
-    const refreshCurrentPage = () => {
-        fetchUsers(currentPage, perPage, searchTerm);
-    };
-
 
     if (loading) {
         return (
@@ -482,7 +456,7 @@ export default function UserDataTable() {
                         </Button>
                     )}
                 </form>
-                <NovoUsuario onUserAdded={refreshCurrentPage} />
+                <NovoUsuario onUserAdded={() => fetchUsersAndPerfis()} />
             </div>
 
             {users.length === 0 ? (
@@ -499,28 +473,35 @@ export default function UserDataTable() {
                                     <TableRow className="bg-muted/50">
                                         <TableHead className="font-semibold">Nome</TableHead>
                                         <TableHead className="font-semibold">Email</TableHead>
+                                        <TableHead className="font-semibold">CPF</TableHead>
                                         <TableHead className="font-semibold hidden lg:table-cell">Matrícula</TableHead>
                                         <TableHead className="font-semibold">Perfil</TableHead>
                                         <TableHead className="font-semibold text-center">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.map((user) => (
-                                        <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
+                                    {users.map((user, index) => (
+                                        <TableRow 
+                                            key={user.id} 
+                                            className={`hover:bg-muted/50 transition-colors ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
+                                        >
                                             <TableCell className="font-medium">{user.nome}</TableCell>
                                             <TableCell className="text-muted-foreground lowercase">{user.email}</TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">{formatCPF(user.cpf)}</TableCell>
                                             <TableCell className="hidden text-muted-foreground lg:table-cell">
                                                 {user.matricula || '-'}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="secondary" className="text-xs">
-                                                    {user.perfil_nome} {/* <-- ATUALIZADO */}
+                                                    {user.perfil}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <UserEditar user={user} onUserUpdated={refreshCurrentPage} />
-                                                    <ExcluirUsuarioDialog user={user} onUserDeleted={refreshCurrentPage} />
+                                                    <UserEditar user={user} onUserUpdated={() => fetchUsersAndPerfis()} />
+                                                    <ExcluirUsuarioDialog user={user} onUserDeleted={() => fetchUsersAndPerfis()} />
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -536,40 +517,10 @@ export default function UserDataTable() {
                             <UserMobileCard
                                 key={user.id}
                                 user={user}
-                                onUserUpdated={refreshCurrentPage}
-                                onUserDeleted={refreshCurrentPage}
+                                onUserUpdated={() => fetchUsersAndPerfis()}
+                                onUserDeleted={() => fetchUsersAndPerfis()}
                             />
                         ))}
-                    </div>
-
-                    {/* --- CONTROLES DE PAGINAÇÃO --- */}
-                    <div className="flex items-center justify-between space-x-2 py-4">
-                        <div className="text-sm text-muted-foreground">
-                            Total de {totalItems} usuário(s).
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <span className="text-sm text-muted-foreground">
-                                Página {currentPage} de {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage <= 1}
-                            >
-                                <ChevronLeft className="h-4 w-4 mr-1" />
-                                Anterior
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage >= totalPages}
-                            >
-                                Próxima
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                            </Button>
-                        </div>
                     </div>
                 </>
             )}
