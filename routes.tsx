@@ -6,72 +6,72 @@ import { AuthLayout } from '@/_layouts/auth';
 import Page from '@/dashboard/page';
 import { ContratosDataTable } from '@/pages/contratos/Contratos';
 import { NovoContrato } from '@/pages/contratos/NovoContrato';
-import  UserCard   from '@/pages/usuarios/Usuario';
+import { EditarContrato } from '@/pages/contratos/EditarContrato';
+import UserCard from '@/pages/usuarios/Usuario';
 import { NovoUsuario } from '@/pages/usuarios/CadastrarUsuario';
 import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
 import PrivateRoute from '@/utils/PrivateRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
 import Modalidades from '@/pages/modalidades/Modalidade';
-import { EditarContrato }  from '@/pages/contratos/EditarContrato';
-
 
 export const router = createBrowserRouter([
+  // Rotas públicas
   {
     element: <AuthLayout />,
     errorElement: <NotFound />,
     children: [
       {
-        path: '/', 
+        path: '/',
         element: <SignIn />,
       },
       {
-        path: '/login', 
+        path: '/login',
         element: <SignIn />,
       },
     ],
   },
-  
+
+  // Rotas privadas
   {
     element: <AppLayout />,
     errorElement: <NotFound />,
     children: [
       {
         path: '/home',
-        element: <PrivateRoute><Page /></PrivateRoute>, // Removido allowedProfiles
-      },     
-      
-      {
-        path: '/contratos',
-        element: <PrivateRoute><ContratosDataTable /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/novocontrato',
-        element: <PrivateRoute><NovoContrato /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/contratos/editar/:id',
-        element: <PrivateRoute><EditarContrato /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/contratado',
-        element: <PrivateRoute><Contratados /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/modalidades',
-        element: <PrivateRoute><Modalidades /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/cadastrarusuario',
-        element: <PrivateRoute><NovoUsuario /></PrivateRoute>, // Removido allowedProfiles
-      },
-      {
-        path: '/usuarios',
-        element: <PrivateRoute><UserCard /></PrivateRoute>, // Removido allowedProfiles
+        element: <PrivateRoute><Page /></PrivateRoute>,
       },
       {
         path: '/dashboard',
-        element: <PrivateRoute><Page /></PrivateRoute>, // Removido allowedProfiles
+        element: <PrivateRoute><Page /></PrivateRoute>,
+      },
+      {
+        path: '/contratos',
+        element: <PrivateRoute><ContratosDataTable /></PrivateRoute>,
+      },
+      {
+        path: '/novocontrato',
+        element: <PrivateRoute><NovoContrato /></PrivateRoute>,
+      },
+      {
+        path: '/contratos/editar/:id',
+        element: <PrivateRoute><EditarContrato /></PrivateRoute>,
+      },
+      {
+        path: '/contratado',
+        element: <PrivateRoute><Contratados /></PrivateRoute>,
+      },
+      {
+        path: '/modalidades',
+        element: <PrivateRoute><Modalidades /></PrivateRoute>,
+      },
+      {
+        path: '/usuarios',
+        element: <PrivateRoute><UserCard /></PrivateRoute>,
+      },
+      {
+        path: '/cadastrarusuario',
+        element: <PrivateRoute><NovoUsuario /></PrivateRoute>,
       },
     ],
   },
