@@ -17,9 +17,7 @@ import { EditarContrato }  from '@/pages/contratos/EditarContrato';
 
 
 export const router = createBrowserRouter([
-
   {
-    
     element: <AuthLayout />,
     errorElement: <NotFound />,
     children: [
@@ -40,40 +38,40 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/home',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><Page /></PrivateRoute>,
+        element: <PrivateRoute><Page /></PrivateRoute>, // Removido allowedProfiles
       },     
       
       {
         path: '/contratos',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><ContratosDataTable /></PrivateRoute>,
+        element: <PrivateRoute><ContratosDataTable /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/novocontrato',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><NovoContrato /></PrivateRoute>,
+        element: <PrivateRoute><NovoContrato /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/contratos/editar/:id',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><EditarContrato /></PrivateRoute>,
+        element: <PrivateRoute><EditarContrato /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/contratado',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><Contratados /></PrivateRoute>,
+        element: <PrivateRoute><Contratados /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/modalidades',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><Modalidades /></PrivateRoute>,
+        element: <PrivateRoute><Modalidades /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/cadastrarusuario',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><NovoUsuario /></PrivateRoute>,
+        element: <PrivateRoute><NovoUsuario /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/usuarios',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><UserCard /></PrivateRoute>,
+        element: <PrivateRoute><UserCard /></PrivateRoute>, // Removido allowedProfiles
       },
       {
         path: '/dashboard',
-        element: <PrivateRoute allowedProfiles={['Administrador']}><Page /></PrivateRoute>,
+        element: <PrivateRoute><Page /></PrivateRoute>, // Removido allowedProfiles
       },
     ],
   },

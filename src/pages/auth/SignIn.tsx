@@ -11,7 +11,6 @@ import logo from "@/assets/logo.svg";
 import { LockKeyhole, LucideUser } from "lucide-react";
 import axios from 'axios';
 
-// O schema permanece o mesmo, mas note que o campo é 'username'
 const signInFormSchema = z.object({
     username: z.string().email("E-mail inválido"),
     password: z.string().min(1, "Senha é obrigatória"),
@@ -33,36 +32,85 @@ export function SignIn() {
 
     const handleLogin = async ({ username, password }: SignInForm) => {
         try {
-            // 1. Criar o corpo da requisição no formato x-www-form-urlencoded
+            setError(""); // Limpar erro anterior
+            
+            console.log("Iniciando processo de login...");
+            
+            // 1. Fazer login e obter token
             const params = new URLSearchParams();
             params.append('grant_type', 'password');
             params.append('username', username);
             params.append('password', password);
 
-            // 2. Fazer a requisição POST com o corpo e o cabeçalho corretos
             const response = await authApi.post("/auth/login", params, {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
 
-            // 3. Tratar a nova resposta da API
-            const { access_token } = response.data;
+            const { access_token, token_type } = response.data;
 
-            // 4. Salvar o token no localStorage
+            if (!access_token) {
+                throw new Error("Token não recebido da API");
+            }
+
+            console.log("Token recebido com sucesso");
+
+            // 2. Configurar o header de autorização
+            authApi.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+            // 3. Buscar dados do usuário
+            console.log("Buscando dados do usuário...");
+            const userResponse = await authApi.get("/api/v1/usuarios/me");
+            const userData = userResponse.data;
+            
+            console.log("Dados do usuário:", userData);
+
+            // 4. Salvar informações no localStorage
             localStorage.setItem("token", access_token);
+            localStorage.setItem("token_type", token_type || "Bearer");
+            localStorage.setItem("user", JSON.stringify(userData));
 
-            // IMPORTANTE: A API não retorna mais o perfil do usuário no login.
-            // O ideal é buscar os dados do usuário em outra rota após o login.
-            // Por enquanto, vamos redirecionar para uma página padrão.
-            console.log("Login bem-sucedido. Redirecionando...");
+            console.log("Informações salvas no localStorage:");
+            console.log("- Token:", access_token.substring(0, 20) + "...");
+            console.log("- Usuário:", userData.nome);
+
+            console.log("Login completo! Redirecionando para /home...");
+
+            // 5. Redirecionar para home
             navigate("/home", { replace: true });
 
         } catch (err) {
             console.error("Erro na autenticação:", err);
-            if (axios.isAxiosError(err) && err.response) {
-                console.error("Detalhes do erro da API:", err.response.data);
-                setError("Credenciais inválidas. Por favor, verifique seu e-mail e senha.");
+            
+            // Limpar dados em caso de erro
+            localStorage.removeItem("token");
+            localStorage.removeItem("token_type");
+            localStorage.removeItem("user");
+            delete authApi.defaults.headers.common['Authorization'];
+            
+            if (axios.isAxiosError(err)) {
+                if (err.response) {
+                    console.error("Detalhes do erro da API:", err.response.data);
+                    
+                    switch (err.response.status) {
+                        case 401:
+                            setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+                            break;
+                        case 422:
+                            setError("Dados de login inválidos. Verifique os campos.");
+                            break;
+                        case 500:
+                            setError("Erro interno do servidor. Tente novamente mais tarde.");
+                            break;
+                        default:
+                            setError("Erro na autenticação. Tente novamente.");
+                    }
+                } else if (err.request) {
+                    setError("Erro de conexão. Verifique sua internet e tente novamente.");
+                } else {
+                    setError("Erro inesperado. Tente novamente.");
+                }
             } else {
                 setError("Ocorreu um erro inesperado. Tente novamente mais tarde.");
             }
@@ -95,7 +143,6 @@ export function SignIn() {
                             className="border-b-2 border-teal-500 bg-transparent pl-10 text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus-visible:ring-0"
                             placeholder="seu@email.com"
                             type="email"
-                            // 5. Corrigido: o nome aqui deve ser 'username', igual no schema Zod
                             {...register("username")} 
                         />
                     </div>
@@ -114,7 +161,6 @@ export function SignIn() {
                             className="border-b-2 border-teal-500 bg-transparent pl-10 text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus-visible:ring-0"
                             placeholder="Sua senha"
                             type="password"
-                            // 5. Corrigido: o nome aqui deve ser 'password', igual no schema Zod
                             {...register("password")}
                         />
                     </div>
@@ -128,7 +174,7 @@ export function SignIn() {
                     className="w-full rounded-lg bg-gradient-to-r from-teal-600 to-teal-700 font-semibold text-white shadow-md hover:from-teal-700 hover:to-teal-800"
                     type="submit"
                 >
-                    Entrar
+                    {isSubmitting ? "Entrando..." : "Entrar"}
                 </Button>
             </form>
         </div>
