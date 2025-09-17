@@ -1,12 +1,15 @@
 import { Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { authApi } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
-export default function PrivateRoute({ children }: PrivateRouteProps) {
+// Usamos React.memo para evitar que o componente execute a lógica novamente
+// se ele for re-renderizado por um componente pai sem que suas props mudem.
+const PrivateRoute: React.FC<PrivateRouteProps> = React.memo(({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -16,30 +19,29 @@ export default function PrivateRoute({ children }: PrivateRouteProps) {
         const token = localStorage.getItem('token');
         
         if (!token) {
-          console.log('Token não encontrado');
+          // Não há necessidade de log aqui, o redirecionamento é suficiente
           setIsAuthenticated(false);
-          setIsLoading(false);
           return;
         }
 
-        // Configurar o header de autorização
+        // Configura o header de autorização para a chamada de verificação
         authApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        // Tentar buscar dados do usuário atual para validar o token
-        const response = await authApi.get('/api/v1/usuarios/me');
-        const userData = response.data;
+        // Valida o token buscando os dados do usuário
+        // Usar '/usuarios/me' é uma ótima prática de validação
+        await authApi.get('/api/v1/usuarios/me');
         
-        console.log('Usuário autenticado:', userData.nome);
-        
+        // Se a chamada acima for bem-sucedida, o token é válido
         setIsAuthenticated(true);
 
-      } catch (error) {
-        console.error('Erro na autenticação:', error);
+      } catch (error: any) {
+        console.error('Falha na validação do token:', error.response?.data?.detail || error.message);
+        toast.error("Sessão inválida ou expirada", {
+          description: "Por favor, faça o login novamente.",
+        });
         
-        // Limpar dados de autenticação inválidos
+        // Limpa qualquer dado de autenticação inválido
         localStorage.removeItem('token');
-        localStorage.removeItem('token_type');
-        localStorage.removeItem('user');
         delete authApi.defaults.headers.common['Authorization'];
         
         setIsAuthenticated(false);
@@ -49,24 +51,26 @@ export default function PrivateRoute({ children }: PrivateRouteProps) {
     };
 
     checkAuthentication();
+    // O array de dependências vazio [] garante que esta verificação rode apenas uma vez,
+    // quando o componente é montado.
   }, []);
 
-  // Mostrar loading enquanto verifica autenticação
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-        <span className="ml-2 text-slate-600">Verificando autenticação...</span>
+        <span className="ml-3 text-gray-700">Verificando acesso...</span>
       </div>
     );
   }
 
-  // Redirecionar para login se não autenticado
   if (!isAuthenticated) {
-    console.log('Usuário não autenticado, redirecionando para login');
+    // Redireciona para a página de login se a autenticação falhar
     return <Navigate to="/login" replace />;
   }
 
-  console.log('Acesso autorizado');
+  // Se a autenticação for bem-sucedida, renderiza o conteúdo protegido
   return <>{children}</>;
-}
+});
+
+export default PrivateRoute;
