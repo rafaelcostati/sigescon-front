@@ -44,12 +44,13 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const ACCEPT_STRING = ALLOWED_FILE_TYPES.join(',');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB em bytes
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB por arquivo
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
 
 export function NovoContrato() {
     const navigate = useNavigate();
-    // ALTERADO: Agora apenas um arquivo único
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    // ALTERADO: Volta para múltiplos arquivos
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
     // Estados para os dropdowns
     const [contratados, setContratados] = useState<any[]>([]);
@@ -181,9 +182,10 @@ export function NovoContrato() {
                 throw new Error("Token de autenticação não encontrado. Faça login novamente.");
             }
 
-            // Verificar tamanho do arquivo novamente antes do upload
-            if (selectedFile && selectedFile.size > MAX_FILE_SIZE) {
-                throw new Error(`Arquivo muito grande (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB). Máximo permitido: 10 MB`);
+            // Verificar tamanho total dos arquivos antes do upload
+            const totalSize = getTotalFileSize(selectedFiles);
+            if (totalSize > MAX_TOTAL_SIZE) {
+                throw new Error(`Tamanho total dos arquivos excede o limite de 50MB (atual: ${(totalSize / 1024 / 1024).toFixed(2)} MB)`);
             }
 
             const formData = new FormData();
@@ -206,25 +208,29 @@ export function NovoContrato() {
                 }
             });
 
-            // Adicionar arquivo único se selecionado
-            if (selectedFile) {
-                console.log("Adicionando arquivo ao FormData:", {
-                    name: selectedFile.name,
-                    size: selectedFile.size,
-                    type: selectedFile.type
+            // Adicionar múltiplos arquivos se selecionados
+            if (selectedFiles.length > 0) {
+                console.log("Adicionando arquivos ao FormData:", selectedFiles.map(f => ({
+                    name: f.name,
+                    size: f.size,
+                    type: f.type
+                })));
+                
+                selectedFiles.forEach(file => {
+                    formData.append("documento_contrato", file);
                 });
-                formData.append("documento_contrato", selectedFile);
             }
 
             console.log("Enviando FormData com token:", token.substring(0, 20) + "...");
             
-            // Log dos dados que estão sendo enviados (sem o arquivo)
+            // Log dos dados que estão sendo enviados
             const formDataEntries: any = {};
             formData.forEach((value, key) => {
-                if (key !== "documento_contrato") {
-                    formDataEntries[key] = value;
+                if (key === "documento_contrato") {
+                    if (!formDataEntries[key]) formDataEntries[key] = [];
+                    formDataEntries[key].push(`[FILE: ${(value as File).name}]`);
                 } else {
-                    formDataEntries[key] = `[FILE: ${selectedFile?.name}]`;
+                    formDataEntries[key] = value;
                 }
             });
             console.log("Dados do formulário:", formDataEntries);
@@ -287,56 +293,89 @@ export function NovoContrato() {
         }
     }
 
-    // Função para manipular seleção de arquivo único
+    // Função para calcular tamanho total dos arquivos
+    const getTotalFileSize = (files: File[]) => {
+        return files.reduce((total, file) => total + file.size, 0);
+    };
+
+    // Função para manipular seleção de múltiplos arquivos
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         console.log("Arquivos selecionados:", files);
         
         if (files && files.length > 0) {
-            const file = files[0];
-            console.log("Arquivo selecionado:", {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB"
+            const newFiles = Array.from(files);
+            const invalidFiles: string[] = [];
+            const largeFiles: string[] = [];
+            const validFiles: File[] = [];
+
+            newFiles.forEach(file => {
+                console.log("Processando arquivo:", {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB"
+                });
+
+                // Verificar tamanho individual do arquivo
+                if (file.size > MAX_FILE_SIZE) {
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    largeFiles.push(`${file.name} (${sizeMB} MB)`);
+                    return;
+                }
+
+                // Verificar tipo de arquivo
+                if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                    invalidFiles.push(file.name);
+                    return;
+                }
+
+                validFiles.push(file);
             });
-            
-            // Verificar o tamanho do arquivo
-            if (file.size > MAX_FILE_SIZE) {
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                toast.error(`Arquivo muito grande (${sizeMB} MB). Tamanho máximo permitido: 10 MB`);
+
+            // Verificar tamanho total com arquivos existentes + novos arquivos válidos
+            const currentTotalSize = getTotalFileSize(selectedFiles);
+            const newTotalSize = currentTotalSize + getTotalFileSize(validFiles);
+
+            if (newTotalSize > MAX_TOTAL_SIZE) {
+                const totalMB = (newTotalSize / 1024 / 1024).toFixed(2);
+                toast.error(`Tamanho total excede o limite de 50MB (atual: ${totalMB} MB). Remova alguns arquivos.`);
                 event.target.value = '';
-                setSelectedFile(null);
                 return;
             }
-            
-            // Verificar se o tipo de arquivo é permitido
-            if (ALLOWED_FILE_TYPES.includes(file.type)) {
-                setSelectedFile(file);
-                console.log("Arquivo aceito e definido no state");
-                toast.success(`Arquivo "${file.name}" selecionado com sucesso!`);
-            } else {
-                console.log("Tipo de arquivo não permitido:", file.type);
-                toast.error(`Tipo de arquivo não permitido: ${file.type}. Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS`);
-                event.target.value = '';
-                setSelectedFile(null);
+
+            // Mostrar mensagens de erro para arquivos inválidos
+            if (invalidFiles.length > 0) {
+                toast.error(`Tipos de arquivo não permitidos: ${invalidFiles.join(', ')}`);
             }
-        } else {
-            console.log("Nenhum arquivo selecionado");
+            if (largeFiles.length > 0) {
+                toast.error(`Arquivos muito grandes (máx. 10MB cada): ${largeFiles.join(', ')}`);
+            }
+
+            // Adicionar arquivos válidos
+            if (validFiles.length > 0) {
+                setSelectedFiles(prev => [...prev, ...validFiles]);
+                toast.success(`${validFiles.length} arquivo(s) adicionado(s) com sucesso!`);
+                console.log("Arquivos válidos adicionados:", validFiles.map(f => f.name));
+            }
+
+            // Limpar input
+            event.target.value = '';
         }
     };
 
-    const handleRemoveFile = () => {
-        console.log("Removendo arquivo:", selectedFile?.name);
-        setSelectedFile(null);
+    const handleRemoveFile = (indexToRemove: number) => {
+        const fileToRemove = selectedFiles[indexToRemove];
+        console.log("Removendo arquivo:", fileToRemove?.name);
         
-        // Encontrar e limpar o input file de forma mais robusta
-        const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
-        fileInputs.forEach(input => {
-            input.value = '';
-        });
-        
-        toast.info("Arquivo removido");
+        setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+        toast.info(`Arquivo "${fileToRemove?.name}" removido`);
+    };
+
+    const handleClearAllFiles = () => {
+        console.log("Removendo todos os arquivos");
+        setSelectedFiles([]);
+        toast.info("Todos os arquivos foram removidos");
     };
 
     return (
@@ -530,71 +569,98 @@ export function NovoContrato() {
                     />
                 </div>
 
-                {/* Interface de upload para arquivo único */}
+                {/* Interface de upload para múltiplos arquivos */}
                 <div className="lg:col-span-4">
-                    <label className="block font-medium mb-2">Documento do Contrato</label>
+                    <label className="block font-medium mb-2">Documentos do Contrato</label>
                     <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                        {selectedFile ? (
-                            <div className="mb-4 p-4 bg-white rounded-lg border">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                            <p className="text-sm font-medium text-gray-700">Arquivo selecionado</p>
-                                        </div>
-                                        <p className="text-sm text-gray-900 font-medium truncate pr-2" title={selectedFile.name}>
-                                            {selectedFile.name}
-                                        </p>
-                                        <div className="flex gap-4 mt-1">
-                                            <p className="text-xs text-gray-500">
-                                                Tamanho: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                Tipo: {selectedFile.type || 'Desconhecido'}
-                                            </p>
-                                        </div>
+                        {selectedFiles.length > 0 ? (
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="text-sm font-medium text-gray-700">
+                                        Arquivos selecionados ({selectedFiles.length})
+                                    </h4>
+                                    <div className="flex gap-2">
+                                        <span className="text-xs text-gray-500">
+                                            Total: {(getTotalFileSize(selectedFiles) / 1024 / 1024).toFixed(2)} MB / 50 MB
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearAllFiles}
+                                            className="text-xs text-red-500 hover:text-red-700 underline"
+                                        >
+                                            Remover todos
+                                        </button>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveFile}
-                                        className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                        aria-label={`Remover ${selectedFile.name}`}
-                                        title="Remover arquivo"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                </div>
+                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {selectedFiles.map((file, index) => (
+                                        <div key={`${file.name}-${index}`} className="p-3 bg-white rounded-lg border flex justify-between items-center">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                                                    <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                                                        {file.name}
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-4 text-xs text-gray-500">
+                                                    <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                                    <span>{file.type || 'Tipo desconhecido'}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveFile(index)}
+                                                className="ml-3 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded flex-shrink-0"
+                                                aria-label={`Remover ${file.name}`}
+                                                title="Remover arquivo"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         ) : (
                             <div className="text-center py-4">
                                 <Upload size={32} className="mx-auto text-gray-400 mb-2" />
                                 <p className="text-sm text-gray-600 mb-1">Nenhum arquivo selecionado</p>
-                                <p className="text-xs text-gray-500">Clique no botão abaixo para selecionar</p>
+                                <p className="text-xs text-gray-500">Selecione um ou múltiplos arquivos</p>
                             </div>
                         )}
 
                         <div className="mt-4">
                             <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 w-full transition-colors">
                                 <Upload size={18} />
-                                {selectedFile ? "Alterar Arquivo" : "Selecionar Arquivo"}
+                                {selectedFiles.length > 0 ? "Adicionar Mais Arquivos" : "Selecionar Arquivos"}
                                 <input
                                     type="file"
+                                    multiple
                                     className="hidden"
                                     onChange={handleFileChange}
                                     accept={ACCEPT_STRING}
                                 />
                             </label>
-                            <div className="mt-2 text-center">
+                            <div className="mt-3 text-center">
                                 <p className="text-xs text-gray-500">
                                     Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Tamanho máximo: 10MB
-                                </p>
-                                {selectedFile && (
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        ✓ Arquivo válido - Pronto para upload
-                                    </p>
+                                <div className="flex justify-center gap-4 mt-1 text-xs text-gray-400">
+                                    <span>Máx. 10MB por arquivo</span>
+                                    <span>•</span>
+                                    <span>Total máximo: 50MB</span>
+                                </div>
+                                {selectedFiles.length > 0 && (
+                                    <div className="mt-2 text-xs">
+                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div 
+                                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                                style={{ width: `${Math.min((getTotalFileSize(selectedFiles) / MAX_TOTAL_SIZE) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-green-600 mt-1">
+                                            ✓ {selectedFiles.length} arquivo(s) pronto(s) para upload
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         </div>
