@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -8,17 +8,27 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+} from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
 import { UserRoundPen } from 'lucide-react';
 
-// --- Funções auxiliares para CPF ---
+// --- Importa as funções e tipos da API central ---
+import { 
+    getUserById, 
+    updateUser, 
+    getPerfis,
+    type Perfil,
+    type UserDetail,
+    type EditUserPayload
+} from '../../lib/api';
+
+// --- Funções auxiliares e Schemas (mantidos como estavam) ---
 function validateCPF(cpf: string): boolean {
     cpf = cpf.replace(/\D/g, '');
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
@@ -40,7 +50,6 @@ const cpfMask = (value: string = '') =>
         .replace(/(\d{3})(\d)/, '$1.$2')
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 
-// --- Schema do formulário (senha opcional) ---
 const editUserFormSchema = z.object({
     nome: z.string().min(1, "O nome não pode ficar em branco").optional(),
     email: z.string().email("Formato de e-mail inválido").optional(),
@@ -57,18 +66,6 @@ const editUserFormSchema = z.object({
 });
 type EditUserForm = z.infer<typeof editUserFormSchema>;
 
-interface Perfil {
-    id: number;
-    nome: string;
-}
-interface UserData {
-    id: number;
-    nome: string;
-    email: string;
-    cpf: string;
-    matricula?: string;
-    perfil_id: number;
-}
 interface UserEditarProps {
     user: { id: number };
     onUserUpdated: () => void;
@@ -77,123 +74,91 @@ interface UserEditarProps {
 export function UserEditar({ user, onUserUpdated }: UserEditarProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [perfis, setPerfis] = useState<Perfil[]>([]);
-    const [originalUserData, setOriginalUserData] = useState<Partial<UserData>>({});
+    const [originalUserData, setOriginalUserData] = useState<UserDetail | null>(null);
 
     const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<EditUserForm>({
         resolver: zodResolver(editUserFormSchema),
     });
 
-    // --- Carregar dados do usuário + perfis ---
+    // Efeito para carregar os dados da API quando o modal abrir
     useEffect(() => {
         if (!isDialogOpen) return;
 
         const loadDataForEdit = async () => {
-            const token = localStorage.getItem('token');
             try {
-                const [perfisResponse, userResponse] = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}/perfis`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }),
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios/${user.id}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    })
+                // Busca perfis e dados do usuário em paralelo
+                const [perfisData, userData] = await Promise.all([
+                    getPerfis(),
+                    getUserById(user.id)
                 ]);
 
-                if (!perfisResponse.ok || !userResponse.ok) {
-                    throw new Error('Falha ao carregar dados para edição.');
-                }
-
-                const perfisData: Perfil[] = await perfisResponse.json();
-                const userData: UserData = await userResponse.json();
-
                 setPerfis(perfisData);
-                setOriginalUserData(userData); // 👈 apenas seta os dados
-            } catch (error) {
+                setOriginalUserData(userData); // Armazena os dados originais completos
+
+            } catch (error: any) {
                 console.error("Erro ao carregar dados:", error);
-                toast.error("Não foi possível carregar os dados do usuário.");
-                setIsDialogOpen(false);
+                toast.error(error.message || "Não foi possível carregar os dados do usuário.");
+                setIsDialogOpen(false); // Fecha o modal em caso de erro
             }
         };
 
         loadDataForEdit();
     }, [isDialogOpen, user.id]);
 
-    // --- Garante reset assim que originalUserData mudar ---
+    // Efeito para popular o formulário APÓS os dados serem carregados
     useEffect(() => {
-        if (originalUserData && Object.keys(originalUserData).length > 0) {
+        if (originalUserData) {
             reset({
                 nome: originalUserData.nome ?? "",
                 email: originalUserData.email ?? "",
                 cpf: originalUserData.cpf ?? "",
                 matricula: originalUserData.matricula ?? "",
                 perfil_id: String(originalUserData.perfil_id ?? ""),
-                senha: "", // senha sempre vazia
+                senha: "",
             });
         }
     }, [originalUserData, reset]);
 
-    // --- Enviar PATCH apenas dos campos alterados ---
+
+    // Lida com a submissão do formulário de atualização
     async function handleUpdate(data: EditUserForm) {
-        const changedFields: Partial<EditUserForm> = {};
+        if (!originalUserData) return; // Proteção extra
 
-        for (const key in data) {
-            const formKey = key as keyof EditUserForm;
-            const value = data[formKey];
+        const changedFields: EditUserPayload = {};
 
-            if (formKey === "senha") {
-                if (data.senha && data.senha.trim() !== "") {
-                    changedFields.senha = data.senha;
-                }
-                continue;
-            }
-
-            if (
-                value !== undefined &&
-                String(value) !== String(originalUserData[formKey as keyof UserData] ?? "")
-            ) {
-                changedFields[formKey] = value;
-            }
+        // Compara os dados do formulário com os originais para enviar apenas o que mudou.
+        if (data.nome !== undefined && data.nome !== originalUserData.nome) changedFields.nome = data.nome;
+        if (data.email !== undefined && data.email !== originalUserData.email) changedFields.email = data.email;
+        if (data.cpf !== undefined && data.cpf !== originalUserData.cpf) changedFields.cpf = data.cpf;
+        if (data.matricula !== undefined && data.matricula !== (originalUserData.matricula ?? "")) changedFields.matricula = data.matricula;
+        if (data.perfil_id !== undefined && data.perfil_id !== String(originalUserData.perfil_id)) {
+            changedFields.perfil_id = parseInt(data.perfil_id, 10);
+        }
+        if (data.senha && data.senha.trim() !== "") {
+            changedFields.senha = data.senha;
         }
 
         if (Object.keys(changedFields).length === 0) {
             toast.info("Nenhuma alteração foi feita.");
+            setIsDialogOpen(false);
             return;
         }
 
-        const payload: { [key: string]: any } = { ...changedFields };
-        if (payload.perfil_id) {
-            payload.perfil_id = parseInt(payload.perfil_id, 10);
-        }
-
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/${user.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                toast.success('Usuário atualizado com sucesso!');
-                setIsDialogOpen(false);
-                onUserUpdated();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Erro ao atualizar usuário.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro no servidor. Tente novamente.');
+            await updateUser(user.id, changedFields);
+            toast.success('Usuário atualizado com sucesso!');
+            setIsDialogOpen(false);
+            onUserUpdated();
+        } catch (error: any) {
+            console.error('Erro ao atualizar usuário:', error);
+            toast.error(error.message || 'Erro ao atualizar usuário.');
         }
     }
 
     return (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="sm" className="p-2 h-8 w-8">
                     <UserRoundPen className="h-4 w-4 text-indigo-700" />
                 </Button>
             </DialogTrigger>
@@ -300,3 +265,4 @@ export function UserEditar({ user, onUserUpdated }: UserEditarProps) {
         </Dialog>
     );
 }
+

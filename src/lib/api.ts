@@ -83,6 +83,23 @@ export type NewUserPayload = {
     matricula?: string;
 };
 
+export type UserDetail = {
+    id: number;
+    nome: string;
+    email: string;
+    cpf: string;
+    matricula?: string;
+    perfil_id: number;
+};
+export type EditUserPayload = Partial<{
+    nome: string;
+    email: string;
+    senha: string;
+    perfil_id: number;
+    cpf: string;
+    matricula: string;
+}>;
+
 
 // --- FUNÇÕES AUXILIARES ---
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -181,6 +198,16 @@ export function createUser(userData: NewUserPayload): Promise<User> {
 export function deleteUser(userId: number): Promise<void> {
     return api<void>(`/usuarios/${userId}`, {
         method: 'DELETE',
+    });
+}
+
+export function getUserById(userId: number): Promise<UserDetail> {
+    return api<UserDetail>(`/usuarios/${userId}`);
+}
+export function updateUser(userId: number, userData: EditUserPayload): Promise<User> {
+    return api<User>(`/usuarios/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(userData),
     });
 }
 
