@@ -31,7 +31,7 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
-// Tipos de arquivo permitidos (MIME types)
+// Constantes para arquivo
 const ALLOWED_FILE_TYPES = [
     'application/pdf',
     'application/msword',
@@ -44,6 +44,7 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const ACCEPT_STRING = ALLOWED_FILE_TYPES.join(',');
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB em bytes
 
 export function NovoContrato() {
     const navigate = useNavigate();
@@ -180,6 +181,11 @@ export function NovoContrato() {
                 throw new Error("Token de autenticação não encontrado. Faça login novamente.");
             }
 
+            // Verificar tamanho do arquivo novamente antes do upload
+            if (selectedFile && selectedFile.size > MAX_FILE_SIZE) {
+                throw new Error(`Arquivo muito grande (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB). Máximo permitido: 10 MB`);
+            }
+
             const formData = new FormData();
 
             // Adicionar todos os campos do formulário
@@ -202,6 +208,11 @@ export function NovoContrato() {
 
             // Adicionar arquivo único se selecionado
             if (selectedFile) {
+                console.log("Adicionando arquivo ao FormData:", {
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.type
+                });
                 formData.append("documento_contrato", selectedFile);
             }
 
@@ -212,9 +223,15 @@ export function NovoContrato() {
             formData.forEach((value, key) => {
                 if (key !== "documento_contrato") {
                     formDataEntries[key] = value;
+                } else {
+                    formDataEntries[key] = `[FILE: ${selectedFile?.name}]`;
                 }
             });
             console.log("Dados do formulário:", formDataEntries);
+
+            // Criar um controller para poder cancelar a requisição se necessário
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
 
             const response = await fetch(`${import.meta.env.VITE_API_URL}/contratos`, {
                 method: "POST",
@@ -223,17 +240,26 @@ export function NovoContrato() {
                     'Authorization': `Bearer ${token}`,
                     // Não definir Content-Type para FormData - o browser define automaticamente
                 },
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
             console.log("Resposta da API:", response.status, response.statusText);
 
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error("Sessão expirada. Faça login novamente.");
+                } else if (response.status === 413) {
+                    throw new Error("Arquivo muito grande. Reduza o tamanho do arquivo e tente novamente.");
+                } else if (response.status === 422) {
+                    const errorData = await response.json().catch(() => ({ message: "Dados inválidos" }));
+                    throw new Error(`Dados inválidos: ${errorData.message || errorData.detail || "Verifique os campos obrigatórios"}`);
+                } else if (response.status >= 500) {
+                    throw new Error("Erro interno do servidor. Tente novamente em alguns minutos.");
                 }
                 
                 const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
-                throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+                throw new Error(errorData.message || errorData.detail || `Erro ${response.status}: ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -245,9 +271,14 @@ export function NovoContrato() {
         } catch (err: any) {
             console.error("Erro ao criar contrato:", err);
             
-            if (err.message.includes("Sessão expirada") || err.message.includes("Token")) {
+            // Tratamento específico para diferentes tipos de erro
+            if (err.name === 'AbortError') {
+                toast.error("Timeout: A requisição demorou muito para ser processada. Tente novamente.", { id: toastId });
+            } else if (err.message.includes("Sessão expirada") || err.message.includes("Token")) {
                 toast.error(err.message, { id: toastId });
                 setTimeout(() => navigate("/login"), 2000);
+            } else if (err.message.includes("Failed to fetch") || err.message.includes("ERR_CONNECTION_RESET")) {
+                toast.error("Erro de conexão. Verifique sua internet e tente novamente.", { id: toastId });
             } else {
                 toast.error(err.message || "Erro ao criar contrato", { id: toastId });
             }
@@ -256,26 +287,56 @@ export function NovoContrato() {
         }
     }
 
-    // ALTERADO: Função para manipular seleção de arquivo único
+    // Função para manipular seleção de arquivo único
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            const file = event.target.files[0];
+        const files = event.target.files;
+        console.log("Arquivos selecionados:", files);
+        
+        if (files && files.length > 0) {
+            const file = files[0];
+            console.log("Arquivo selecionado:", {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB"
+            });
+            
+            // Verificar o tamanho do arquivo
+            if (file.size > MAX_FILE_SIZE) {
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                toast.error(`Arquivo muito grande (${sizeMB} MB). Tamanho máximo permitido: 10 MB`);
+                event.target.value = '';
+                setSelectedFile(null);
+                return;
+            }
             
             // Verificar se o tipo de arquivo é permitido
             if (ALLOWED_FILE_TYPES.includes(file.type)) {
                 setSelectedFile(file);
+                console.log("Arquivo aceito e definido no state");
+                toast.success(`Arquivo "${file.name}" selecionado com sucesso!`);
             } else {
-                toast.error("Tipo de arquivo não permitido. Por favor, selecione um arquivo válido.");
-                event.target.value = ''; // Limpar o input
+                console.log("Tipo de arquivo não permitido:", file.type);
+                toast.error(`Tipo de arquivo não permitido: ${file.type}. Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS`);
+                event.target.value = '';
+                setSelectedFile(null);
             }
+        } else {
+            console.log("Nenhum arquivo selecionado");
         }
     };
 
     const handleRemoveFile = () => {
+        console.log("Removendo arquivo:", selectedFile?.name);
         setSelectedFile(null);
-        // Limpar o input file
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
+        
+        // Encontrar e limpar o input file de forma mais robusta
+        const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
+        fileInputs.forEach(input => {
+            input.value = '';
+        });
+        
+        toast.info("Arquivo removido");
     };
 
     return (
@@ -469,45 +530,74 @@ export function NovoContrato() {
                     />
                 </div>
 
-                {/* ALTERADO: Interface de upload para arquivo único */}
+                {/* Interface de upload para arquivo único */}
                 <div className="lg:col-span-4">
-                    <label className="font-medium">Documento do Contrato</label>
-                    <div className="mt-2 p-4 border-2 border-dashed rounded-lg">
-                        {selectedFile && (
-                            <div className="mb-4 p-3 bg-gray-100 rounded-lg">
-                                <div className="flex justify-between items-center">
+                    <label className="block font-medium mb-2">Documento do Contrato</label>
+                    <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        {selectedFile ? (
+                            <div className="mb-4 p-4 bg-white rounded-lg border">
+                                <div className="flex justify-between items-start">
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-700">Arquivo selecionado:</p>
-                                        <p className="text-sm text-gray-600 truncate">{selectedFile.name}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <p className="text-sm font-medium text-gray-700">Arquivo selecionado</p>
+                                        </div>
+                                        <p className="text-sm text-gray-900 font-medium truncate pr-2" title={selectedFile.name}>
+                                            {selectedFile.name}
                                         </p>
+                                        <div className="flex gap-4 mt-1">
+                                            <p className="text-xs text-gray-500">
+                                                Tamanho: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                Tipo: {selectedFile.type || 'Desconhecido'}
+                                            </p>
+                                        </div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleRemoveFile}
-                                        className="ml-3 text-red-500 hover:text-red-700 p-1"
+                                        className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                                         aria-label={`Remover ${selectedFile.name}`}
+                                        title="Remover arquivo"
                                     >
-                                        <Trash2 size={16} />
+                                        <Trash2 size={18} />
                                     </button>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="text-center py-4">
+                                <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-600 mb-1">Nenhum arquivo selecionado</p>
+                                <p className="text-xs text-gray-500">Clique no botão abaixo para selecionar</p>
+                            </div>
                         )}
 
-                        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
-                            <Upload size={18} />
-                            {selectedFile ? "Alterar Arquivo" : "Selecionar Arquivo"}
-                            <input
-                                type="file"
-                                className="hidden"
-                                onChange={handleFileChange}
-                                accept={ACCEPT_STRING}
-                            />
-                        </label>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                            Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS
-                        </p>
+                        <div className="mt-4">
+                            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 w-full transition-colors">
+                                <Upload size={18} />
+                                {selectedFile ? "Alterar Arquivo" : "Selecionar Arquivo"}
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                    accept={ACCEPT_STRING}
+                                />
+                            </label>
+                            <div className="mt-2 text-center">
+                                <p className="text-xs text-gray-500">
+                                    Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Tamanho máximo: 10MB
+                                </p>
+                                {selectedFile && (
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        ✓ Arquivo válido - Pronto para upload
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
