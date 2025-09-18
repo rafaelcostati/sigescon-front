@@ -39,7 +39,6 @@ export const contratoSchema = z.object({
     status: z.object({ id: z.number(), nome: z.string() }).optional(),
 });
 export type Contrato = z.infer<typeof contratoSchema>;
-export type Modalidade = { id: number; nome: string; };
 export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
@@ -328,15 +327,63 @@ export function deleteContrato(id: number): Promise<void> {
     });
 }
 
+// --- Tipos para Modalidades ---
+export type Modalidade = {
+    id: number;
+    nome: string;
+};
+
+export type NewModalidadePayload = {
+    nome: string;
+};
+
+/**
+ * Busca a lista de todas as modalidades.
+ * GET /modalidades
+ */
+export function getModalidades(): Promise<Modalidade[]> {
+    return api<Modalidade[]>('/modalidades');
+}
+
+/**
+ * Cria uma nova modalidade.
+ * POST /modalidades
+ */
+export function createModalidade(payload: NewModalidadePayload): Promise<Modalidade> {
+    return api<Modalidade>('/modalidades', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Atualiza uma modalidade existente.
+ * PATCH /modalidades/{id}
+ */
+export function updateModalidade(id: number, payload: NewModalidadePayload): Promise<Modalidade> {
+    return api<Modalidade>(`/modalidades/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Deleta uma modalidade.
+ * DELETE /modalidades/{id}
+ */
+export function deleteModalidade(id: number): Promise<void> {
+    return api<void>(`/modalidades/${id}`, {
+        method: 'DELETE',
+    });
+}
+
 // ============================================================================
 // FUNÇÕES PARA OBTER DADOS PARA FORMULÁRIOS - Nenhuma alteração necessária
 // ============================================================================
 
 
 
-export function getModalidades(): Promise<Modalidade[]> {
-    return api<Modalidade[]>('/modalidades');
-}
+
 
 export function getStatus(): Promise<Status[]> {
     return api<Status[]>('/status');

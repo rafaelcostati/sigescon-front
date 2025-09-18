@@ -3,101 +3,60 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from 'react-hook-form';
+
+// --- Imports de UI ---
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Trash2, LoaderCircle, CirclePlus, Pencil } from "lucide-react";
+
+// --- Imports da nossa API centralizada ---
+import {
+    getModalidades,
+    createModalidade,
+    updateModalidade,
+    deleteModalidade,
+    type Modalidade,
+} from "@/lib/api";
 
 //================================================================================
 // SECTION: TIPOS E SCHEMAS
 //================================================================================
 
-// --- Tipo para a Modalidade ---
-export type Modalidade = {
-    id: number;
-    nome: string;
-};
-
-// --- Schema Zod para o formulário de modalidade ---
 const modalidadeSchema = z.object({
     nome: z.string().min(3, "O nome deve ter pelo menos 3 caracteres."),
 });
-
 type ModalidadeForm = z.infer<typeof modalidadeSchema>;
 
 //================================================================================
-// SECTION: COMPONENTE NOVA MODALIDADE (MODAL)
+// SECTION: COMPONENTES FILHOS (REFATORADOS)
 //================================================================================
 
 function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+    const [isOpen, setIsOpen] = useState(false);
     const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ModalidadeForm>({
         resolver: zodResolver(modalidadeSchema),
     });
 
-    async function handleCriarModalidade(data: ModalidadeForm) {
+    async function handleCreate(data: ModalidadeForm) {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/modalidades`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(data),
-            });
-
-            if (response.status === 201) {
-                toast.success('Modalidade cadastrada com sucesso.');
-                setIsDialogOpen(false);
-                reset();
-                onModalidadeAdded();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Erro ao cadastrar modalidade.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro no servidor. Tente novamente.');
+            await createModalidade(data);
+            toast.success('Modalidade cadastrada com sucesso.');
+            setIsOpen(false);
+            reset();
+            onModalidadeAdded();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao cadastrar modalidade.');
         }
     }
 
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="default">
                     <CirclePlus className="h-4 w-4" />
@@ -105,12 +64,10 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
-                <form onSubmit={handleSubmit(handleCriarModalidade)}>
+                <form onSubmit={handleSubmit(handleCreate)}>
                     <DialogHeader>
                         <DialogTitle>Nova Modalidade</DialogTitle>
-                        <DialogDescription>
-                            Preencha o nome para cadastrar uma nova modalidade.
-                        </DialogDescription>
+                        <DialogDescription>Preencha o nome para cadastrar.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -123,7 +80,7 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
                     </div>
                     <DialogFooter>
                         <Button disabled={isSubmitting} type="submit">
-                            {isSubmitting ? 'Salvando...' : 'Salvar Modalidade'}
+                            {isSubmitting ? 'Salvando...' : 'Salvar'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -132,56 +89,38 @@ function NovaModalidade({ onModalidadeAdded }: { onModalidadeAdded: () => void }
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE EDITAR MODALIDADE
-//================================================================================
-
 function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Modalidade, onModalidadeUpdated: () => void }) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ModalidadeForm>({
         resolver: zodResolver(modalidadeSchema),
-        defaultValues: {
-            nome: modalidade.nome,
-        }
+        defaultValues: { nome: modalidade.nome }
     });
 
     useEffect(() => {
-        if (isDialogOpen) {
+        if (isOpen) {
             reset({ nome: modalidade.nome });
         }
-    }, [isDialogOpen, modalidade, reset]);
+    }, [isOpen, modalidade, reset]);
 
     async function handleUpdate(data: ModalidadeForm) {
         if (data.nome === modalidade.nome) {
             toast.info("Nenhuma alteração foi feita.");
-            setIsDialogOpen(false);
+            setIsOpen(false);
             return;
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/modalidades/${modalidade.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(data),
-            });
-
-            if (response.ok) {
-                toast.success('Modalidade atualizada com sucesso!');
-                setIsDialogOpen(false);
-                onModalidadeUpdated();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Erro ao atualizar modalidade.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro no servidor. Tente novamente.');
+            await updateModalidade(modalidade.id, data);
+            toast.success('Modalidade atualizada com sucesso!');
+            setIsOpen(false);
+            onModalidadeUpdated();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao atualizar.');
         }
     }
 
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="p-2 h-8 w-8">
                     <Pencil className="w-4 h-4" />
@@ -213,32 +152,17 @@ function EditarModalidade({ modalidade, onModalidadeUpdated }: { modalidade: Mod
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE EXCLUIR MODALIDADE
-//================================================================================
-
 function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalidade: Modalidade, onModalidadeDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/modalidades/${modalidade.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-
-            if (response.status === 204) {
-                toast.success(`Modalidade "${modalidade.nome}" excluída com sucesso.`);
-                onModalidadeDeleted();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Falha ao excluir modalidade.');
-            }
-        } catch (error) {
-            console.error('Erro ao excluir modalidade:', error);
-            toast.error('Ocorreu um erro de rede. Tente novamente.');
+            await deleteModalidade(modalidade.id);
+            toast.success(`Modalidade "${modalidade.nome}" excluída com sucesso.`);
+            onModalidadeDeleted();
+        } catch (error: any) {
+            toast.error(error.message || 'Falha ao excluir modalidade.');
         } finally {
             setIsDeleting(false);
         }
@@ -255,7 +179,7 @@ function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalida
                 <AlertDialogHeader>
                     <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Esta ação irá excluir a modalidade <span className="font-bold">{modalidade.nome}</span>. Esta ação não pode ser desfeita.
+                        Esta ação irá excluir a modalidade <span className="font-bold">{modalidade.nome}</span> e não pode ser desfeita.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -269,32 +193,20 @@ function ExcluirModalidadeDialog({ modalidade, onModalidadeDeleted }: { modalida
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE CARD MÓVEL
-//================================================================================
-
-function ModalidadeMobileCard({ modalidade, onModalidadeUpdated, onModalidadeDeleted }: { 
-    modalidade: Modalidade, 
-    onModalidadeUpdated: () => void, 
-    onModalidadeDeleted: () => void 
-}) {
+function ModalidadeMobileCard({ modalidade, onModalidadeUpdated, onModalidadeDeleted }: { modalidade: Modalidade, onModalidadeUpdated: () => void, onModalidadeDeleted: () => void }) {
     return (
         <Card className="w-full">
-            <CardHeader className="pb-3">
+            <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                         <CardTitle className="text-lg truncate">{modalidade.nome}</CardTitle>
-                        <CardDescription className="text-sm text-muted-foreground">
-                            ID: {modalidade.id}
-                        </CardDescription>
+                        <CardDescription>ID: {modalidade.id}</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                        Modalidade
-                    </Badge>
+                    <Badge variant="secondary">Modalidade</Badge>
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="flex gap-2 pt-3">
+                <div className="flex gap-2 pt-2">
                     <EditarModalidade modalidade={modalidade} onModalidadeUpdated={onModalidadeUpdated} />
                     <ExcluirModalidadeDialog modalidade={modalidade} onModalidadeDeleted={onModalidadeDeleted} />
                 </div>
@@ -303,55 +215,22 @@ function ModalidadeMobileCard({ modalidade, onModalidadeUpdated, onModalidadeDel
     );
 }
 
+
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE)
+// SECTION: COMPONENTE PRINCIPAL (LISTAGEM)
 //================================================================================
 
 export default function ModalidadesDataTable() {
-    const [modalidades, setModalidades] = useState<Modalidade[]>([]);    
+    const [modalidades, setModalidades] = useState<Modalidade[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchModalidades = useCallback(async (searchQuery = "") => {
+    const fetchModalidades = useCallback(async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado.");
-                setLoading(false);
-                return;
-            }
-
-            const modalidadesUrl = new URL(`${import.meta.env.VITE_API_URL}/modalidades`);
-            if (searchQuery) {
-                modalidadesUrl.searchParams.append('nome', searchQuery);
-            }
-
-            const response = await fetch(modalidadesUrl.toString(), {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                throw new Error('Não autorizado');
-            }
-
-            if (!response.ok) throw new Error('Falha ao buscar modalidades.');
-
-            const data: Modalidade[] = await response.json();
-            
-            // Filtra no frontend se a API não suportar filtro por nome
-            const filteredModalidades = searchQuery 
-                ? data.filter(modalidade => 
-                    modalidade.nome.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                : data;
-                
-            setModalidades(filteredModalidades);
-        } catch (error) {
-            console.error("Erro ao carregar modalidades:", error);
-            if (!(error instanceof Error && error.message === 'Não autorizado')) {
-                toast.error("Não foi possível carregar a lista de modalidades.");
-            }
+            const data = await getModalidades();
+            setModalidades(data);
+        } catch (error: any) {
+            toast.error(error.message || "Não foi possível carregar as modalidades.");
         } finally {
             setLoading(false);
         }
@@ -360,7 +239,6 @@ export default function ModalidadesDataTable() {
     useEffect(() => {
         fetchModalidades();
     }, [fetchModalidades]);
-    
 
     if (loading) {
         return (
@@ -373,67 +251,48 @@ export default function ModalidadesDataTable() {
 
     return (
         <div className="w-full mx-auto p-6">
-            {/* Barra de Filtro e Ações */}
-            <div className="flex items-center justify-between py-4 gap-4">
+            <div className="flex items-center justify-between py-4">
                 <h1 className="text-2xl font-bold">Gerenciar Modalidades</h1>
-                <NovaModalidade onModalidadeAdded={() => fetchModalidades()} />
+                <NovaModalidade onModalidadeAdded={fetchModalidades} />
             </div>
 
             {modalidades.length === 0 ? (
                 <div className="text-center py-10">
-                    <p className="text-gray-500 dark:text-gray-300">Nenhuma modalidade encontrada.</p>
+                    <p className="text-gray-500">Nenhuma modalidade encontrada.</p>
                 </div>
             ) : (
                 <>
-                    {/* DataTable para telas maiores */}
-                    <div className="hidden md:block">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="font-semibold">Nome</TableHead>
-                                        <TableHead className="font-semibold text-end pr-8">Ações</TableHead>
+                    <div className="hidden md:block rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50">
+                                    <TableHead className="font-semibold">Nome</TableHead>
+                                    <TableHead className="font-semibold text-end pr-8">Ações</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {modalidades.map((modalidade, index) => (
+                                    <TableRow key={modalidade.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                                        <TableCell className="font-medium">{modalidade.nome}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <EditarModalidade modalidade={modalidade} onModalidadeUpdated={fetchModalidades} />
+                                                <ExcluirModalidadeDialog modalidade={modalidade} onModalidadeDeleted={fetchModalidades} />
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {modalidades.map((modalidade, index) => (
-                                        <TableRow 
-                                            key={modalidade.id} 
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
-                                        >
-                                            
-                                            <TableCell className="font-medium">
-                                                {modalidade.nome}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <EditarModalidade 
-                                                        modalidade={modalidade} 
-                                                        onModalidadeUpdated={() => fetchModalidades()} 
-                                                    />
-                                                    <ExcluirModalidadeDialog 
-                                                        modalidade={modalidade} 
-                                                        onModalidadeDeleted={() => fetchModalidades()} 
-                                                    />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
 
-                    {/* Cards para telas menores */}
                     <div className="md:hidden space-y-4">
                         {modalidades.map((modalidade) => (
                             <ModalidadeMobileCard
                                 key={modalidade.id}
                                 modalidade={modalidade}
-                                onModalidadeUpdated={() => fetchModalidades()}
-                                onModalidadeDeleted={() => fetchModalidades()}
+                                onModalidadeUpdated={fetchModalidades}
+                                onModalidadeDeleted={fetchModalidades}
                             />
                         ))}
                     </div>
@@ -442,3 +301,4 @@ export default function ModalidadesDataTable() {
         </div>
     );
 }
+
