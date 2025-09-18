@@ -44,6 +44,8 @@ import { jwtDecode } from "jwt-decode";
 import { Pencil, PlusCircle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Importar as funções da API
 import {
@@ -51,7 +53,6 @@ import {
     deleteContrato,
     getContratoDetalhado,
     getPendenciasByContratoId,
-    getRelatoriosByContratoId,
     createPendencia,
     downloadArquivo,
     getContratados,
@@ -171,21 +172,6 @@ type Pendencia = {
     criado_por_nome: string | null;
 };
 
-type Relatorio = {
-    id: number;
-    contrato_id: number;
-    fiscal_usuario_id: number;
-    arquivo_id: number;
-    status_id: number;
-    mes_competencia: string;
-    observacoes_fiscal: string | null;
-    created_at: string;
-    updated_at: string | null;
-    pendencia_id: number;
-    enviado_por: string | null;
-    status_relatorio: string | null;
-    nome_arquivo: string | null;
-};
 
 type NewPendenciaPayload = {
     descricao: string;
@@ -310,23 +296,7 @@ const convertToPendencia = (data: any): Pendencia => {
     };
 };
 
-const convertToRelatorio = (data: any): Relatorio => {
-    return {
-        id: data.id,
-        contrato_id: data.contrato_id,
-        fiscal_usuario_id: data.fiscal_usuario_id,
-        arquivo_id: data.arquivo_id,
-        status_id: data.status_id,
-        mes_competencia: data.mes_competencia,
-        observacoes_fiscal: data.observacoes_fiscal ?? null,
-        created_at: data.created_at,
-        updated_at: data.updated_at ?? null,
-        pendencia_id: data.pendencia_id,
-        enviado_por: data.enviado_por ?? null,
-        status_relatorio: data.status_relatorio ?? null,
-        nome_arquivo: data.nome_arquivo ?? null
-    };
-};
+
 
 // ============================================================================
 // Componentes
@@ -630,6 +600,116 @@ function CriarPendenciaDialog({
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number; contratoNumero: string; }) {
+    const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const navigate = useNavigate();
+
+    const fetchPendencias = React.useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await getPendenciasByContratoId(contratoId);
+            setPendencias(response.map(convertToPendencia));
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+            if (errorMessage.includes("401") || errorMessage.includes("não autorizado")) {
+                toast.error("Sessão expirada", {
+                    description: "Por favor, faça o login novamente.",
+                });
+                await logout();
+                navigate("/login", { replace: true });
+            } else {
+                setError(errorMessage);
+                toast.error("Erro ao carregar pendências", {
+                    description: errorMessage,
+                });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }, [contratoId, navigate]);
+
+    React.useEffect(() => {
+        fetchPendencias();
+    }, [fetchPendencias]);
+
+   
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-foreground">Pendências do Contrato</h4>
+                <CriarPendenciaDialog
+                    contratoId={contratoId}
+                    contratoNumero={contratoNumero}
+                    onPendenciaCriada={fetchPendencias}
+                >
+                    <Button size="sm" className="gap-2">
+                        <IconPlus className="h-4 w-4" />
+                        Nova Pendência
+                    </Button>
+                </CriarPendenciaDialog>
+            </div>
+
+            {isLoading ? (
+                <div className="py-4 text-center">Carregando pendências...</div>
+            ) : error ? (
+                <div className="py-4 text-center text-red-600">
+                    <strong>Erro:</strong> {error}
+                </div>
+            ) : pendencias.length === 0 ? (
+                <div className="rounded-md border border-dashed p-8 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                            <IconExclamationCircle className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium">Nenhuma pendência encontrada</p>
+                        <p className="text-xs text-muted-foreground">
+                            Este contrato não possui pendências registradas.
+                        </p>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {pendencias.map((pendencia) => (
+                        <Card key={pendencia.id} className="p-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    <p className="font-medium">{pendencia.descricao}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Prazo: {format(new Date(pendencia.data_prazo), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </p>
+                                    <Badge variant="secondary" className="mt-1">{pendencia.status_nome}</Badge>
+                                </div>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+                                            <IconX className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmar exclusão?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Tem certeza que deseja excluir a pendência: "{pendencia.descricao}"? Esta ação não pode ser desfeita.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>                                            
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -1109,8 +1189,6 @@ export function ContratosDataTable() {
 function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [detailedData, setDetailedData] = React.useState<ContratoDetalhado | null>(null);
-    const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
-    const [relatorios, setRelatorios] = React.useState<Relatorio[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -1160,8 +1238,6 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
         }
     };
 
-
-
     React.useEffect(() => {
         if (!isOpen) return;
 
@@ -1171,34 +1247,18 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
             try {
                 const [
                     detailsData,
-                    pendenciasData,
-                    relatoriosData,
                     contratadosData,
                     statusData,
                     usuariosData,
                 ] = await Promise.all([
                     getContratoDetalhado(contrato.id),
-                    getPendenciasByContratoId(contrato.id),
-                    getRelatoriosByContratoId(contrato.id),
-                    getContratados({ page: 1, per_page: 10 }),
+                    getContratados({ page: 1, per_page: 100 }),
                     getStatus(),
-                    getUsers({ page: 1, per_page: 10 }),
+                    getUsers({ page: 1, per_page: 100 }),
                 ]);
 
                 // Converter os dados para os tipos corretos
                 setDetailedData(convertToContratoDetalhado(detailsData));
-
-                // Converter arrays de pendencias e relatorios
-                const convertedPendencias = Array.isArray(pendenciasData.data)
-                    ? pendenciasData.data.map(convertToPendencia)
-                    : [];
-
-                const convertedRelatorios = Array.isArray(relatoriosData.data)
-                    ? relatoriosData.data.map(convertToRelatorio)
-                    : [];
-
-                setPendencias(convertedPendencias);
-                setRelatorios(convertedRelatorios);
                 setContratados(contratadosData.data || []);
                 setStatusList(statusData || []);
                 setUsuarios(usuariosData.data || []);
@@ -1227,7 +1287,6 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
     }, [isOpen, contrato.id, handleLogout]);
 
     const dataToShow = detailedData || contrato;
-    // Substitua todas as linhas problemáticas:
 
     // Status
     const status = detailedData
@@ -1322,7 +1381,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                     Ver Detalhes
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>
                         Detalhes do Contrato: {dataToShow.nr_contrato}
@@ -1337,115 +1396,151 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                         <strong>Erro:</strong> {error}
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-6 py-4 text-sm">
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                            <DetailItem label="Status">{status.nome}</DetailItem>
-                            <DetailItem label="Valor Anual">
-                                {detailedData ? formatCurrency(detailedData.valor_anual) : "..."}
-                            </DetailItem>
-                            <DetailItem label="Valor Global">
-                                {detailedData ? formatCurrency(detailedData.valor_global) : "..."}
-                            </DetailItem>
-                            <DetailItem label="Vigência">{detailedData
-                                ? `${formatDate(detailedData.data_inicio)} a ${formatDate(detailedData.data_fim)}`
-                                : `... a ${formatDate(dataToShow.data_fim)}`}</DetailItem>
-                        </div>
-                        <Separator />
-                        <h4 className="font-semibold">Contratado</h4>
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2">
-                            <DetailItem label="Nome">{contratado.nome}</DetailItem>
-                            <DetailItem label="CNPJ/CPF">
-                                {contratado.cnpj
-                                    ? formatCnpj(contratado.cnpj)
-                                    : formatCpf(contratado.cpf)}
-                            </DetailItem>
-                        </div>
-                        <Separator />
-                        <h4 className="font-semibold">Documentação e Processos</h4>
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                            <DetailItem label="Processo (PAE)">
-                                {detailedData?.pae || "N/A"}
-                            </DetailItem>
-                            <DetailItem label="DOE">{detailedData?.doe || "N/A"}</DetailItem>
-                            <DetailItem label="Data DOE">
-                                {formatDate(detailedData?.data_doe)}
-                            </DetailItem>
-                        </div>
-                        <Separator />
-                        <h4 className="font-semibold">Responsáveis</h4>
-                        <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
-                            <DetailItem label="Gestor">{gestor.nome}</DetailItem>
-                            <DetailItem label="Fiscal">{fiscal.nome}</DetailItem>
-                            <DetailItem label="Fiscal Substituto">
-                                {fiscalSubstituto?.nome ?? "N/A"}
-                            </DetailItem>
-                        </div>
-                        <Separator />
-                        <div>
-                            <h4 className="font-semibold text-foreground mb-2">Arquivos</h4>
-                            {detailedData?.documento_nome_arquivo ? (
-                                <ul className="space-y-2">
-                                    <li
-                                        className="flex items-center justify-between rounded-md bg-muted/50 p-2 hover:bg-muted"
-                                    >
-                                        <span className="text-muted-foreground">
-                                            {detailedData.documento_nome_arquivo}
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                handleDownloadArquivo(contrato.id, detailedData.documento_nome_arquivo!)
-                                            }
-                                            className="gap-2"
-                                        >
-                                            <IconDownload className="h-4 w-4" />
-                                            Baixar
-                                        </Button>
-                                    </li>
-                                </ul>
-                            ) : (
-                                <p className="text-muted-foreground">
-                                    Nenhum arquivo encontrado.
-                                </p>
-                            )}
-                        </div>
-                        <Separator />
-                        <div>
-                            <h4 className="mb-2 font-semibold text-foreground">Pendências</h4>
-                            {pendencias.length > 0 ? (
-                                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                                    {pendencias.map((pend) => (
-                                        <li key={pend.id}>
-                                            {pend.descricao} (Prazo: {formatDate(pend.data_prazo)}) -{" "}
-                                            <span className="font-bold">{pend.status_nome}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-muted-foreground">
-                                    Nenhuma pendência encontrada.
-                                </p>
-                            )}
-                        </div>
-                        <Separator />
-                        <div>
-                            <h4 className="mb-2 font-semibold text-foreground">Relatórios</h4>
-                            {relatorios.length > 0 ? (
-                                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                                    {relatorios.map((rel) => (
-                                        <li key={rel.id}>
-                                            Relatório de {rel.mes_competencia} - Enviado por: {rel.enviado_por}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-muted-foreground">
-                                    Nenhum relatório associado.
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                    <Tabs defaultValue="geral" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="geral">Dados Gerais</TabsTrigger>
+                            <TabsTrigger value="pendencias">Pendências</TabsTrigger>
+                            <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="geral" className="mt-6">
+                            <div className="flex flex-col gap-6 text-sm">
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                                    <DetailItem label="Status">{status.nome}</DetailItem>
+                                    <DetailItem label="Valor Anual">
+                                        {detailedData ? formatCurrency(detailedData.valor_anual) : "..."}
+                                    </DetailItem>
+                                    <DetailItem label="Valor Global">
+                                        {detailedData ? formatCurrency(detailedData.valor_global) : "..."}
+                                    </DetailItem>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2">
+                                    <DetailItem label="Data Início">
+                                        {formatDate(detailedData?.data_inicio)}
+                                    </DetailItem>
+                                    <DetailItem label="Data Fim">
+                                        {formatDate(detailedData?.data_fim || dataToShow.data_fim)}
+                                    </DetailItem>
+                                </div>
+                                
+                                <Separator />
+                                
+                                <h4 className="font-semibold">Contratado</h4>
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2">
+                                    <DetailItem label="Nome">{contratado.nome}</DetailItem>
+                                    <DetailItem label="CNPJ/CPF">
+                                        {contratado.cnpj
+                                            ? formatCnpj(contratado.cnpj)
+                                            : formatCpf(contratado.cpf)}
+                                    </DetailItem>
+                                </div>
+                                
+                                <Separator />
+                                
+                                <h4 className="font-semibold">Documentação e Processos</h4>
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                                    <DetailItem label="Processo (PAE)">
+                                        {detailedData?.pae || "N/A"}
+                                    </DetailItem>
+                                    <DetailItem label="DOE">{detailedData?.doe || "N/A"}</DetailItem>
+                                    <DetailItem label="Data DOE">
+                                        {formatDate(detailedData?.data_doe)}
+                                    </DetailItem>
+                                </div>
+                                
+                                <Separator />
+                                
+                                <h4 className="font-semibold">Responsáveis</h4>
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
+                                    <DetailItem label="Gestor">{gestor.nome}</DetailItem>
+                                    <DetailItem label="Fiscal">{fiscal.nome}</DetailItem>
+                                    <DetailItem label="Fiscal Substituto">
+                                        {fiscalSubstituto?.nome ?? "N/A"}
+                                    </DetailItem>
+                                </div>
+                                
+                                {detailedData?.base_legal && (
+                                    <>
+                                        <Separator />
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Base Legal</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                {detailedData.base_legal}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {detailedData?.termos_contratuais && (
+                                    <>
+                                        <Separator />
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Termos Contratuais</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                {detailedData.termos_contratuais}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="pendencias" className="mt-6">
+                            <PendenciasContrato 
+                                contratoId={contrato.id} 
+                                contratoNumero={dataToShow.nr_contrato}
+                            />
+                        </TabsContent>
+                        
+                        <TabsContent value="arquivos" className="mt-6">
+                            <div>
+                                <h4 className="font-semibold text-foreground mb-4">Arquivos do Contrato</h4>
+                                {detailedData?.documento_nome_arquivo ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between rounded-md border p-4 hover:bg-muted/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-100">
+                                                    <IconDownload className="h-5 w-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">
+                                                        {detailedData.documento_nome_arquivo}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Documento principal do contrato
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleDownloadArquivo(contrato.id, detailedData.documento_nome_arquivo!)
+                                                }
+                                                className="gap-2"
+                                            >
+                                                <IconDownload className="h-4 w-4" />
+                                                Baixar
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border border-dashed p-8 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                                                <IconDownload className="h-6 w-6 text-muted-foreground" />
+                                            </div>
+                                            <p className="text-sm font-medium">Nenhum arquivo encontrado</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Este contrato não possui arquivos anexados.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                 )}
                 <DialogFooter>
                     <DialogClose asChild>

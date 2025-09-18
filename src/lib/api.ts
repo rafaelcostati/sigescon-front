@@ -305,11 +305,11 @@ export type Arquivo = z.infer<typeof arquivoSchema>;
 export const relatorioSchema = z.object({ id: z.number(), descricao: z.string(), data_envio: z.string() });
 export type Relatorio = z.infer<typeof relatorioSchema>;
 export const pendenciaSchema = z.object({ id: z.number(), contrato_id: z.number(), descricao: z.string(), data_prazo: z.string(), status_pendencia_id: z.number(), criado_por_usuario_id: z.number(), status_nome: z.string().optional(), criado_por_nome: z.string().optional() });
-export type Pendencia = z.infer<typeof pendenciaSchema>;
+
 export type Contrato = { id: number; nr_contrato: string; objeto: string; valor_anual: number | null; valor_global: number | null; data_inicio: string; data_fim: string; contratado_id: number; modalidade_id: number; status_id: number; gestor_id: number; fiscal_id: number; fiscal_substituto_id: number | null; pae: string | null; doe: string | null; data_doe: string | null; modalidade_nome?: string; contratado_nome?: string; status_nome?: string; };
 export type ContratoDetalhado = Contrato & { arquivos?: Arquivo[]; relatorios?: Relatorio[]; pendencias?: Pendencia[]; contratado?: { nome: string; cnpj: string; cpf: string; }; };
 export type ContratosApiResponse = { data: Contrato[]; total_items: number; total_pages: number; current_page: number; per_page: number; };
-export type NewPendenciaPayload = { descricao: string; data_prazo: string; status_pendencia_id: number; };
+
 
 export function getContratos(filters: Record<string, any>): Promise<ContratosApiResponse> {
     const params = new URLSearchParams();
@@ -322,10 +322,103 @@ export function getContratos(filters: Record<string, any>): Promise<ContratosApi
 }
 export function deleteContrato(id: number): Promise<void> { return api<void>(`/contratos/${id}`, { method: 'DELETE' }); }
 export function getContratoDetalhado(id: number): Promise<ContratoDetalhado> { return api<ContratoDetalhado>(`/contratos/${id}`); }
-export function getPendenciasByContratoId(contratoId: number): Promise<{ data: Pendencia[] }> { return api<{ data: Pendencia[] }>(`/contratos/${contratoId}/pendencias/`); }
+
 export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: Relatorio[] }> { return api<{ data: Relatorio[] }>(`/contratos/${contratoId}/relatorios/`); }
-export function createPendencia(contratoId: number, payload: NewPendenciaPayload): Promise<Pendencia> { return api<Pendencia>(`/contratos/${contratoId}/pendencias/`, { method: 'POST', body: JSON.stringify(payload) }); }
+
 export function downloadArquivo(arquivoId: number): Promise<Blob> { return apiBlob(`/arquivos/${arquivoId}/download`); }
+
+export type StatusPendencia = {
+    id: number;
+    nome: string;
+};
+
+export type Pendencia = {
+    descricao: string;
+    data_prazo: string; // formato: "2019-08-24"
+    status_pendencia_id: number;
+    criado_por_usuario_id: number;
+    id: number;
+    contrato_id: number;
+    created_at: string; // formato ISO: "2019-08-24T14:15:22Z"
+    updated_at: string; // formato ISO: "2019-08-24T14:15:22Z"
+    status_nome: string | null;
+    criado_por_nome: string | null;
+};
+
+export type NewPendenciaPayload = {
+    descricao: string;
+    data_prazo: string; // formato: "YYYY-MM-DD"
+    status_pendencia_id: number;
+    criado_por_usuario_id: number;
+};
+
+export type EditPendenciaPayload = Partial<{
+    descricao: string;
+    data_prazo: string;
+    status_pendencia_id: number;
+}>;
+
+export type PendenciasApiResponse = {
+    data: Pendencia[];
+    total_items?: number;
+    total_pages?: number;
+    current_page?: number;
+    per_page?: number;
+};
+
+// --- FUNÇÕES PARA PENDÊNCIAS ---
+
+/**
+ * Busca todas as pendências de um contrato
+ * GET /contratos/{contrato_id}/pendencias/
+ */
+export function getPendenciasByContratoId(contratoId: number): Promise<Pendencia[]> {
+    return api<Pendencia[]>(`/contratos/${contratoId}/pendencias/`);
+}
+
+/**
+ * Cria uma nova pendência para um contrato
+ * POST /contratos/{contrato_id}/pendencias/
+ */
+export function createPendencia(contratoId: number, payload: NewPendenciaPayload): Promise<Pendencia> {
+    return api<Pendencia>(`/contratos/${contratoId}/pendencias/`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Atualiza uma pendência existente
+ * PATCH /contratos/{contrato_id}/pendencias/{pendencia_id}
+ */
+export function updatePendencia(
+    contratoId: number, 
+    pendenciaId: number, 
+    payload: EditPendenciaPayload
+): Promise<Pendencia> {
+    return api<Pendencia>(`/contratos/${contratoId}/pendencias/${pendenciaId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Deleta uma pendência
+ * DELETE /contratos/{contrato_id}/pendencias/{pendencia_id}
+ */
+export function deletePendencia(contratoId: number, pendenciaId: number): Promise<void> {
+    return api<void>(`/contratos/${contratoId}/pendencias/${pendenciaId}`, {
+        method: 'DELETE',
+    });
+}
+
+/**
+ * Busca todos os status de pendências disponíveis
+ * GET /status-pendencias (assumindo que existe este endpoint)
+ */
+export function getStatusPendencias(): Promise<StatusPendencia[]> {
+    return api<StatusPendencia[]>('/status-pendencias');
+}
 // --- Tipos para Modalidades ---
 export type Modalidade = {
     id: number;
