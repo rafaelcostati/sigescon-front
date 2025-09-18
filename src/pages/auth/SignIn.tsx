@@ -8,139 +8,134 @@ import { useAuth } from "@/contexts/AuthContext";
 // shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Ícones
-import { LockKeyhole, LucideUser } from "lucide-react";
+// Ícones e Logo
+import { LockKeyhole, User, AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.svg";
 
+// Schema simplificado, sem o campo de perfil
 const signInFormSchema = z.object({
-  username: z.string().email("E-mail inválido"),
+  email: z.string().email("E-mail inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
-  profile: z.string().optional(),
 });
 
 type SignInForm = z.infer<typeof signInFormSchema>;
 
-// Perfis fixos (IDs conhecidos)
-const perfisFixos = [
-  { id: "1", nome: "Administrador" },
-  { id: "2", nome: "Gestor" },
-  { id: "3", nome: "Fiscal" },
-];
-
 export function SignIn() {
   const navigate = useNavigate();
-  const { user, login } = useAuth();
+  const { user, login, loading: authLoading } = useAuth(); // 'login' aqui é do seu AuthContext
   const [error, setError] = useState("");
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SignInForm>({
     resolver: zodResolver(signInFormSchema),
   });
 
-  // Redireciona automaticamente se já estiver logado
+  // Redireciona se o usuário já estiver logado
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       navigate("/home", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
-  const onSubmit = async ({ username, password, profile }: SignInForm) => {
+  // Função para lidar com o submit do formulário, agora sem o perfil
+  const onSubmit = async ({ email, password }: SignInForm) => {
     setError("");
     try {
-      await login(username, password, profile);
-      navigate("/home", { replace: true });
-    } catch (err: any) {
+      // Chama a função 'login' do seu AuthContext com apenas email e senha
+      await login(email, password);
+      // O redirecionamento ocorre no useEffect acima
+    } catch (err: any)      {
       console.error("Erro no login:", err);
-      setError(
-        err.response?.status === 401
-          ? "Usuário ou senha inválidos"
-          : "Erro na autenticação. Tente novamente."
-      );
+      setError(err.message || "E-mail ou senha inválidos. Tente novamente.");
     }
   };
 
-  return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-2xl shadow-md">
-      {/* Logo e título */}
-      <div className="text-center mb-6">
-        <img src={logo} alt="Logo" className="mx-auto h-12 w-12" />
-        <h1 className="mt-2 text-2xl font-semibold text-gray-900">Login</h1>
-        <p className="text-sm text-gray-600">
-          Faça login no sistema <span className="font-medium">SIGESCON</span>
-        </p>
+  // Tela de loading inicial
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-700">Verificando autenticação...</span>
       </div>
+    );
+  }
 
-      {/* Formulário */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="username">Email</Label>
-          <div className="relative">
-            <LucideUser className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="username"
-              type="email"
-              placeholder="seuemail@exemplo.com"
-              className="pl-10"
-              {...register("username")}
-            />
+  return (
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="text-center mb-6">
+            <img src={logo} alt="Logo" className="mx-auto h-12 w-12" />
+            <h2 className="mt-4 text-2xl font-bold text-gray-900">Login</h2>
+            <p className="mt-2 text-sm text-gray-600"><span className="font-medium">Sistema de Gestão de Contratos</span></p>
           </div>
-          {errors.username && <p className="text-sm text-red-500">{errors.username.message}</p>}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Campo Email */}
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <div className="mt-1 relative">
+                <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seuemail@exemplo.com"
+                  className="pl-10"
+                  {...register("email")}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
+            </div>
+
+            {/* Campo Senha */}
+            <div>
+              <Label htmlFor="password">Senha</Label>
+              <div className="mt-1 relative">
+                <LockKeyhole className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="pl-10"
+                  {...register("password")}
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
+            </div>
+
+            {/* Exibição de erro */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Botão de submit */}
+            <div>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Senha</Label>
-          <div className="relative">
-            <LockKeyhole className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              className="pl-10"
-              {...register("password")}
-            />
-          </div>
-          {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Perfil inicial (opcional)</Label>
-          <Select onValueChange={(val) => setValue("profile", val)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um perfil (opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {perfisFixos.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <Button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Entrando..." : "Entrar"}
-        </Button>
-      </form>
+      </div>
     </div>
   );
 }
+

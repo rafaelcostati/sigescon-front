@@ -38,7 +38,7 @@ export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
 
-const API_BASE_URL = "https://sua-api.com/api"; // <-- SUBSTITUA PELA URL REAL DA SUA API
+const API_BASE_URL = "http://10.96.0.67/v1/"; // <-- SUBSTITUA PELA URL REAL DA SUA API
 
 // Função auxiliar para tratar as respostas
 async function handleResponse<T>(response: Response): Promise<T> {

@@ -3,96 +3,35 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from 'react-hook-form';
+
+// --- ATENÇÃO: Verifique se os caminhos de importação estão corretos para sua estrutura ---
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, LoaderCircle, CirclePlus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
 
-//================================================================================
-// SECTION: TIPOS E SCHEMAS
-//================================================================================
-
-// --- Tipos para a listagem de usuários (conforme nova API) ---
-export type User = {
-    id: number;
-    nome: string;
-    email: string;
-    perfil_nome: string;
-    matricula?: string;
-};
-
-// --- Tipo para a resposta da API com paginação ---
-type ApiResponse = {
-    data: User[];
-    total_items: number;
-    total_pages: number;
-    current_page: number;
-    per_page: number;
-};
-
-type Perfil = {
-    id: number;
-    nome: string;
-};
-
-// --- Schema Zod para o formulário de novo usuário (mantido como estava) ---
-const signUpForm = z.object({
-    nome: z.string().min(1, "Nome é obrigatório"),
-    email: z.string().email("E-mail inválido"),
-    senha: z.string().min(1, "Senha é obrigatória"),
-    perfil_id: z.string().min(1, "Perfil é obrigatório"),
-    cpf: z.string()
-        .transform((val) => val.replace(/\D/g, ''))
-        .refine((val) => val.length === 11, { message: "CPF deve conter 11 números" })
-        .refine((val) => validateCPF(val), { message: "CPF inválido" }),
-    matricula: z.string().optional(),
-});
-
-type SignUpForm = z.infer<typeof signUpForm>;
+// --- Importa as funções da nossa API centralizada ---
+import {
+    getUsers,
+    getPerfis,
+    createUser,
+    deleteUser,
+    type User,
+    type Perfil,
+    type NewUserPayload,
+} from "@/lib/api";
 
 
 //================================================================================
-// SECTION: FUNÇÕES AUXILIARES (mantidas como estavam)
+// SCHEMAS E VALIDAÇÃO (sem grandes alterações)
 //================================================================================
-
 function validateCPF(cpf: string): boolean {
     cpf = cpf.replace(/\D/g, '');
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
@@ -108,7 +47,6 @@ function validateCPF(cpf: string): boolean {
     if (remainder !== parseInt(cpf.substring(10, 11))) return false;
     return true;
 }
-
 const cpfMask = (value: string) => {
     return value
         .replace(/\D/g, '')
@@ -117,47 +55,35 @@ const cpfMask = (value: string) => {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
-//================================================================================
-// SECTION: COMPONENTE NOVO USUÁRIO (MODAL - CORRIGIDO)
-//================================================================================
+const signUpFormSchema = z.object({
+    nome: z.string().min(1, "Nome é obrigatório"),
+    email: z.string().email("E-mail inválido"),
+    senha: z.string().min(1, "Senha é obrigatória"),
+    perfil_id: z.string().min(1, "Perfil é obrigatório"),
+    cpf: z.string()
+        .transform((val) => val.replace(/\D/g, ''))
+        .refine((val) => val.length === 11, { message: "CPF deve conter 11 números" })
+        .refine((val) => validateCPF(val), { message: "CPF inválido" }),
+    matricula: z.string().optional(),
+});
+type SignUpForm = z.infer<typeof signUpFormSchema>;
 
+
+//================================================================================
+// COMPONENTE NOVO USUÁRIO (MODAL - REFATORADO)
+//================================================================================
 function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [perfis, setPerfis] = useState<Perfil[]>([]);
-
     const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm<SignUpForm>({
-        resolver: zodResolver(signUpForm),
+        resolver: zodResolver(signUpFormSchema),
     });
 
     useEffect(() => {
         if (isDialogOpen) {
             const fetchPerfis = async () => {
                 try {
-                    // CORRIGIDO: Adicionando Authorization header para buscar perfis
-                    const token = localStorage.getItem('token');
-                    if (!token) {
-                        toast.error("Acesso não autorizado. Faça o login novamente.");
-                        return;
-                    }
-
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/perfis/`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.status === 401) {
-                        toast.error("Sua sessão expirou. Faça o login novamente.");
-                        return;
-                    }
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao buscar perfis da API.');
-                    }
-
-                    const data = await response.json();
+                    const data = await getPerfis(); // <-- USA A FUNÇÃO DA API
                     setPerfis(data);
                 } catch (error) {
                     console.error("Erro ao buscar perfis:", error);
@@ -170,46 +96,21 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 
     async function handleSignUp(data: SignUpForm) {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado. Faça o login novamente.");
-                return;
-            }
-
-            const payload = {
+            const payload: NewUserPayload = {
                 ...data,
                 perfil_id: parseInt(data.perfil_id, 10),
                 cpf: data.cpf.replace(/\D/g, '')
             };
+            await createUser(payload); // <-- USA A FUNÇÃO DA API
 
-            // CORRIGIDO: Usando fetch com Authorization header para criar o usuário
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            toast.success('Usuário cadastrado com sucesso.');
+            setIsDialogOpen(false);
+            reset();
+            onUserAdded();
 
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                return;
-            }
-
-            if (response.status === 201) {
-                toast.success('Usuário cadastrado com sucesso.');
-                setIsDialogOpen(false);
-                reset();
-                onUserAdded();
-            } else {
-                const result = await response.json();
-                const errorMessage = result.detail || result.error || 'Erro ao cadastrar usuário.';
-                toast.error(errorMessage);
-            }
         } catch (error: any) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro de rede. Tente novamente.');
+            console.error('Erro ao criar usuário:', error);
+            toast.error(error.message || 'Ocorreu um erro. Tente novamente.');
         }
     }
 
@@ -267,7 +168,7 @@ function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
 }
 
 //================================================================================
-// SECTION: COMPONENTE DE EXCLUSÃO (sem alterações)
+// COMPONENTE DE EXCLUSÃO (REFATORADO)
 //================================================================================
 function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -275,24 +176,12 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/${user.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-            });
-
-            if (response.ok) {
-                toast.success(`Usuário "${user.nome}" excluído com sucesso.`);
-                onUserDeleted();
-            } else {
-                const result = await response.json();
-                toast.error(result.detail || result.error || 'Falha ao excluir usuário.');
-            }
-        } catch (error) {
+            await deleteUser(user.id); // <-- USA A FUNÇÃO DA API
+            toast.success(`Usuário "${user.nome}" excluído com sucesso.`);
+            onUserDeleted();
+        } catch (error: any) {
             console.error('Erro ao excluir usuário:', error);
-            toast.error('Ocorreu um erro de rede. Tente novamente.');
+            toast.error(error.message || 'Falha ao excluir usuário.');
         } finally {
             setIsDeleting(false);
         }
@@ -322,10 +211,10 @@ function ExcluirUsuarioDialog({ user, onUserDeleted }: { user: User, onUserDelet
         </AlertDialog>
     );
 }
-//================================================================================
-// SECTION: COMPONENTE CARD MÓVEL (Atualizado para nova estrutura de User)
-//================================================================================
 
+//================================================================================
+// COMPONENTE CARD MÓVEL (sem alterações de lógica)
+//================================================================================
 function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, onUserUpdated: () => void, onUserDeleted: () => void }) {
     return (
         <Card className="w-full">
@@ -359,52 +248,22 @@ function UserMobileCard({ user, onUserUpdated, onUserDeleted }: { user: User, on
 }
 
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL (LISTAGEM COM DATATABLE) - GRANDES MUDANÇAS
+// COMPONENTE PRINCIPAL (LISTAGEM - REFATORADO)
 //================================================================================
-
 export default function UserDataTable() {
     const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
-
-    // --- NOVOS ESTADOS PARA PAGINAÇÃO ---
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [totalItems, setTotalItems] = useState(0);
-    const [perPage, setPerPage] = useState(10); // Valor padrão
+    const [perPage, setPerPage] = useState(10);
 
     const fetchUsers = useCallback(async (page = 1, limit = 10, search = "") => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado. Faça o login novamente.");
-                setLoading(false);
-                return;
-            }
-
-            // --- Construção da URL com parâmetros de paginação e filtro ---
-            const usersUrl = new URL(`${import.meta.env.VITE_API_URL}/usuarios/`);
-            usersUrl.searchParams.append('page', String(page));
-            usersUrl.searchParams.append('per_page', String(limit));
-            if (search) {
-                usersUrl.searchParams.append('nome', search);
-            }
-
-            const response = await fetch(usersUrl.toString(), {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                throw new Error('Não autorizado');
-            }
-            if (!response.ok) {
-                throw new Error('Falha ao buscar dados da API.');
-            }
-
-            // --- Processa a nova estrutura de resposta da API ---
-            const result: ApiResponse = await response.json();
+            // <-- USA A FUNÇÃO DA API
+            const result = await getUsers({ page, per_page: limit, nome: search });
 
             setUsers(result.data);
             setTotalPages(result.total_pages);
@@ -412,29 +271,27 @@ export default function UserDataTable() {
             setTotalItems(result.total_items);
             setPerPage(result.per_page);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao carregar usuários:", error);
-            if (!(error instanceof Error && error.message === 'Não autorizado')) {
-                toast.error("Não foi possível carregar a lista de usuários.");
-            }
+            toast.error(error.message || "Não foi possível carregar a lista de usuários.");
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchUsers(currentPage, perPage, searchTerm);
-    }, [fetchUsers]); // Apenas na montagem inicial
+        fetchUsers(1, 10, ""); // Carga inicial
+    }, [fetchUsers]);
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setCurrentPage(1); // Reseta para a primeira página ao buscar
+        setCurrentPage(1);
         fetchUsers(1, perPage, searchTerm);
     };
 
     const handleClearFilter = () => {
         setSearchTerm("");
-        setCurrentPage(1); // Reseta para a primeira página
+        setCurrentPage(1);
         fetchUsers(1, perPage, "");
     };
 
@@ -448,7 +305,6 @@ export default function UserDataTable() {
     const refreshCurrentPage = () => {
         fetchUsers(currentPage, perPage, searchTerm);
     };
-
 
     if (loading) {
         return (
@@ -506,11 +362,10 @@ export default function UserDataTable() {
                                 </TableHeader>
                                 <TableBody>
                                     {users.map((user, index) => (
-                                        <TableRow 
+                                        <TableRow
                                             key={user.id}
-                                            className={`hover:bg-muted/50 transition-colors ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                                            } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
+                                            className={`hover:bg-muted/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                                                } dark:${index % 2 === 0 ? 'bg-gray-950' : 'bg-gray-900/50'}`}
                                         >
                                             <TableCell className="font-medium">{user.nome}</TableCell>
                                             <TableCell className="text-muted-foreground lowercase">{user.email}</TableCell>
@@ -581,3 +436,4 @@ export default function UserDataTable() {
         </div>
     );
 }
+
