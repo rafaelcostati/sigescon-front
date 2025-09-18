@@ -1,4 +1,4 @@
-import { z } from "zod";
+
 
 // --- CONFIGURAÇÃO DA API ---
 const API_URL = import.meta.env.VITE_API_URL;
@@ -27,18 +27,8 @@ const tokenManager = {
 
 // --- SCHEMAS E TIPOS ---
 // Mantido do seu código original para consistência
-export const contratoSchema = z.object({
-    id: z.number(), nr_contrato: z.string(), objeto: z.string(), valor_anual: z.coerce.number(),
-    valor_global: z.coerce.number(), base_legal: z.string(), data_inicio: z.coerce.date(),
-    data_fim: z.coerce.date(), termos_contratuais: z.string(), contratado_id: z.number(),
-    modalidade_id: z.number(), status_id: z.number(), gestor_id: z.number(), fiscal_id: z.number(),
-    fiscal_substituto_id: z.number().nullable(), pae: z.string(), doe: z.string(),
-    data_doe: z.coerce.date(), documento: z.string().nullable(), created_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-    contratado: z.object({ id: z.number(), nome: z.string(), cnpj: z.string() }).optional(),
-    status: z.object({ id: z.number(), nome: z.string() }).optional(),
-});
-export type Contrato = z.infer<typeof contratoSchema>;
+
+
 export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
@@ -151,6 +141,23 @@ async function api<T>(endpoint: string, options?: RequestInit, useAuthUrl: boole
 
     const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
     return handleResponse<T>(response);
+}
+
+async function apiBlob(endpoint: string, options?: RequestInit, useAuthUrl: boolean = false): Promise<Blob> {
+    const baseUrl = useAuthUrl ? AUTH_API_URL : API_URL;
+    const { token, type } = tokenManager.getTokenData();
+    const headers = new Headers(options?.headers);
+
+    if (token) {
+        headers.set('Authorization', `${type} ${token}`);
+    }
+
+    const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
+
+    if (!response.ok) {
+        throw new Error(`Erro no download: ${response.statusText}`);
+    }
+    return response.blob();
 }
 
 // ============================================================================
@@ -292,41 +299,30 @@ export function deleteContratado(id: number): Promise<void> {
 // ============================================================================
 // FUNÇÕES DA API DE CONTRATOS (CRUD)
 // ============================================================================
-export function getContratos(params?: { gestor_id?: number; fiscal_id?: number }): Promise<Contrato[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.gestor_id) searchParams.set('gestor_id', String(params.gestor_id));
-    if (params?.fiscal_id) searchParams.set('fiscal_id', String(params.fiscal_id));
-    return api<Contrato[]>(`/contratos?${searchParams.toString()}`);
-}
+// --- Tipos para Contratos e entidades relacionadas ---
+export type Arquivo = { id: number; nome_arquivo: string; data_upload?: string; };
+export type Relatorio = { id: number; descricao: string; data_envio: string; };
+export type Pendencia = { id: number; contrato_id: number; descricao: string; data_prazo: string; status_pendencia_id: number; criado_por_usuario_id: number; status_nome?: string; criado_por_nome?: string; };
+export type Contrato = { id: number; nr_contrato: string; objeto: string; valor_anual: number | null; valor_global: number | null; data_inicio: string; data_fim: string; contratado_id: number; modalidade_id: number; status_id: number; gestor_id: number; fiscal_id: number; fiscal_substituto_id: number | null; pae: string | null; doe: string | null; data_doe: string | null; modalidade_nome?: string; contratado_nome?: string; status_nome?: string; };
+export type ContratoDetalhado = Contrato & { arquivos?: Arquivo[]; relatorios?: Relatorio[]; pendencias?: Pendencia[]; contratado?: Contratado; };
+export type ContratosApiResponse = { data: Contrato[]; total_items: number; total_pages: number; current_page: number; per_page: number; };
+export type NewPendenciaPayload = { descricao: string; data_prazo: string; status_pendencia_id: number; };
 
-export function getContratoById(id: number): Promise<Contrato> {
-    return api<Contrato>(`/contratos/${id}`);
+export function getContratos(filters: Record<string, any>): Promise<ContratosApiResponse> {
+    const params = new URLSearchParams();
+    for (const key in filters) {
+        if (filters[key] !== null && filters[key] !== undefined && filters[key] !== '') {
+            params.append(key, String(filters[key]));
+        }
+    }
+    return api<ContratosApiResponse>(`/contratos?${params.toString()}`);
 }
-
-export function createContrato(formData: FormData): Promise<Contrato> {
-    return api<Contrato>('/contratos', {
-        method: 'POST',
-        body: formData,
-    });
-}
-
-export function updateContrato(
-    id: number,
-    formData: FormData
-): Promise<Contrato> {
-    formData.append('_method', 'PUT');
-    return api<Contrato>(`/contratos/${id}`, {
-        method: 'POST',
-        body: formData,
-    });
-}
-
-export function deleteContrato(id: number): Promise<void> {
-    return api<void>(`/contratos/${id}`, {
-        method: 'DELETE',
-    });
-}
-
+export function deleteContrato(id: number): Promise<void> { return api<void>(`/contratos/${id}`, { method: 'DELETE' }); }
+export function getContratoDetalhado(id: number): Promise<ContratoDetalhado> { return api<ContratoDetalhado>(`/contratos/${id}`); }
+export function getPendenciasByContratoId(contratoId: number): Promise<{ data: Pendencia[] }> { return api<{ data: Pendencia[] }>(`/contratos/${contratoId}/pendencias/`); }
+export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: Relatorio[] }> { return api<{ data: Relatorio[] }>(`/contratos/${contratoId}/relatorios/`); }
+export function createPendencia(contratoId: number, payload: NewPendenciaPayload): Promise<Pendencia> { return api<Pendencia>(`/contratos/${contratoId}/pendencias/`, { method: 'POST', body: JSON.stringify(payload) }); }
+export function downloadArquivo(arquivoId: number): Promise<Blob> { return apiBlob(`/arquivos/${arquivoId}/download`); }
 // --- Tipos para Modalidades ---
 export type Modalidade = {
     id: number;
@@ -389,6 +385,6 @@ export function getStatus(): Promise<Status[]> {
     return api<Status[]>('/status');
 }
 
-export function getUsuarios(): Promise<Usuario[]> {
+export function getUsuarios(p0: { per_page: number; }): Promise<Usuario[]> {
     return api<Usuario[]>('/usuarios');
 }
