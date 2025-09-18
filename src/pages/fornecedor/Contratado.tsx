@@ -3,75 +3,37 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from 'react-hook-form';
+
+// --- Imports de UI ---
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
 import { Trash2, LoaderCircle, CirclePlus, Pencil, X, ChevronLeft, ChevronRight } from "lucide-react";
 
+// --- Imports da nossa API centralizada ---
+import {
+    getContratados,
+    getContratadoById,
+    createContratado,
+    updateContratado,
+    deleteContratado,
+    type Contratado,
+    type NewContratadoPayload,
+    type EditContratadoPayload
+} from "@/lib/api";
+
+
 //================================================================================
-// SECTION: TIPOS E SCHEMAS
+// SECTION: VALIDAÇÃO E MÁSCARAS
 //================================================================================
 
-// --- Tipo para o contratado, conforme a API ---
-export type Contratado = {
-    id: number;
-    nome: string;
-    email: string;
-    cnpj?: string | null;
-    cpf?: string | null;
-    telefone?: string | null;
-};
-
-// --- Tipo para a resposta da API com paginação ---
-type ApiResponse = {
-    data: Contratado[];
-    total_items: number;
-    total_pages: number;
-    current_page: number;
-    per_page: number;
-};
-
-// --- Funções de validação ---
-function validateCPF(cpf: string): boolean {
+// Funções de validação (mantidas)
+function validateCPF(cpf: string): boolean { 
     cpf = cpf.replace(/\D/g, '');
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
     let sum = 0;
@@ -83,11 +45,9 @@ function validateCPF(cpf: string): boolean {
     for (let i = 1; i <= 10; i++) sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
     remainder = (sum * 10) % 11;
     if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
-    return true;
+    return remainder === parseInt(cpf.substring(10, 11));
 }
-
-function validateCNPJ(cnpj: string): boolean {
+function validateCNPJ(cnpj: string): boolean { 
     cnpj = cnpj.replace(/\D/g, '');
     if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
     let size = cnpj.length - 2;
@@ -114,158 +74,82 @@ function validateCNPJ(cnpj: string): boolean {
     return true;
 }
 
-// --- Schema Zod para o formulário de novo contratado ---
+// Schema Zod para o formulário
 const contratadoSchema = z.object({
     nome: z.string().min(1, "Nome é obrigatório"),
     email: z.string().email("E-mail inválido"),
     telefone: z.string().optional(),
-    cpf: z.string()
-        .transform((val) => val.replace(/\D/g, ''))
-        .optional()
-        .refine((val) => !val || val.length === 11, { message: "CPF deve conter 11 números" })
-        .refine((val) => !val || validateCPF(val), { message: "CPF inválido" }),
-    cnpj: z.string()
-        .transform((val) => val.replace(/\D/g, ''))
-        .optional()
-        .refine((val) => !val || val.length === 14, { message: "CNPJ deve conter 14 números" })
-        .refine((val) => !val || validateCNPJ(val), { message: "CNPJ inválido" }),
+    cpf: z.string().transform(v => v.replace(/\D/g, '')).optional().refine(v => !v || v.length === 11, "CPF deve ter 11 números").refine(v => !v || validateCPF(v), "CPF inválido"),
+    cnpj: z.string().transform(v => v.replace(/\D/g, '')).optional().refine(v => !v || v.length === 14, "CNPJ deve ter 14 números").refine(v => !v || validateCNPJ(v), "CNPJ inválido"),
 });
-
 type ContratadoForm = z.infer<typeof contratadoSchema>;
 
-//================================================================================
-// SECTION: FUNÇÕES AUXILIARES DE MÁSCARA
-//================================================================================
-
+// Funções de máscara (mantidas)
 const applyMask = (value: string = '', mask: (v: string) => string) => mask(value);
+const cpfMask = (value: string) => value.replace(/\D/g, '').slice(0, 11).replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+const cnpjMask = (value: string) => value.replace(/\D/g, '').slice(0, 14).replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
+const phoneMask = (value: string) => value.replace(/\D/g, '').slice(0, 11).replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
 
-const cpfMask = (value: string) => value
-    .replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-
-const cnpjMask = (value: string) => value
-    .replace(/\D/g, '').slice(0, 14)
-    .replace(/^(\d{2})(\d)/, '$1.$2')
-    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d)/, '$1-$2');
-
-const phoneMask = (value: string) => value
-    .replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2');
 
 //================================================================================
-// SECTION: COMPONENTE DE EDIÇÃO
+// SECTION: COMPONENTES FILHOS (REFATORADOS)
 //================================================================================
-interface ContratadoEditarProps {
-    contratado: { id: number };
-    onContratadoUpdated: () => void;
-}
 
-function EditarContratado({ contratado, onContratadoUpdated }: ContratadoEditarProps) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [originalContratadoData, setOriginalContratadoData] = useState<Partial<Contratado>>({});
-
+// --- Componente de Edição ---
+function EditarContratado({ contratado, onContratadoUpdated }: { contratado: { id: number }, onContratadoUpdated: () => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [originalData, setOriginalData] = useState<Contratado | null>(null);
     const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<ContratadoForm>({
         resolver: zodResolver(contratadoSchema),
     });
 
     useEffect(() => {
-        if (!isDialogOpen) return;
-
-        const loadContratadoData = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados/${contratado.id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Falha ao carregar dados para edição.');
-
-                const data: Contratado = await response.json();
-                setOriginalContratadoData(data);
-                
-                reset({
-                    nome: data.nome ?? "",
-                    email: data.email ?? "",
-                    cpf: data.cpf ?? "",
-                    cnpj: data.cnpj ?? "",
-                    telefone: data.telefone ?? "",
-                });
-
-            } catch (error) {
-                console.error("Erro ao carregar dados do contratado:", error);
-                toast.error("Não foi possível carregar os dados.");
-                setIsDialogOpen(false);
-            }
-        };
-
-        loadContratadoData();
-    }, [isDialogOpen, contratado.id, reset]);
-
-    async function handleUpdate(data: ContratadoForm) {
-        const payload: { [key: string]: string | null } = {};
-
-        const numericFields = ['cpf', 'cnpj', 'telefone'];
-
-        Object.keys(data).forEach((key) => {
-            const formKey = key as keyof ContratadoForm;
-            const formValue = data[formKey];
-            const originalValue = originalContratadoData[formKey as keyof Contratado];
-
-            const normalizedFormValue = formValue ?? "";
-            const normalizedOriginalValue = originalValue ?? "";
-
-            if (numericFields.includes(formKey)) {
-                const cleanFormValue = String(normalizedFormValue).replace(/\D/g, '');
-                const cleanOriginalValue = String(normalizedOriginalValue).replace(/\D/g, '');
-                
-                if (cleanFormValue !== cleanOriginalValue) {
-                    payload[formKey] = cleanFormValue === "" ? null : cleanFormValue;
+        if (isOpen) {
+            const loadData = async () => {
+                try {
+                    const data = await getContratadoById(contratado.id);
+                    setOriginalData(data);
+                    reset({ nome: data.nome, email: data.email, cpf: data.cpf || "", cnpj: data.cnpj || "", telefone: data.telefone || "" });
+                } catch (error: any) {
+                    toast.error(error.message || "Não foi possível carregar dados.");
+                    setIsOpen(false);
                 }
-            } else {
-                if (String(normalizedFormValue).trim() !== String(normalizedOriginalValue).trim()) {
-                    payload[formKey] = normalizedFormValue === "" ? null : String(normalizedFormValue);
-                }
-            }
-        });
+            };
+            loadData();
+        }
+    }, [isOpen, contratado.id, reset]);
 
+    async function handleUpdate(formData: ContratadoForm) {
+        if (!originalData) return;
+
+        const payload: EditContratadoPayload = {};
+        
+        // Compara e adiciona apenas campos alterados
+        if (formData.nome !== originalData.nome) payload.nome = formData.nome;
+        if (formData.email !== originalData.email) payload.email = formData.email;
+        if (formData.telefone?.replace(/\D/g, '') !== (originalData.telefone || "").replace(/\D/g, '')) payload.telefone = formData.telefone?.replace(/\D/g, '') || null;
+        if (formData.cpf?.replace(/\D/g, '') !== (originalData.cpf || "").replace(/\D/g, '')) payload.cpf = formData.cpf?.replace(/\D/g, '') || null;
+        if (formData.cnpj?.replace(/\D/g, '') !== (originalData.cnpj || "").replace(/\D/g, '')) payload.cnpj = formData.cnpj?.replace(/\D/g, '') || null;
+
+        
         if (Object.keys(payload).length === 0) {
             toast.info("Nenhuma alteração foi feita.");
-            setIsDialogOpen(false);
+            setIsOpen(false);
             return;
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados/${contratado.id}`, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                toast.success('Contratado atualizado com sucesso!');
-                setIsDialogOpen(false);
-                onContratadoUpdated();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Erro ao atualizar contratado.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Ocorreu um erro no servidor. Tente novamente.');
+            await updateContratado(contratado.id, payload);
+            toast.success('Contratado atualizado com sucesso!');
+            setIsOpen(false);
+            onContratadoUpdated();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao atualizar.');
         }
     }
-
+    
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="p-2 rounded-lg">
                     <Pencil className="w-4 h-4" />
@@ -315,7 +199,7 @@ function EditarContratado({ contratado, onContratadoUpdated }: ContratadoEditarP
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
                         <Button disabled={isSubmitting} type="submit">
                             {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
                         </Button>
@@ -326,63 +210,34 @@ function EditarContratado({ contratado, onContratadoUpdated }: ContratadoEditarP
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE NOVO CONTRATADO (MODAL)
-//================================================================================
 
+// --- Componente de Criação ---
 function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+    const [isOpen, setIsOpen] = useState(false);
     const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm<ContratadoForm>({
         resolver: zodResolver(contratadoSchema),
     });
 
-    async function handleCriarContratado(data: ContratadoForm) {
+    async function handleCreate(data: ContratadoForm) {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado. Faça o login novamente.");
-                return;
-            }
-
-            const payload = {
+            const payload: NewContratadoPayload = {
                 ...data,
                 cpf: data.cpf ? data.cpf.replace(/\D/g, '') : null,
                 cnpj: data.cnpj ? data.cnpj.replace(/\D/g, '') : null,
                 telefone: data.telefone ? data.telefone.replace(/\D/g, '') : null,
             };
-
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                return;
-            }
-
-            if (response.status === 201) {
-                toast.success('Contratado cadastrado com sucesso.');
-                setIsDialogOpen(false);
-                reset();
-                onContratadoAdded();
-            } else {
-                const result = await response.json();
-                toast.error(result.error || 'Cadastro inválido.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Erro ao cadastrar contratado.');
+            await createContratado(payload);
+            toast.success('Contratado cadastrado com sucesso.');
+            setIsOpen(false);
+            reset();
+            onContratadoAdded();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao cadastrar.');
         }
     }
-
+    
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="default">
                     <CirclePlus className="h-4 w-4" />
@@ -390,7 +245,7 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[480px]">
-                <form onSubmit={handleSubmit(handleCriarContratado)}>
+                <form onSubmit={handleSubmit(handleCreate)}>
                     <DialogHeader>
                         <DialogTitle>Novo Contratado</DialogTitle>
                         <DialogDescription>
@@ -430,83 +285,23 @@ function NovoContratado({ onContratadoAdded }: { onContratadoAdded: () => void }
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE DE EXCLUSÃO
-//================================================================================
-
+// --- Componente de Exclusão ---
 function ExcluirContratadoDialog({ contratado, onContratadoDeleted }: { contratado: Contratado, onContratadoDeleted: () => void }) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/contratados/${contratado.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-
-            if (response.status === 204) {
-                toast.success(`Contratado "${contratado.nome}" excluído com sucesso.`);
-                onContratadoDeleted();
-            } else if (response.status === 409) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    try {
-                        const result = await response.json();
-                        const contratos = result.contratos;
-                        if (Array.isArray(contratos) && contratos.length > 0) {
-                            const contractList = contratos.map((c: any) => {
-                                if (c && typeof c === 'object' && 'nr_contrato' in c) {
-                                    return c.nr_contrato;
-                                }
-                                if (typeof c === 'string') {
-                                    return c;
-                                }
-                                return 'Contrato sem número';
-                            }).join(', ');
-                            
-                            toast.error(result.error || 'Contratado possui vínculos', {
-                                description: `Vinculado aos contratos: ${contractList}`,
-                                duration: 8000
-                            });
-                        } else {
-                            toast.error(result.error || 'Contratado possui vínculos ativos.');
-                        }
-                    } catch (jsonError) {
-                        console.error('Erro ao fazer parse do JSON:', jsonError);
-                        toast.error('Contratado possui vínculos ativos e não pode ser excluído.');
-                    }
-                } else {
-                    toast.error('Contratado possui vínculos ativos e não pode ser excluído.');
-                }
-            } else if (response.status === 500) {
-                console.error('Erro 500 ao excluir contratado');
-                toast.error('Erro interno do servidor. Entre em contato com o suporte.', {
-                    description: 'O contratado pode possuir vínculos que impedem a exclusão.',
-                    duration: 8000
-                });
-            } else {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    try {
-                        const result = await response.json();
-                        toast.error(result.error || 'Falha ao excluir contratado.');
-                    } catch (jsonError) {
-                        toast.error('Falha ao excluir contratado.');
-                    }
-                } else {
-                    toast.error('Falha ao excluir contratado.');
-                }
-            }
-        } catch (error) {
-            console.error('Erro ao excluir contratado:', error);
-            toast.error('Ocorreu um erro de rede. Tente novamente.');
+            await deleteContratado(contratado.id);
+            toast.success(`Contratado "${contratado.nome}" excluído.`);
+            onContratadoDeleted();
+        } catch (error: any) {
+            toast.error(error.message, { description: 'Verifique se ele não possui contratos vinculados.', duration: 8000 });
         } finally {
             setIsDeleting(false);
         }
     };
-
+    
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -532,15 +327,8 @@ function ExcluirContratadoDialog({ contratado, onContratadoDeleted }: { contrata
     );
 }
 
-//================================================================================
-// SECTION: COMPONENTE CARD MÓVEL
-//================================================================================
-
-function ContratadoMobileCard({ contratado, onContratadoUpdated, onContratadoDeleted }: { 
-    contratado: Contratado, 
-    onContratadoUpdated: () => void, 
-    onContratadoDeleted: () => void 
-}) {
+// --- Card para Mobile ---
+function ContratadoMobileCard({ contratado, onContratadoUpdated, onContratadoDeleted }: { contratado: Contratado, onContratadoUpdated: () => void, onContratadoDeleted: () => void }) {
     return (
         <Card className="w-full">
             <CardHeader className="pb-3">
@@ -579,82 +367,48 @@ function ContratadoMobileCard({ contratado, onContratadoUpdated, onContratadoDel
     );
 }
 
+
 //================================================================================
-// SECTION: COMPONENTE PRINCIPAL COM PAGINAÇÃO
+// SECTION: COMPONENTE PRINCIPAL (REFATORADO)
 //================================================================================
 export default function Contratados() {
     const [contratados, setContratados] = useState<Contratado[]>([]);
-    const [searchTerm, setSearchTerm] = useState(""); 
+    const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
-
-    // --- NOVOS ESTADOS PARA PAGINAÇÃO ---
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [totalItems, setTotalItems] = useState(0);
-    const [perPage, setPerPage] = useState(10); // Valor padrão
+    const [perPage, setPerPage] = useState(10);
 
     const fetchContratados = useCallback(async (page = 1, limit = 10, search = "") => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                toast.error("Acesso não autorizado. Faça o login novamente.");
-                setLoading(false);
-                return;
-            }
-
-            // --- Construção da URL com parâmetros de paginação e filtro ---
-            const contratadosUrl = new URL(`${import.meta.env.VITE_API_URL}/contratados/`);
-            contratadosUrl.searchParams.append('page', String(page));
-            contratadosUrl.searchParams.append('per_page', String(limit));
-            if (search) {
-                contratadosUrl.searchParams.append('nome', search);
-            }
-
-            const response = await fetch(contratadosUrl.toString(), {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.status === 401) {
-                toast.error("Sua sessão expirou. Faça o login novamente.");
-                throw new Error('Não autorizado');
-            }
-            if (!response.ok) {
-                throw new Error('Falha ao buscar dados da API.');
-            }
-
-            // --- Processa a nova estrutura de resposta da API ---
-            const result: ApiResponse = await response.json();
-
+            const result = await getContratados({ page, per_page: limit, nome: search });
             setContratados(result.data);
             setTotalPages(result.total_pages);
             setCurrentPage(result.current_page);
             setTotalItems(result.total_items);
             setPerPage(result.per_page);
-
-        } catch (error) {
-            console.error("Erro ao carregar contratados:", error);
-            if (!(error instanceof Error && error.message === 'Não autorizado')) {
-                toast.error("Não foi possível carregar a lista de contratados.");
-            }
+        } catch (error: any) {
+            toast.error(error.message || "Não foi possível carregar contratados.");
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchContratados(currentPage, perPage, searchTerm);
-    }, [fetchContratados]); // Apenas na montagem inicial
+        fetchContratados(1, 10, ""); // Carga Inicial
+    }, [fetchContratados]);
 
-    const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setCurrentPage(1); // Reseta para a primeira página ao buscar
+    const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setCurrentPage(1);
         fetchContratados(1, perPage, searchTerm);
     };
-
+    
     const handleClearFilter = () => {
         setSearchTerm("");
-        setCurrentPage(1); // Reseta para a primeira página
+        setCurrentPage(1);
         fetchContratados(1, perPage, "");
     };
 
@@ -680,7 +434,6 @@ export default function Contratados() {
 
     return (
         <div className="w-full mx-auto p-6">
-            {/* Barra de Filtro e Ações */}
             <div className="flex items-center justify-between py-4 gap-4">
                 <form onSubmit={handleSearchSubmit} className="flex gap-2 items-center flex-grow">
                     <Input
@@ -812,3 +565,4 @@ export default function Contratados() {
         </div>
     );
 }
+

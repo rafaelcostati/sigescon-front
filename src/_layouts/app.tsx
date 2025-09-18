@@ -27,8 +27,8 @@ export default function AppLayout() {
                             <Outlet />
                         </div>
                         <footer className="w-full text-center p-4 text-sm text-muted-foreground">
-                            Copyright &copy; Anderson P. S. Pontes {new Date().getFullYear()} | Todos
-                            os direitos reservados.
+                            Copyright &copy; PGE-PA {new Date().getFullYear()} | DTIGD - Todos os
+                            direitos reservados.
                         </footer>
                     </div>
                 </div>

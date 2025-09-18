@@ -39,7 +39,6 @@ export const contratoSchema = z.object({
     status: z.object({ id: z.number(), nome: z.string() }).optional(),
 });
 export type Contrato = z.infer<typeof contratoSchema>;
-export type Contratado = { id: number; nome: string; cnpj: string; };
 export type Modalidade = { id: number; nome: string; };
 export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
@@ -99,6 +98,33 @@ export type EditUserPayload = Partial<{
     cpf: string;
     matricula: string;
 }>;
+
+export type Contratado = {
+    id: number;
+    nome: string;
+    email: string;
+    cnpj?: string | null;
+    cpf?: string | null;
+    telefone?: string | null;
+};
+
+export type ContratadoApiResponse = {
+    data: Contratado[];
+    total_items: number;
+    total_pages: number;
+    current_page: number;
+    per_page: number;
+};
+
+export type NewContratadoPayload = {
+    nome: string;
+    email: string;
+    cpf?: string | null;
+    cnpj?: string | null;
+    telefone?: string | null;
+};
+
+export type EditContratadoPayload = Partial<NewContratadoPayload>;
 
 
 // --- FUNÇÕES AUXILIARES ---
@@ -211,6 +237,57 @@ export function updateUser(userId: number, userData: EditUserPayload): Promise<U
     });
 }
 
+export function getContratados(params: { page: number; per_page: number; nome?: string }): Promise<ContratadoApiResponse> {
+    const url = new URL(`${API_URL}/contratados/`);
+    url.searchParams.append('page', String(params.page));
+    url.searchParams.append('per_page', String(params.per_page));
+    if (params.nome) {
+        url.searchParams.append('nome', params.nome);
+    }
+    const endpoint = `/contratados/${url.search}`;
+    return api<ContratadoApiResponse>(endpoint);
+}
+
+/**
+ * Busca os detalhes de um único contratado.
+ * GET /contratados/{id}
+ */
+export function getContratadoById(id: number): Promise<Contratado> {
+    return api<Contratado>(`/contratados/${id}`);
+}
+
+/**
+ * Cria um novo contratado.
+ * POST /contratados
+ */
+export function createContratado(payload: NewContratadoPayload): Promise<Contratado> {
+    return api<Contratado>('/contratados', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Atualiza um contratado existente.
+ * PATCH /contratados/{id}
+ */
+export function updateContratado(id: number, payload: EditContratadoPayload): Promise<Contratado> {
+    return api<Contratado>(`/contratados/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Deleta um contratado.
+ * DELETE /contratados/{id}
+ */
+export function deleteContratado(id: number): Promise<void> {
+    return api<void>(`/contratados/${id}`, {
+        method: 'DELETE',
+    });
+}
+
 
 
 // ============================================================================
@@ -255,9 +332,7 @@ export function deleteContrato(id: number): Promise<void> {
 // FUNÇÕES PARA OBTER DADOS PARA FORMULÁRIOS - Nenhuma alteração necessária
 // ============================================================================
 
-export function getContratados(): Promise<Contratado[]> {
-    return api<Contratado[]>('/contratados');
-}
+
 
 export function getModalidades(): Promise<Modalidade[]> {
     return api<Modalidade[]>('/modalidades');
