@@ -325,7 +325,9 @@ export function getContratoDetalhado(id: number): Promise<ContratoDetalhado> { r
 
 export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: Relatorio[] }> { return api<{ data: Relatorio[] }>(`/contratos/${contratoId}/relatorios/`); }
 
-export function downloadArquivo(arquivoId: number): Promise<Blob> { return apiBlob(`/arquivos/${arquivoId}/download`); }
+export function downloadArquivoContrato(contratoId: number, arquivoId: number): Promise<Blob> {
+    return apiBlob(`/contratos/${contratoId}/arquivos/${arquivoId}/download`);
+}
 
 export type StatusPendencia = {
     id: number;
@@ -537,13 +539,31 @@ export function updateContrato(contratoId: number, formData: FormData): Promise<
  * Busca arquivos de um contrato específico
  * GET /contratos/{contrato_id}/arquivos
  */
-export async function getArquivosByContratoId(contratoId: number): Promise<Arquivo[]> {
+// Tipo para resposta da API de arquivos
+export type ArquivosResponse = {
+    arquivos: {
+        id: number;
+        nome_arquivo: string;
+        tipo_arquivo: string;
+        tamanho_bytes: number;
+        contrato_id: number;
+        created_at: string;
+    }[];
+    total_arquivos: number;
+    contrato_id: number;
+};
+
+export async function getArquivosByContratoId(contratoId: number): Promise<ArquivosResponse> {
     // Alguns backends exigem barra final; além disso, trate 404 como "sem arquivos"
     try {
-        return await api<Arquivo[]>(`/contratos/${contratoId}/arquivos/`);
+        return await api<ArquivosResponse>(`/contratos/${contratoId}/arquivos/`);
     } catch (err: any) {
         if (typeof err?.message === 'string' && err.message.toLowerCase().includes('not found')) {
-            return [];
+            return {
+                arquivos: [],
+                total_arquivos: 0,
+                contrato_id: contratoId
+            };
         }
         throw err;
     }
@@ -553,8 +573,8 @@ export async function getArquivosByContratoId(contratoId: number): Promise<Arqui
  * Deleta um arquivo específico
  * DELETE /arquivos/{arquivo_id}
  */
-export function deleteArquivo(arquivoId: number): Promise<void> {
-    return api<void>(`/arquivos/${arquivoId}`, {
+export function deleteArquivoContrato(contratoId: number, arquivoId: number): Promise<void> {
+    return api<void>(`/contratos/${contratoId}/arquivos/${arquivoId}`, {
         method: 'DELETE',
     });
 }

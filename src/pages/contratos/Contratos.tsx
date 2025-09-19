@@ -54,7 +54,9 @@ import {
     getContratoDetalhado,
     getPendenciasByContratoId,
     createPendencia,
-    downloadArquivo,
+    downloadArquivoContrato,
+    deleteArquivoContrato,
+    getArquivosByContratoId,
     getContratados,
     getStatus,
     getUsers,
@@ -62,6 +64,7 @@ import {
     type Contratado,
     type Status,
     type User,
+    type ArquivosResponse,
 } from "@/lib/api";
 
 import {
@@ -171,7 +174,6 @@ type Pendencia = {
     status_nome: string | null;
     criado_por_nome: string | null;
 };
-
 
 type NewPendenciaPayload = {
     descricao: string;
@@ -295,8 +297,6 @@ const convertToPendencia = (data: any): Pendencia => {
         criado_por_nome: data.criado_por_nome ?? null
     };
 };
-
-
 
 // ============================================================================
 // Componentes
@@ -617,6 +617,7 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
             setPendencias(response.map(convertToPendencia));
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+
             if (errorMessage.includes("401") || errorMessage.includes("não autorizado")) {
                 toast.error("Sessão expirada", {
                     description: "Por favor, faça o login novamente.",
@@ -637,8 +638,6 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
     React.useEffect(() => {
         fetchPendencias();
     }, [fetchPendencias]);
-
-   
 
     return (
         <div className="space-y-4">
@@ -700,7 +699,7 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>                                            
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
@@ -1189,6 +1188,7 @@ export function ContratosDataTable() {
 function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [detailedData, setDetailedData] = React.useState<ContratoDetalhado | null>(null);
+    const [arquivos, setArquivos] = React.useState<ArquivosResponse | null>(null);
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -1210,7 +1210,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
     const handleDownloadArquivo = async (arquivoId: number, nomeOriginal: string) => {
         const toastId = toast.loading(`Baixando "${nomeOriginal}"...`);
         try {
-            const blob = await downloadArquivo(arquivoId);
+            const blob = await downloadArquivoContrato(contrato.id, arquivoId);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -1238,6 +1238,38 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
         }
     };
 
+    const handleDeleteArquivo = async (arquivoId: number, nomeOriginal: string) => {
+        const toastId = toast.loading(`Excluindo "${nomeOriginal}"...`);
+        try {
+            await deleteArquivoContrato(contrato.id, arquivoId);
+            // Atualizar a lista de arquivos após exclusão
+            if (arquivos) {
+                const updatedArquivos = {
+                    ...arquivos,
+                    arquivos: arquivos.arquivos.filter(arquivo => arquivo.id !== arquivoId),
+                    total_arquivos: arquivos.total_arquivos - 1
+                };
+                setArquivos(updatedArquivos);
+            }
+            toast.success(`Arquivo "${nomeOriginal}" excluído com sucesso!`, { id: toastId });
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro.";
+
+            if (errorMessage.includes("401") || errorMessage.includes("não autorizado")) {
+                toast.error("Sessão expirada", {
+                    description: "Por favor, faça o login novamente.",
+                });
+                handleLogout();
+                return;
+            }
+
+            toast.error(`Falha ao excluir "${nomeOriginal}"`, {
+                description: errorMessage,
+                id: toastId,
+            });
+        }
+    };
+
     React.useEffect(() => {
         if (!isOpen) return;
 
@@ -1247,11 +1279,13 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
             try {
                 const [
                     detailsData,
+                    arquivosData,
                     contratadosData,
                     statusData,
                     usuariosData,
                 ] = await Promise.all([
                     getContratoDetalhado(contrato.id),
+                    getArquivosByContratoId(contrato.id),
                     getContratados({ page: 1, per_page: 100 }),
                     getStatus(),
                     getUsers({ page: 1, per_page: 100 }),
@@ -1259,6 +1293,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
 
                 // Converter os dados para os tipos corretos
                 setDetailedData(convertToContratoDetalhado(detailsData));
+                setArquivos(arquivosData);
                 setContratados(contratadosData.data || []);
                 setStatusList(statusData || []);
                 setUsuarios(usuariosData.data || []);
@@ -1402,7 +1437,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                             <TabsTrigger value="pendencias">Pendências</TabsTrigger>
                             <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
                         </TabsList>
-                        
+
                         <TabsContent value="geral" className="mt-6">
                             <div className="flex flex-col gap-6 text-sm">
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
@@ -1414,7 +1449,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                         {detailedData ? formatCurrency(detailedData.valor_global) : "..."}
                                     </DetailItem>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2">
                                     <DetailItem label="Data Início">
                                         {formatDate(detailedData?.data_inicio)}
@@ -1423,9 +1458,9 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                         {formatDate(detailedData?.data_fim || dataToShow.data_fim)}
                                     </DetailItem>
                                 </div>
-                                
+
                                 <Separator />
-                                
+
                                 <h4 className="font-semibold">Contratado</h4>
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2">
                                     <DetailItem label="Nome">{contratado.nome}</DetailItem>
@@ -1435,9 +1470,9 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                             : formatCpf(contratado.cpf)}
                                     </DetailItem>
                                 </div>
-                                
+
                                 <Separator />
-                                
+
                                 <h4 className="font-semibold">Documentação e Processos</h4>
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                                     <DetailItem label="Processo (PAE)">
@@ -1448,9 +1483,9 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                         {formatDate(detailedData?.data_doe)}
                                     </DetailItem>
                                 </div>
-                                
+
                                 <Separator />
-                                
+
                                 <h4 className="font-semibold">Responsáveis</h4>
                                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-3">
                                     <DetailItem label="Gestor">{gestor.nome}</DetailItem>
@@ -1459,7 +1494,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                         {fiscalSubstituto?.nome ?? "N/A"}
                                     </DetailItem>
                                 </div>
-                                
+
                                 {detailedData?.base_legal && (
                                     <>
                                         <Separator />
@@ -1471,7 +1506,7 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                         </div>
                                     </>
                                 )}
-                                
+
                                 {detailedData?.termos_contratuais && (
                                     <>
                                         <Separator />
@@ -1485,45 +1520,105 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                                 )}
                             </div>
                         </TabsContent>
-                        
+
                         <TabsContent value="pendencias" className="mt-6">
-                            <PendenciasContrato 
-                                contratoId={contrato.id} 
+                            <PendenciasContrato
+                                contratoId={contrato.id}
                                 contratoNumero={dataToShow.nr_contrato}
                             />
                         </TabsContent>
-                        
+
                         <TabsContent value="arquivos" className="mt-6">
                             <div>
-                                <h4 className="font-semibold text-foreground mb-4">Arquivos do Contrato</h4>
-                                {detailedData?.documento_nome_arquivo ? (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between rounded-md border p-4 hover:bg-muted/50">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-100">
-                                                    <IconDownload className="h-5 w-5 text-blue-600" />
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="font-semibold text-foreground">Arquivos do Contrato</h4>
+                                    {arquivos && arquivos.total_arquivos > 0 && (
+                                        <Badge variant="secondary">
+                                            {arquivos.total_arquivos} arquivo{arquivos.total_arquivos !== 1 ? 's' : ''}
+                                        </Badge>
+                                    )}
+                                </div>
+                                {arquivos && arquivos.arquivos.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {arquivos.arquivos.map((arquivo) => {
+                                            const formatFileSize = (bytes: number) => {
+                                                if (bytes === 0) return '0 Bytes';
+                                                const k = 1024;
+                                                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                                                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                                            };
+
+                                            const formatDate = (dateString: string) => {
+                                                return new Date(dateString).toLocaleDateString('pt-BR', {
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                });
+                                            };
+
+                                            return (
+                                                <div key={arquivo.id} className="flex items-center justify-between rounded-md border p-4 hover:bg-muted/50">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-100">
+                                                            <IconDownload className="h-5 w-5 text-blue-600" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-sm">
+                                                                {arquivo.nome_arquivo}
+                                                            </p>
+                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                                <span>{arquivo.tipo_arquivo}</span>
+                                                                <span>{formatFileSize(arquivo.tamanho_bytes)}</span>
+                                                                <span>Enviado em {formatDate(arquivo.created_at)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleDownloadArquivo(arquivo.id, arquivo.nome_arquivo)}
+                                                            className="gap-2"
+                                                        >
+                                                            <IconDownload className="h-4 w-4" />
+                                                            Baixar
+                                                        </Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                >
+                                                                    <IconX className="h-4 w-4" />
+                                                                    Excluir
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Tem certeza que deseja excluir o arquivo "{arquivo.nome_arquivo}"? Esta ação não pode ser desfeita.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        onClick={() => handleDeleteArquivo(arquivo.id, arquivo.nome_arquivo)}
+                                                                        className="bg-red-600 hover:bg-red-700"
+                                                                    >
+                                                                        Sim, excluir
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">
-                                                        {detailedData.documento_nome_arquivo}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Documento principal do contrato
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    handleDownloadArquivo(contrato.id, detailedData.documento_nome_arquivo!)
-                                                }
-                                                className="gap-2"
-                                            >
-                                                <IconDownload className="h-4 w-4" />
-                                                Baixar
-                                            </Button>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="rounded-md border border-dashed p-8 text-center">

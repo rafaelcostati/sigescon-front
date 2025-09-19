@@ -10,7 +10,7 @@ import {
     getContratoDetalhado,
     updateContrato,
     getArquivosByContratoId,
-    deleteArquivo,
+    deleteArquivoContrato,
     getContratados,
     getModalidades,
     getStatus,
@@ -114,8 +114,12 @@ export function EditarContrato() {
                 reset(formattedData as Partial<ContractFormData>);
 
                 // Carrega arquivos do contrato
-                const files = await getArquivosByContratoId(Number(id));
-                setExistingFiles(files);
+                const filesResponse = await getArquivosByContratoId(Number(id));
+                setExistingFiles(filesResponse.arquivos.map(arquivo => ({
+                    id: arquivo.id,
+                    nome_arquivo: arquivo.nome_arquivo,
+                    data_upload: arquivo.created_at
+                })));
 
             } catch (err: any) {
                 console.error("Erro ao carregar dados:", err);
@@ -210,8 +214,12 @@ export function EditarContrato() {
                     data_doe: refreshed.data_doe ? new Date(refreshed.data_doe).toISOString().split('T')[0] : undefined,
                 };
                 reset(refreshedFormatted);
-                const updatedFiles = await getArquivosByContratoId(Number(id));
-                setExistingFiles(updatedFiles);
+                const updatedFilesResponse = await getArquivosByContratoId(Number(id));
+                setExistingFiles(updatedFilesResponse.arquivos.map(arquivo => ({
+                    id: arquivo.id,
+                    nome_arquivo: arquivo.nome_arquivo,
+                    data_upload: arquivo.created_at
+                })));
             } catch {}
             navigate("/contratos");
             
@@ -229,7 +237,7 @@ export function EditarContrato() {
             const toastId = toast.loading("Excluindo arquivo...");
             try {
                 // Usa a função da API que já tem autenticação
-                await deleteArquivo(fileId);
+                await deleteArquivoContrato(Number(id), fileId);
                 
                 setExistingFiles(prev => prev.filter(file => file.id !== fileId));
                 setFileWasDeleted(true);
