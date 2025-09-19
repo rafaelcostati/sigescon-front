@@ -484,3 +484,77 @@ export function getStatus(): Promise<Status[]> {
 export function getUsuarios(): Promise<Usuario[]> {
     return api<Usuario[]>('/usuarios');
 }
+
+// ============================================================================
+// FUNÇÕES PARA CONTRATOS - CRUD COMPLETO
+// ============================================================================
+
+export type NewContratoPayload = {
+    nr_contrato: string;
+    objeto: string;
+    data_inicio: string;
+    data_fim: string;
+    contratado_id: number;
+    modalidade_id: number;
+    status_id: number;
+    gestor_id: number;
+    fiscal_id: number;
+    fiscal_substituto_id?: number;
+    valor_anual?: number;
+    valor_global?: number;
+    base_legal?: string;
+    termos_contratuais?: string;
+    pae?: string;
+    doe?: string;
+    data_doe?: string;
+};
+
+export type EditContratoPayload = Partial<NewContratoPayload>;
+
+/**
+ * Cria um novo contrato com dados de formulário e arquivo opcional
+ * POST /contratos
+ */
+export function createContrato(formData: FormData): Promise<Contrato> {
+    return api<Contrato>('/contratos', {
+        method: 'POST',
+        body: formData,
+    });
+}
+
+/**
+ * Atualiza um contrato existente com dados de formulário e arquivo opcional
+ * PATCH /contratos/{contrato_id}
+ */
+export function updateContrato(contratoId: number, formData: FormData): Promise<Contrato> {
+    return api<Contrato>(`/contratos/${contratoId}`, {
+        method: 'PATCH',
+        body: formData,
+    });
+}
+
+/**
+ * Busca arquivos de um contrato específico
+ * GET /contratos/{contrato_id}/arquivos
+ */
+export async function getArquivosByContratoId(contratoId: number): Promise<Arquivo[]> {
+    // Alguns backends exigem barra final; além disso, trate 404 como "sem arquivos"
+    try {
+        return await api<Arquivo[]>(`/contratos/${contratoId}/arquivos/`);
+    } catch (err: any) {
+        if (typeof err?.message === 'string' && err.message.toLowerCase().includes('not found')) {
+            return [];
+        }
+        throw err;
+    }
+}
+
+/**
+ * Deleta um arquivo específico
+ * DELETE /arquivos/{arquivo_id}
+ */
+export function deleteArquivo(arquivoId: number): Promise<void> {
+    return api<void>(`/arquivos/${arquivoId}`, {
+        method: 'DELETE',
+    });
+}

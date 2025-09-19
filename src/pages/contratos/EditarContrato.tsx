@@ -5,7 +5,18 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, SquareX, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner'; // **NOVA IMPORTAÇÃO**
+import { toast } from 'sonner';
+import {
+    getContratoDetalhado,
+    updateContrato,
+    getArquivosByContratoId,
+    deleteArquivo,
+    getContratados,
+    getModalidades,
+    getStatus,
+    getUsuarios,
+    type Arquivo
+} from '@/lib/api';
 
 // Schema de validação (inalterado)
 const contractSchema = z.object({
@@ -30,10 +41,8 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
-interface ExistingFile {
-    id: number;
-    nome_arquivo: string;
-}
+// Usando o tipo Arquivo da API
+type ExistingFile = Arquivo;
 
 export function EditarContrato() {
     const navigate = useNavigate();
@@ -66,47 +75,51 @@ export function EditarContrato() {
         async function loadContractData() {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem("token") || "";
-                const headers = { Authorization: `Bearer ${token}` };
-
-                const [c, m, s, u] = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}/contratados`, { headers }),
-                    fetch(`${import.meta.env.VITE_API_URL}/modalidades`, { headers }),
-                    fetch(`${import.meta.env.VITE_API_URL}/status`, { headers }),
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios`, { headers }),
+                // Carrega dados dos dropdowns e contrato em paralelo usando as funções da API
+                const [contratados, modalidades, statusList, usuarios, contractData] = await Promise.all([
+                    getContratados({ page: 1, per_page: 10 }),
+                    getModalidades(),
+                    getStatus(),
+                    getUsuarios(),
+                    getContratoDetalhado(Number(id))
                 ]);
-                setContratados(await c.json());
-                setModalidades(await m.json());
-                setStatusList(await s.json());
-                setUsuarios(await u.json());
 
-                const contractRes = await fetch(`${import.meta.env.VITE_API_URL}/contratos/${id}`, { headers });
-                if (!contractRes.ok) throw new Error("Contrato não encontrado.");
-                const contractData = await contractRes.json();
+                setContratados(contratados.data || contratados);
+                setModalidades(modalidades);
+                setStatusList(statusList);
+                setUsuarios((usuarios as any)?.data || usuarios);
                 
-                const formattedData = {
-                    ...contractData,
-                    contratado_id: String(contractData.contratado_id || ""),
-                    modalidade_id: String(contractData.modalidade_id || ""),
-                    status_id: String(contractData.status_id || ""),
-                    gestor_id: String(contractData.gestor_id || ""),
-                    fiscal_id: String(contractData.fiscal_id || ""),
-                    fiscal_substituto_id: String(contractData.fiscal_substituto_id || ""),
-                    data_inicio: contractData.data_inicio ? new Date(contractData.data_inicio).toISOString().split('T')[0] : '',
-                    data_fim: contractData.data_fim ? new Date(contractData.data_fim).toISOString().split('T')[0] : '',
-                    data_doe: contractData.data_doe ? new Date(contractData.data_doe).toISOString().split('T')[0] : '',
+                // Constrói apenas os campos esperados pelo formulário, com os tipos corretos
+                const formattedData: ContractFormData = {
+                    nr_contrato: contractData.nr_contrato ?? "",
+                    objeto: contractData.objeto ?? "",
+                    data_inicio: contractData.data_inicio ? new Date(contractData.data_inicio).toISOString().split('T')[0] : "",
+                    data_fim: contractData.data_fim ? new Date(contractData.data_fim).toISOString().split('T')[0] : "",
+                    contratado_id: String(contractData.contratado_id ?? ""),
+                    modalidade_id: String(contractData.modalidade_id ?? ""),
+                    status_id: String(contractData.status_id ?? ""),
+                    gestor_id: String(contractData.gestor_id ?? ""),
+                    fiscal_id: String(contractData.fiscal_id ?? ""),
+                    fiscal_substituto_id: contractData.fiscal_substituto_id != null ? String(contractData.fiscal_substituto_id) : undefined,
+                    valor_anual: contractData.valor_anual != null ? String(contractData.valor_anual) : undefined,
+                    valor_global: contractData.valor_global != null ? String(contractData.valor_global) : undefined,
+                    // Alguns campos podem não estar tipados em Contrato; acessar com cast seguro
+                    base_legal: (contractData as any)?.base_legal ?? undefined,
+                    termos_contratuais: (contractData as any)?.termos_contratuais ?? undefined,
+                    pae: contractData.pae ?? undefined,
+                    doe: contractData.doe ?? undefined,
+                    data_doe: contractData.data_doe ? new Date(contractData.data_doe).toISOString().split('T')[0] : undefined,
                 };
 
-                reset(formattedData);
+                reset(formattedData as Partial<ContractFormData>);
 
-                const filesRes = await fetch(`${import.meta.env.VITE_API_URL}/contratos/${id}/arquivos`, { headers });
-                if (!filesRes.ok) throw new Error("Não foi possível carregar os arquivos.");
-                setExistingFiles(await filesRes.json());
+                // Carrega arquivos do contrato
+                const files = await getArquivosByContratoId(Number(id));
+                setExistingFiles(files);
 
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Erro ao carregar dados:", err);
-                // **AJUSTE AQUI**
-                toast.error("Falha ao carregar os dados do contrato.");
+                toast.error(err.message || "Falha ao carregar os dados do contrato.");
                 navigate("/contratos");
             } finally {
                 setIsLoading(false);
@@ -115,7 +128,7 @@ export function EditarContrato() {
         loadContractData();
     }, [id, navigate, reset]);
 
-    // **FUNÇÃO onSubmit TOTALMENTE ATUALIZADA**
+    // **FUNÇÃO onSubmit ATUALIZADA PARA USAR A API**
     async function onSubmit(data: ContractFormData) {
         const hasFormChanges = Object.keys(dirtyFields).length > 0;
         const hasNewFiles = newFiles.length > 0;
@@ -131,27 +144,39 @@ export function EditarContrato() {
         try {
             const formData = new FormData();
 
+            // Adiciona apenas os campos que foram modificados
             Object.keys(data).forEach(keyStr => {
                 const key = keyStr as keyof ContractFormData;
                 if (dirtyFields[key]) {
-                    formData.append(key, String(data[key] ?? ""));
+                    const value = data[key];
+                    if (value !== undefined && value !== null && value !== '') {
+                        formData.append(key, String(value));
+                    }
                 }
             });
 
-            newFiles.forEach(file => {
-                formData.append("documentos_contrato", file);
-            });
-
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/contratos/${id}`, {
-                method: "PATCH",
-                body: formData,
-                headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Falha ao atualizar o contrato");
+            // Adiciona APENAS UM arquivo (substituição) conforme especificação do PATCH
+            if (newFiles.length > 0) {
+                const file = newFiles[0];
+                formData.append("documento_contrato", file);
             }
+
+            // Log dos dados enviados no FormData (sem conteúdo binário)
+            const formDataEntries: any = {};
+            formData.forEach((value, key) => {
+                if (key === 'documento_contrato') {
+                    if (!formDataEntries[key]) formDataEntries[key] = [];
+                    formDataEntries[key].push(`[FILE: ${(value as File).name}]`);
+                } else {
+                    formDataEntries[key] = value;
+                }
+            });
+            console.log('Editando contrato - FormData (obj):', formDataEntries);
+            try { console.log('Editando contrato - FormData (json):', JSON.stringify(formDataEntries, null, 2)); } catch {}
+
+            // Usa a função da API que já tem autenticação
+            const updated = await updateContrato(Number(id), formData);
+            console.log('Resposta do PATCH /contratos/{id}:', updated);
 
             let successMessage = "Contrato atualizado com sucesso!";
             if (!hasFormChanges && !hasNewFiles && fileWasDeleted) {
@@ -161,6 +186,33 @@ export function EditarContrato() {
             }
 
             toast.success(successMessage, { id: toastId });
+            // Recarrega detalhes e arquivos para refletir alterações antes de sair
+            try {
+                const refreshed = await getContratoDetalhado(Number(id));
+                // Atualiza o formulário com os dados retornados pelo backend
+                const refreshedFormatted: Partial<ContractFormData> = {
+                    nr_contrato: refreshed.nr_contrato ?? '',
+                    objeto: refreshed.objeto ?? '',
+                    data_inicio: refreshed.data_inicio ? new Date(refreshed.data_inicio).toISOString().split('T')[0] : '',
+                    data_fim: refreshed.data_fim ? new Date(refreshed.data_fim).toISOString().split('T')[0] : '',
+                    contratado_id: String(refreshed.contratado_id ?? ''),
+                    modalidade_id: String(refreshed.modalidade_id ?? ''),
+                    status_id: String(refreshed.status_id ?? ''),
+                    gestor_id: String(refreshed.gestor_id ?? ''),
+                    fiscal_id: String(refreshed.fiscal_id ?? ''),
+                    fiscal_substituto_id: refreshed.fiscal_substituto_id != null ? String(refreshed.fiscal_substituto_id) : undefined,
+                    valor_anual: refreshed.valor_anual != null ? String(refreshed.valor_anual) : undefined,
+                    valor_global: refreshed.valor_global != null ? String(refreshed.valor_global) : undefined,
+                    base_legal: (refreshed as any)?.base_legal ?? undefined,
+                    termos_contratuais: (refreshed as any)?.termos_contratuais ?? undefined,
+                    pae: refreshed.pae ?? undefined,
+                    doe: refreshed.doe ?? undefined,
+                    data_doe: refreshed.data_doe ? new Date(refreshed.data_doe).toISOString().split('T')[0] : undefined,
+                };
+                reset(refreshedFormatted);
+                const updatedFiles = await getArquivosByContratoId(Number(id));
+                setExistingFiles(updatedFiles);
+            } catch {}
             navigate("/contratos");
             
         } catch (err: any) {
@@ -171,27 +223,20 @@ export function EditarContrato() {
         }
     }
 
-    // **FUNÇÃO handleDeleteExistingFile ATUALIZADA**
+    // **FUNÇÃO handleDeleteExistingFile ATUALIZADA PARA USAR A API**
     const handleDeleteExistingFile = (fileId: number) => {
         const proceedWithDelete = async () => {
             const toastId = toast.loading("Excluindo arquivo...");
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/arquivos/${fileId}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-                });
-
-                if (res.status === 204) {
-                    setExistingFiles(prev => prev.filter(file => file.id !== fileId));
-                    setFileWasDeleted(true);
-                    toast.success("Arquivo excluído com sucesso!", { id: toastId });
-                } else {
-                    const errorText = await res.text();
-                    throw new Error(errorText || "Falha ao excluir o arquivo.");
-                }
+                // Usa a função da API que já tem autenticação
+                await deleteArquivo(fileId);
+                
+                setExistingFiles(prev => prev.filter(file => file.id !== fileId));
+                setFileWasDeleted(true);
+                toast.success("Arquivo excluído com sucesso!", { id: toastId });
             } catch (err: any) {
                 console.error("Erro ao deletar arquivo:", err);
-                toast.error(err.message, { id: toastId });
+                toast.error(err.message || "Falha ao excluir o arquivo.", { id: toastId });
             }
         };
 
@@ -211,7 +256,7 @@ export function EditarContrato() {
     const handleCancel = () => {
         const hasChanges = isDirty || newFiles.length > 0 || fileWasDeleted;
         if (hasChanges) {
-             toast("Você possui alterações não salvas.", {
+            toast("Você possui alterações não salvas.", {
                 description: "Deseja realmente sair e descartá-las?",
                 action: {
                     label: "Sair e Descartar",
@@ -230,8 +275,13 @@ export function EditarContrato() {
     // Funções de manipulação de novos arquivos (inalteradas)
     const handleAddNewFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
-        const filesToAdd = Array.from(e.target.files);
-        setNewFiles(prev => [...prev, ...filesToAdd]);
+        const file = e.target.files[0];
+        if (!file) return;
+        // Para edição, apenas 1 arquivo é permitido (substituição)
+        setNewFiles([file]);
+        console.log('Arquivo selecionado para edição:', { name: file.name, size: file.size, type: file.type });
+        // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente e disparar onChange
+        e.currentTarget.value = '';
     };
 
     const handleRemoveNewFile = (indexToRemove: number) => {
@@ -381,8 +431,8 @@ export function EditarContrato() {
                             </ul>
                         )}
                         <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
-                            <Upload size={18} /> Adicionar Arquivo(s)
-                            <input type="file" multiple className="hidden" onChange={handleAddNewFiles} />
+                            <Upload size={18} /> {newFiles.length > 0 ? "Substituir Arquivo" : "Adicionar Arquivo"}
+                            <input type="file" className="hidden" onChange={handleAddNewFiles} />
                         </label>
                     </div>
                 </div>
