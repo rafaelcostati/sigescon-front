@@ -212,7 +212,6 @@ export default function UserDataTable() {
                                         <TableHead className="font-semibold">Nome</TableHead>
                                         <TableHead className="font-semibold">Email</TableHead>
                                         <TableHead className="font-semibold hidden lg:table-cell">Matrícula</TableHead>
-                                        <TableHead className="font-semibold">Perfil</TableHead>
                                         <TableHead className="font-semibold text-center">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -227,11 +226,6 @@ export default function UserDataTable() {
                                             <TableCell className="text-muted-foreground lowercase">{user.email}</TableCell>
                                             <TableCell className="hidden text-muted-foreground lg:table-cell">
                                                 {user.matricula || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {user.perfil_nome} {/* <-- ATUALIZADO */}
-                                                </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center justify-center gap-2">

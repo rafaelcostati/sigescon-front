@@ -5,6 +5,7 @@ import {
   login as apiLogin, 
   logout as apiLogout, 
   getCurrentContext,
+  getCurrentUserInfo,
   alternarPerfil as apiAlternarPerfil,
   type LoginCredentials,
   type ContextoSessao,
@@ -75,11 +76,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setContextoSessao(contexto);
         
+        // Buscar dados básicos do usuário
+        let userInfo;
+        try {
+          userInfo = await getCurrentUserInfo();
+          console.log("✅ Dados do usuário carregados:", userInfo);
+        } catch (error) {
+          console.warn("⚠️ Não foi possível carregar dados do usuário, usando dados básicos");
+          userInfo = {
+            id: contexto.usuario_id,
+            nome: "Usuário",
+            email: "usuario@exemplo.com"
+          };
+        }
+        
         // Adapta dados do contexto para o formato UserData
         const userData: UserData = {
           id: contexto.usuario_id,
-          nome: "Usuário", // Pode ser obtido de outro endpoint se necessário
-          email: "usuario@exemplo.com", // Pode ser obtido de outro endpoint se necessário
+          nome: userInfo.nome,
+          email: userInfo.email,
           perfil_ativo: {
             id: contexto.perfil_ativo_id,
             nome: contexto.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"

@@ -336,7 +336,7 @@ export function ConcederPerfis({ usuario, onPerfisUpdated }: ConcederPerfisProps
                 )}
 
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={resetForm}>
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                         Cancelar
                     </Button>
                     <Button 

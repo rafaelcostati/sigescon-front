@@ -342,7 +342,24 @@ export async function getCurrentContext(): Promise<ContextoSessao> {
         console.log('✅ Contexto obtido:', response);
         return response;
     } catch (error) {
-        console.error('❌ Erro ao obter contexto:', error);
+        console.error('❌ Erro ao buscar contexto:', error);
+        throw error;
+    }
+}
+
+/**
+ * Busca dados básicos do usuário logado
+ * GET /usuarios/me
+ */
+export async function getCurrentUserInfo(): Promise<{ id: number; nome: string; email: string; matricula?: string }> {
+    console.log('🔍 Buscando dados do usuário logado');
+    
+    try {
+        const response = await api<{ id: number; nome: string; email: string; matricula?: string }>('/usuarios/me');
+        console.log('✅ Dados do usuário obtidos:', response);
+        return response;
+    } catch (error) {
+        console.error('❌ Erro ao buscar dados do usuário:', error);
         throw error;
     }
 }
