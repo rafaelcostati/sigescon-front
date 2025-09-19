@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jwtDecode } from "jwt-decode";
 
 // --- CONFIGURAÇÃO DA API ---
 const API_URL = import.meta.env.VITE_API_URL;
@@ -184,7 +185,8 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 
 export async function logout(): Promise<void> {
     try {
-        await api('/auth/logout', { method: 'POST' }, true);
+        // A rota de logout está em /auth/logout na URL de autenticação
+        await api('/logout', { method: 'POST' }, true);
     } catch (error) {
         console.warn("A chamada para o endpoint de logout falhou, mas o logout local prosseguirá.", error);
     } finally {
@@ -194,7 +196,7 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentContext(): Promise<ContextoSessao> {
     // Este endpoint deve estar na URL de autenticação
-    return api<ContextoSessao>('/auth/contexto', {}, true);
+    return api<ContextoSessao>('/contexto', {}, true);
 }
 
 
@@ -485,6 +487,83 @@ export function getStatus(): Promise<Status[]> {
 
 export function getUsuarios(): Promise<Usuario[]> {
     return api<Usuario[]>('/usuarios');
+}
+
+// ============================================================================
+// Perfil do usuário logado
+// ============================================================================
+
+export type UserProfile = {
+    id: number;
+    nome: string;
+    email: string;
+    matricula: string;
+    ativo: boolean;
+    perfis: string[];
+    perfil_ids: number[];
+    perfis_texto: string;
+};
+
+export type ChangePasswordPayload = {
+    senha_antiga: string;
+    nova_senha: string;
+};
+
+/**
+ * Busca o perfil completo do usuário logado
+ * GET /usuarios/{user_id}/perfis/completo
+ */
+export function getUserProfile(userId: number): Promise<UserProfile> {
+    return api<UserProfile>(`/usuarios/${userId}/perfis/completo`);
+}
+
+/**
+ * Altera a senha do usuário logado
+ * Tenta diferentes métodos HTTP conforme a API aceitar
+ */
+export async function changeUserPassword(userId: number, payload: ChangePasswordPayload): Promise<string> {
+    // Primeiro tenta com PUT (mais comum para alterações)
+    try {
+        return await api<string>(`/usuarios/${userId}/alterar-senha`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        });
+    } catch (error: any) {
+        // Se PUT não funcionar, tenta PATCH
+        if (error.message?.includes('405') || error.message?.includes('Method Not Allowed')) {
+            try {
+                return await api<string>(`/usuarios/${userId}/alterar-senha`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload),
+                });
+            } catch (patchError: any) {
+                // Se PATCH também não funcionar, tenta POST
+                if (patchError.message?.includes('405') || patchError.message?.includes('Method Not Allowed')) {
+                    return await api<string>(`/usuarios/${userId}/alterar-senha`, {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                    });
+                }
+                throw patchError;
+            }
+        }
+        throw error;
+    }
+}
+
+/**
+ * Utilitário para obter o ID do usuário atual do token JWT
+ */
+export function getCurrentUserId(): number | null {
+    try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return null;
+        const decoded: { sub: string } = jwtDecode(token);
+        return parseInt(decoded.sub, 10);
+    } catch (error) {
+        console.error("Failed to decode token:", error);
+        return null;
+    }
 }
 
 // ============================================================================

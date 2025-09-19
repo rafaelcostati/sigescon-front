@@ -40,6 +40,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Verifica se há token antes de tentar buscar o contexto
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          console.info("Nenhum token encontrado. Usuário não autenticado.");
+          setUser(null);
+          return;
+        }
+
         // A função getCurrentContext() de api.ts já usa o token do localStorage
         const contexto = await getCurrentContext();
         setUser(contexto);
@@ -47,6 +55,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Se a busca pelo contexto falhar, significa que não há sessão válida.
         console.info("Nenhuma sessão ativa encontrada.");
         setUser(null); // Garante que o estado de usuário esteja limpo
+        // Remove token inválido
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authTokenType');
       } finally {
         setLoading(false);
       }
@@ -76,14 +87,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Função de logout que utiliza a apiLogout de api.ts
   const logout = async () => {
+    // Limpa o estado do usuário imediatamente para evitar redirecionamentos
+    setUser(null);
+    
     try {
       // apiLogout já lida com a chamada à API e a remoção do token
       await apiLogout();
     } catch (error) {
       console.error("Erro ao fazer logout na API:", error);
-    } finally {
-      // Garante que o estado do usuário seja limpo na aplicação
-      setUser(null);
+      // Mesmo com erro na API, mantém o logout local
     }
   };
 
