@@ -1435,7 +1435,13 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="geral">Dados Gerais</TabsTrigger>
                             <TabsTrigger value="pendencias">Pendências</TabsTrigger>
-                            <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
+                            <TabsTrigger value="arquivos">
+                                Arquivos {arquivos && arquivos.total_arquivos > 0 && (
+                                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                                        {arquivos.total_arquivos}
+                                    </span>
+                                )}
+                            </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="geral" className="mt-6">
