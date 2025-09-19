@@ -6,6 +6,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, SquareX, Upload, Trash2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+
+// Constantes para arquivo (igual ao NovoContrato)
+const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet'
+];
+
+const ACCEPT_STRING = ALLOWED_FILE_TYPES.join(',');
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB por arquivo
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+
 import {
     getContratoDetalhado,
     updateContrato,
@@ -14,8 +31,7 @@ import {
     getContratados,
     getModalidades,
     getStatus,
-    getUsuarios,
-    type Arquivo
+    getUsuarios
 } from '@/lib/api';
 
 // Schema de validação (inalterado)
@@ -41,19 +57,22 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
-// Usando o tipo Arquivo da API
-type ExistingFile = Arquivo;
-
 export function EditarContrato() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
 
-    const [existingFiles, setExistingFiles] = useState<ExistingFile[]>([]);
+    // Estados para arquivos
+    const [existingFiles, setExistingFiles] = useState<{ id: number; nome_arquivo: string; data_upload?: string }[]>([]);
     const [newFiles, setNewFiles] = useState<File[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [fileWasDeleted, setFileWasDeleted] = useState(false);
-    
-    // **NOVO ESTADO** para controlar o envio do formulário
+
+    // Função para calcular tamanho total dos arquivos
+    const getTotalFileSize = (files: File[]) => {
+        return files.reduce((total, file) => total + file.size, 0);
+    };
+
+    // Estados para formulário
+    const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Estados para os dropdowns (inalterado)
@@ -159,11 +178,10 @@ export function EditarContrato() {
                 }
             });
 
-            // Adiciona APENAS UM arquivo (substituição) conforme especificação do PATCH
-            if (newFiles.length > 0) {
-                const file = newFiles[0];
+            // Adiciona múltiplos arquivos (mesmo padrão do NovoContrato)
+            newFiles.forEach(file => {
                 formData.append("documento_contrato", file);
-            }
+            });
 
             // Log dos dados enviados no FormData (sem conteúdo binário)
             const formDataEntries: any = {};
@@ -280,20 +298,84 @@ export function EditarContrato() {
         }
     };
     
-    // Funções de manipulação de novos arquivos (inalteradas)
-    const handleAddNewFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const file = e.target.files[0];
-        if (!file) return;
-        // Para edição, apenas 1 arquivo é permitido (substituição)
-        setNewFiles([file]);
-        console.log('Arquivo selecionado para edição:', { name: file.name, size: file.size, type: file.type });
-        // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente e disparar onChange
-        e.currentTarget.value = '';
+    // Funções de manipulação de múltiplos arquivos (igual ao NovoContrato)
+    const handleAddNewFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        console.log("Arquivos selecionados:", files);
+        
+        if (files && files.length > 0) {
+            const newFilesArray = Array.from(files);
+            const invalidFiles: string[] = [];
+            const largeFiles: string[] = [];
+            const validFiles: File[] = [];
+
+            newFilesArray.forEach(file => {
+                console.log("Processando arquivo:", {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    sizeInMB: (file.size / 1024 / 1024).toFixed(2)
+                });
+
+                // Verificar tamanho individual do arquivo
+                if (file.size > MAX_FILE_SIZE) {
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    largeFiles.push(`${file.name} (${sizeMB} MB)`);
+                    return;
+                }
+
+                // Verificar tipo de arquivo
+                if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                    invalidFiles.push(file.name);
+                    return;
+                }
+
+                validFiles.push(file);
+            });
+
+            // Verificar tamanho total com arquivos existentes + novos arquivos válidos
+            const currentTotalSize = getTotalFileSize(newFiles);
+            const newTotalSize = currentTotalSize + getTotalFileSize(validFiles);
+
+            if (newTotalSize > MAX_TOTAL_SIZE) {
+                const totalMB = (newTotalSize / 1024 / 1024).toFixed(2);
+                toast.error(`Tamanho total excede o limite de 50MB (atual: ${totalMB} MB). Remova alguns arquivos.`);
+                event.target.value = '';
+                return;
+            }
+
+            // Mostrar erros se houver
+            if (invalidFiles.length > 0) {
+                toast.error(`Arquivos com formato inválido: ${invalidFiles.join(', ')}`);
+            }
+            if (largeFiles.length > 0) {
+                toast.error(`Arquivos muito grandes (máx. 10MB): ${largeFiles.join(', ')}`);
+            }
+
+            // Adicionar arquivos válidos
+            if (validFiles.length > 0) {
+                setNewFiles(prev => [...prev, ...validFiles]);
+                toast.success(`${validFiles.length} arquivo(s) adicionado(s) com sucesso!`);
+                console.log("Arquivos válidos adicionados:", validFiles.map(f => f.name));
+            }
+
+            // Limpar o input
+            event.target.value = '';
+        }
     };
 
     const handleRemoveNewFile = (indexToRemove: number) => {
-        setNewFiles(prev => prev.filter((_, i) => i !== indexToRemove));
+        const fileToRemove = newFiles[indexToRemove];
+        console.log("Removendo arquivo:", fileToRemove?.name);
+        
+        setNewFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+        toast.info(`Arquivo "${fileToRemove?.name}" removido`);
+    };
+
+    const handleClearAllNewFiles = () => {
+        console.log("Removendo todos os novos arquivos");
+        setNewFiles([]);
+        toast.info("Todos os novos arquivos foram removidos");
     };
 
     if (isLoading) {
@@ -409,39 +491,142 @@ export function EditarContrato() {
                     <textarea {...register("termos_contratuais")} className="mt-1 border rounded-lg p-2 w-full h-20" />
                 </div>
 
-                {/* --- GERENCIAMENTO DE ARQUIVOS (inalterado) --- */}
+                {/* --- GERENCIAMENTO DE ARQUIVOS (atualizado) --- */}
                 <div className="lg:col-span-4">
-                    <label className="font-medium">Documentos Atuais</label>
-                    <div className="mt-2 p-4 border rounded-lg">
-                        {existingFiles.length > 0 ? (
-                            <ul className="space-y-2">
+                    <label className="block font-medium mb-2">Documentos do Contrato</label>
+                    
+                    {/* Arquivos existentes */}
+                    {existingFiles.length > 0 && (
+                        <div className="mb-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-sm font-medium text-blue-700">
+                                    Arquivos atuais ({existingFiles.length})
+                                </h4>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto space-y-2">
                                 {existingFiles.map((file) => (
-                                    <li key={file.id} className="flex justify-between items-center text-sm bg-gray-100 p-2 rounded">
-                                        <span className="truncate pr-2">{file.nome_arquivo}</span>
-                                        <button type="button" onClick={() => handleDeleteExistingFile(file.id)} className="text-red-500 hover:text-red-700" aria-label={`Excluir ${file.nome_arquivo}`}><Trash2 size={16} /></button>
-                                    </li>
+                                    <div key={file.id} className="p-3 bg-white rounded-lg border flex justify-between items-center">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                                <p className="text-sm font-medium text-gray-900 truncate" title={file.nome_arquivo}>
+                                                    {file.nome_arquivo}
+                                                </p>
+                                            </div>
+                                            {file.data_upload && (
+                                                <p className="text-xs text-gray-500">
+                                                    Enviado em: {new Date(file.data_upload).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteExistingFile(file.id)}
+                                            className="ml-3 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded flex-shrink-0"
+                                            aria-label={`Excluir ${file.nome_arquivo}`}
+                                            title="Excluir arquivo"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 ))}
-                            </ul>
-                        ) : <p className="text-sm text-gray-500">Nenhum documento anexado.</p>}
-                    </div>
-                </div>
-                <div className="lg:col-span-4">
-                    <label className="font-medium">Adicionar Novos Documentos</label>
-                    <div className="mt-2 p-4 border-2 border-dashed rounded-lg">
-                        {newFiles.length > 0 && (
-                            <ul className="mb-4 space-y-2">
-                                {newFiles.map((file, index) => (
-                                    <li key={index} className="flex justify-between items-center text-sm bg-gray-100 p-2 rounded">
-                                        <span className="truncate pr-2">{file.name}</span>
-                                        <button type="button" onClick={() => handleRemoveNewFile(index)} className="text-red-500 hover:text-red-700" aria-label={`Remover ${file.name}`}><Trash2 size={16} /></button>
-                                    </li>
-                                ))}
-                            </ul>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Interface de upload para múltiplos arquivos */}
+                    <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        {newFiles.length > 0 ? (
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="text-sm font-medium text-gray-700">
+                                        Novos arquivos ({newFiles.length})
+                                    </h4>
+                                    <div className="flex gap-2">
+                                        <span className="text-xs text-gray-500">
+                                            Total: {(getTotalFileSize(newFiles) / 1024 / 1024).toFixed(2)} MB / 50 MB
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearAllNewFiles}
+                                            className="text-xs text-red-500 hover:text-red-700 underline"
+                                        >
+                                            Remover todos
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {newFiles.map((file, index) => (
+                                        <div key={`${file.name}-${index}`} className="p-3 bg-white rounded-lg border flex justify-between items-center">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                                                    <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                                                        {file.name}
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-4 text-xs text-gray-500">
+                                                    <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                                    <span>{file.type || 'Tipo desconhecido'}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveNewFile(index)}
+                                                className="ml-3 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded flex-shrink-0"
+                                                aria-label={`Remover ${file.name}`}
+                                                title="Remover arquivo"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-4">
+                                <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-600 mb-1">Nenhum novo arquivo selecionado</p>
+                                <p className="text-xs text-gray-500">Selecione um ou múltiplos arquivos</p>
+                            </div>
                         )}
-                        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 w-full">
-                            <Upload size={18} /> {newFiles.length > 0 ? "Substituir Arquivo" : "Adicionar Arquivo"}
-                            <input type="file" className="hidden" onChange={handleAddNewFiles} />
-                        </label>
+
+                        <div className="mt-4">
+                            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 w-full transition-colors">
+                                <Upload size={18} />
+                                {newFiles.length > 0 ? "Adicionar Mais Arquivos" : "Selecionar Arquivos"}
+                                <input
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleAddNewFiles}
+                                    accept={ACCEPT_STRING}
+                                />
+                            </label>
+                            <div className="mt-3 text-center">
+                                <p className="text-xs text-gray-500">
+                                    Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, TXT, ODT, ODS
+                                </p>
+                                <div className="flex justify-center gap-4 mt-1 text-xs text-gray-400">
+                                    <span>Máx. 10MB por arquivo</span>
+                                    <span>•</span>
+                                    <span>Total máximo: 50MB</span>
+                                </div>
+                                {newFiles.length > 0 && (
+                                    <div className="mt-2 text-xs">
+                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div 
+                                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                                style={{ width: `${Math.min((getTotalFileSize(newFiles) / MAX_TOTAL_SIZE) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-green-600 mt-1">
+                                            ✓ {newFiles.length} arquivo(s) pronto(s) para upload
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
