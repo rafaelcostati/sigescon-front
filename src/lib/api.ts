@@ -33,20 +33,73 @@ const tokenManager = {
 export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
-// Tipos para autenticação
+// Tipos para gestão de perfis
+
+export type UsuarioPerfil = {
+    usuario_id: number;
+    perfil_id: number;
+    perfil_nome: string;
+    data_concessao: string;
+};
+
+export type UsuarioPerfilGrantRequest = {
+    perfil_ids: number[];
+};
+
+export type UsuarioComPerfis = {
+    id: number;
+    nome: string;
+    email: string;
+    matricula: string;
+    ativo: boolean;
+    perfis: string[];
+    perfil_ids: number[];
+    perfis_texto: string;
+};
+
+// Tipos para autenticação e múltiplos perfis baseados na API real
 export type LoginCredentials = { email: string; password: string };
+
+// Tipos baseados na documentação da API
+export type PerfilAtivo = {
+    id: number;
+    nome: string;
+    pode_ser_selecionado?: boolean;
+    descricao?: string | null;
+};
+
+export type ContextoSessao = {
+    usuario_id: number;
+    perfil_ativo_id: number;
+    perfil_ativo_nome: string;
+    perfis_disponiveis: PerfilAtivo[];
+    pode_alternar?: boolean;
+    sessao_id: string;
+    data_ultima_alternancia?: string | null;
+};
+
 export type LoginResponse = {
     access_token: string;
     token_type: string;
-    contexto_sessao: {
-        usuario_id: number;
-        perfil_ativo_id: number;
-        perfil_ativo_nome: string;
-        perfis_disponiveis: { id: number; nome: string; }[];
-        sessao_id: string;
-    };
+    contexto_sessao: ContextoSessao;
+    requer_selecao_perfil?: boolean;
+    mensagem?: string | null;
 };
-type ContextoSessao = LoginResponse['contexto_sessao'];
+
+export type AlternarPerfilRequest = {
+    novo_perfil_id: number;
+    justificativa?: string | null;
+};
+
+// Para compatibilidade com o código existente
+export type Perfil = {
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+    concedido_em?: string;
+};
+
+export type AlternarPerfilPayload = AlternarPerfilRequest;
+export type AlternarPerfilResponse = ContextoSessao;
 
 export type User = {
     id: number;
@@ -55,7 +108,6 @@ export type User = {
     perfil_nome: string;
     matricula?: string;
 };
-export type Perfil = { id: number; nome: string; };
 export type UserApiResponse = {
     data: User[];
     total_items: number;
@@ -119,12 +171,44 @@ export type EditContratadoPayload = Partial<NewContratadoPayload>;
 
 // --- FUNÇÕES AUXILIARES ---
 async function handleResponse<T>(response: Response): Promise<T> {
+    console.log('🔍 Processando resposta:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type')
+    });
+    
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(errorData.message || `Erro na requisição: ${response.status}`);
+        let errorData;
+        try {
+            const errorText = await response.text();
+            console.log('❌ Texto do erro:', errorText);
+            errorData = errorText ? JSON.parse(errorText) : { message: response.statusText };
+        } catch (parseError) {
+            console.error('❌ Erro ao fazer parse do erro:', parseError);
+            errorData = { message: response.statusText };
+        }
+        
+        console.error('❌ Erro da API:', errorData);
+        throw new Error(errorData.message || errorData.detail || `Erro na requisição: ${response.status}`);
     }
+    
     const text = await response.text();
-    return text ? JSON.parse(text) : ({} as T);
+    console.log('📄 Texto da resposta (primeiros 200 chars):', text.substring(0, 200));
+    
+    if (!text) {
+        console.log('📄 Resposta vazia, retornando objeto vazio');
+        return {} as T;
+    }
+    
+    try {
+        const parsed = JSON.parse(text);
+        console.log('✅ JSON parseado com sucesso');
+        return parsed;
+    } catch (parseError) {
+        console.error('❌ Erro ao fazer parse do JSON:', parseError);
+        console.error('❌ Texto que causou erro:', text);
+        throw new Error('Resposta da API não é um JSON válido');
+    }
 }
 
 async function api<T>(endpoint: string, options?: RequestInit, useAuthUrl: boolean = false): Promise<T> {
@@ -135,13 +219,44 @@ async function api<T>(endpoint: string, options?: RequestInit, useAuthUrl: boole
     headers.set('Accept', 'application/json');
     if (token) {
         headers.set('Authorization', `${type} ${token}`);
+        console.log('🔑 Token presente na requisição');
+    } else {
+        console.log('⚠️ Nenhum token encontrado para a requisição');
     }
+    
     if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
-    return handleResponse<T>(response);
+    const fullUrl = `${baseUrl}${endpoint}`;
+    console.log('📡 Fazendo requisição para:', fullUrl);
+    console.log('📡 Método:', options?.method || 'GET');
+    console.log('📡 Headers:', Object.fromEntries(headers.entries()));
+    
+    if (options?.body && typeof options.body === 'string') {
+        console.log('📡 Body:', options.body);
+    }
+
+    try {
+        const response = await fetch(fullUrl, { ...options, headers });
+        console.log('📥 Status da resposta:', response.status);
+        
+        if (!response.ok) {
+            console.error('❌ Resposta não OK:', {
+                status: response.status,
+                statusText: response.statusText,
+                url: fullUrl
+            });
+        }
+        
+        return handleResponse<T>(response);
+    } catch (error) {
+        console.error('❌ Erro na requisição:', {
+            url: fullUrl,
+            error: error
+        });
+        throw error;
+    }
 }
 
 async function apiBlob(endpoint: string, options?: RequestInit, useAuthUrl: boolean = false): Promise<Blob> {
@@ -165,28 +280,53 @@ async function apiBlob(endpoint: string, options?: RequestInit, useAuthUrl: bool
 // FUNÇÕES DE AUTENTICAÇÃO
 // ============================================================================
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+    console.log('🔐 Iniciando login para:', credentials.email);
+    
     const params = new URLSearchParams({
         grant_type: 'password',
         username: credentials.email,
         password: credentials.password,
     });
-    // O endpoint de login usa a URL de autenticação
-    const response = await fetch(`${AUTH_API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params,
-    });
-    const data = await handleResponse<LoginResponse>(response);
-    if (data.access_token) {
-        tokenManager.saveToken(data.access_token, data.token_type);
+    
+    console.log('📡 Enviando requisição para:', `${AUTH_API_URL}/auth/login`);
+    
+    try {
+        const response = await fetch(`${AUTH_API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            },
+            body: params,
+        });
+        
+        console.log('📥 Status da resposta:', response.status);
+        console.log('📥 Headers da resposta:', Object.fromEntries(response.headers.entries()));
+        
+        const data = await handleResponse<LoginResponse>(response);
+        console.log('✅ Dados do login recebidos:', {
+            access_token: data.access_token ? '***TOKEN***' : 'undefined',
+            token_type: data.token_type,
+            contexto_sessao: data.contexto_sessao,
+            requer_selecao_perfil: data.requer_selecao_perfil
+        });
+        
+        if (data.access_token) {
+            tokenManager.saveToken(data.access_token, data.token_type);
+            console.log('💾 Token salvo no localStorage');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('❌ Erro no login:', error);
+        throw error;
     }
-    return data;
 }
 
 export async function logout(): Promise<void> {
     try {
         // A rota de logout está em /auth/logout na URL de autenticação
-        await api('/logout', { method: 'POST' }, true);
+        await api('/auth/logout', { method: 'POST' }, true);
     } catch (error) {
         console.warn("A chamada para o endpoint de logout falhou, mas o logout local prosseguirá.", error);
     } finally {
@@ -195,8 +335,38 @@ export async function logout(): Promise<void> {
 }
 
 export async function getCurrentContext(): Promise<ContextoSessao> {
-    // Este endpoint deve estar na URL de autenticação
-    return api<ContextoSessao>('/contexto', {}, true);
+    console.log('🔍 Buscando contexto atual da sessão');
+    
+    try {
+        const response = await api<ContextoSessao>('/auth/contexto', {}, true);
+        console.log('✅ Contexto obtido:', response);
+        return response;
+    } catch (error) {
+        console.error('❌ Erro ao obter contexto:', error);
+        throw error;
+    }
+}
+
+/**
+ * Alterna o perfil ativo do usuário sem fazer logout
+ * POST /auth/alternar-perfil
+ */
+export async function alternarPerfil(payload: AlternarPerfilPayload): Promise<AlternarPerfilResponse> {
+    console.log('🔄 Alternando perfil para ID:', payload.novo_perfil_id);
+    console.log('📡 Payload:', payload);
+    
+    try {
+        const response = await api<AlternarPerfilResponse>('/auth/alternar-perfil', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }, true);
+        
+        console.log('✅ Perfil alternado com sucesso:', response);
+        return response;
+    } catch (error) {
+        console.error('❌ Erro ao alternar perfil:', error);
+        throw error;
+    }
 }
 
 
@@ -657,3 +827,74 @@ export function deleteArquivoContrato(contratoId: number, arquivoId: number): Pr
         method: 'DELETE',
     });
 }
+
+// --- FUNÇÕES PARA GESTÃO DE PERFIS ---
+
+/**
+ * Busca todos os perfis disponíveis no sistema
+ * GET /perfis
+ */
+export function getAllPerfis(): Promise<Perfil[]> {
+    return api<Perfil[]>('/perfis/');
+}
+
+/**
+ * Busca todos os perfis de um usuário específico
+ * GET /usuarios/{usuario_id}/perfis
+ */
+export function getUserPerfis(usuarioId: number): Promise<UsuarioPerfil[]> {
+    return api<UsuarioPerfil[]>(`/usuarios/${usuarioId}/perfis`);
+}
+
+/**
+ * Busca informações completas de um usuário incluindo todos os perfis
+ * GET /usuarios/{usuario_id}/perfis/completo
+ */
+export function getUserCompleteInfo(usuarioId: number): Promise<UsuarioComPerfis> {
+    return api<UsuarioComPerfis>(`/usuarios/${usuarioId}/perfis/completo`);
+}
+
+/**
+ * Concede múltiplos perfis a um usuário
+ * POST /usuarios/{usuario_id}/perfis/conceder
+ */
+export function grantProfilesToUser(usuarioId: number, request: UsuarioPerfilGrantRequest): Promise<UsuarioPerfil[]> {
+    return api<UsuarioPerfil[]>(`/usuarios/${usuarioId}/perfis/conceder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+    });
+}
+
+/**
+ * Revoga múltiplos perfis de um usuário
+ * POST /usuarios/{usuario_id}/perfis/revogar
+ */
+export function revokeProfilesFromUser(usuarioId: number, request: UsuarioPerfilGrantRequest): Promise<void> {
+    return api<void>(`/usuarios/${usuarioId}/perfis/revogar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+    });
+}
+
+/**
+ * Cria um usuário básico sem perfil (para posterior concessão de perfis)
+ * POST /usuarios
+ */
+export function createUserWithoutProfile(userData: Omit<NewUserPayload, 'perfil_id'>): Promise<User> {
+    return api<User>('/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+    });
+}
+
+// Tipo para criação de usuário sem perfil_id obrigatório
+export type CreateUserPayload = {
+    nome: string;
+    email: string;
+    senha: string;
+    cpf: string;
+    matricula?: string;
+};

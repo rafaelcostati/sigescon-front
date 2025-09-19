@@ -8,6 +8,7 @@ import {
   IconDotsVertical,
   IconLogout,
   IconKey,
+  IconUserCheck,
 } from "@tabler/icons-react"
 
 import {
@@ -43,6 +44,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   getUserProfile,
   changeUserPassword,
   getCurrentUserId,
@@ -53,10 +61,11 @@ import {
 export function NavUser() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
-  const { logout: authLogout } = useAuth();
+  const { logout: authLogout, user, perfilAtivo, perfisDisponiveis, alternarPerfil } = useAuth();
   
   // Estados
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isChangingProfile, setIsChangingProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -70,6 +79,23 @@ export function NavUser() {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
+        // Se temos dados do user do AuthContext, usa eles
+        if (user) {
+          const profile: UserProfile = {
+            id: user.id,
+            nome: user.nome,
+            email: user.email,
+            matricula: "", // Pode ser buscado de outro endpoint se necessário
+            ativo: true,
+            perfis: perfisDisponiveis.map(p => p.nome),
+            perfil_ids: perfisDisponiveis.map(p => p.id),
+            perfis_texto: perfisDisponiveis.map(p => p.nome).join(", ")
+          };
+          setUserProfile(profile);
+          setIsLoading(false);
+          return;
+        }
+
         const userId = getCurrentUserId();
         if (!userId) {
           toast.error("Sessão inválida. Faça login novamente.");
@@ -88,7 +114,7 @@ export function NavUser() {
     };
 
     loadUserProfile();
-  }, [navigate]);
+  }, [navigate, user, perfisDisponiveis]);
 
   // Função para fazer logout
   const handleLogout = async () => {
@@ -101,6 +127,44 @@ export function NavUser() {
       // Mesmo com erro, redireciona para login
       navigate("/login");
     }
+  };
+
+  // Função para alternar perfil
+  const handleProfileChange = async (novoPerfilId: string) => {
+    if (isChangingProfile) return;
+    
+    const perfilId = parseInt(novoPerfilId, 10);
+    if (perfilId === perfilAtivo?.id) return;
+
+    setIsChangingProfile(true);
+    try {
+      await alternarPerfil(perfilId);
+      // O toast já é mostrado no AuthContext
+    } catch (error) {
+      console.error("Erro ao alternar perfil:", error);
+    } finally {
+      setIsChangingProfile(false);
+    }
+  };
+
+  // Função para obter cor do perfil
+  const getProfileColor = (perfil: string) => {
+    switch (perfil) {
+      case "Administrador":
+        return "bg-red-100 text-red-800";
+      case "Gestor":
+        return "bg-blue-100 text-blue-800";
+      case "Fiscal":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Função para obter ícone do perfil
+  const getProfileIcon = () => {
+    // Retorna o mesmo ícone para todos por enquanto
+    return <IconUserCheck size={12} />;
   };
 
   // Função para alterar senha
@@ -183,7 +247,7 @@ export function NavUser() {
     );
   }
 
-  if (!userProfile) {
+  if (!userProfile || !user || !perfilAtivo) {
     return null;
   }
 
@@ -233,13 +297,48 @@ export function NavUser() {
                       Matrícula: {userProfile.matricula}
                     </span>
                   )}
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {userProfile.perfis.map((perfil, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {perfil}
+                  
+                  {/* Perfil Ativo */}
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Perfil ativo:</span>
+                      <Badge className={`text-xs ${getProfileColor(perfilAtivo.nome)}`}>
+                        {getProfileIcon()}
+                        {perfilAtivo.nome}
                       </Badge>
-                    ))}
+                    </div>
                   </div>
+                  
+                  {/* Seletor de Perfil */}
+                  {perfisDisponiveis.length > 1 && (
+                    <div className="mt-3">
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Alternar perfil:
+                      </label>
+                      <Select
+                        value={perfilAtivo.id.toString()}
+                        onValueChange={handleProfileChange}
+                        disabled={isChangingProfile}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                          {isChangingProfile && (
+                            <div className="ml-2 h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {perfisDisponiveis.map((perfil) => (
+                            <SelectItem key={perfil.id} value={perfil.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                {getProfileIcon()}
+                                <span>{perfil.nome}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </div>
             </DropdownMenuLabel>

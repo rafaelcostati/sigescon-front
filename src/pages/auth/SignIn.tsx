@@ -38,9 +38,9 @@ export function SignIn() {
 
   // Redireciona se o usuário já estiver logado
   useEffect(() => {
-    if (!authLoading && user && user.usuario_id) {
-      console.log("Usuário autenticado detectado, redirecionando para /home");
-      navigate("/home", { replace: true });
+    if (!authLoading && user && user.id) {
+      console.log("Usuário autenticado detectado, redirecionando para /dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
 

@@ -1,171 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from 'sonner';
-import { z } from 'zod';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from 'react-hook-form';
 
-// --- ATENÇÃO: Verifique se os caminhos de importação estão corretos para sua estrutura ---
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, LoaderCircle, CirclePlus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, LoaderCircle, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { UserEditar } from '@/pages/usuarios/EditarUsuario';
+import { CadastrarUsuarioSimples } from '@/pages/usuarios/CadastrarUsuarioSimples';
+import { ConcederPerfis } from '@/pages/usuarios/ConcederPerfis';
 
 // --- Importa as funções da nossa API centralizada ---
 import {
     getUsers,
-    getPerfis,
-    createUser,
     deleteUser,
     type User,
-    type Perfil,
-    type NewUserPayload,
 } from "@/lib/api";
 
 
-//================================================================================
-// SCHEMAS E VALIDAÇÃO (sem grandes alterações)
-//================================================================================
-function validateCPF(cpf: string): boolean {
-    cpf = cpf.replace(/\D/g, '');
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-    let sum = 0;
-    for (let i = 1; i <= 9; i++) sum += parseInt(cpf.substring(i - 1, i)) * (11 - i);
-    let remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
-    sum = 0;
-    for (let i = 1; i <= 10; i++) sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
-    remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
-    return true;
-}
-const cpfMask = (value: string) => {
-    return value
-        .replace(/\D/g, '')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-};
-
-const signUpFormSchema = z.object({
-    nome: z.string().min(1, "Nome é obrigatório"),
-    email: z.string().email("E-mail inválido"),
-    senha: z.string().min(1, "Senha é obrigatória"),
-    perfil_id: z.string().min(1, "Perfil é obrigatório"),
-    cpf: z.string()
-        .transform((val) => val.replace(/\D/g, ''))
-        .refine((val) => val.length === 11, { message: "CPF deve conter 11 números" })
-        .refine((val) => validateCPF(val), { message: "CPF inválido" }),
-    matricula: z.string().optional(),
-});
-type SignUpForm = z.infer<typeof signUpFormSchema>;
 
 
-//================================================================================
-// COMPONENTE NOVO USUÁRIO (MODAL - REFATORADO)
-//================================================================================
-function NovoUsuario({ onUserAdded }: { onUserAdded: () => void }) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [perfis, setPerfis] = useState<Perfil[]>([]);
-    const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm<SignUpForm>({
-        resolver: zodResolver(signUpFormSchema),
-    });
-
-    useEffect(() => {
-        if (isDialogOpen) {
-            const fetchPerfis = async () => {
-                try {
-                    const data = await getPerfis(); // <-- USA A FUNÇÃO DA API
-                    setPerfis(data);
-                } catch (error) {
-                    console.error("Erro ao buscar perfis:", error);
-                    toast.error("Não foi possível carregar os perfis.");
-                }
-            };
-            fetchPerfis();
-        }
-    }, [isDialogOpen]);
-
-    async function handleSignUp(data: SignUpForm) {
-        try {
-            const payload: NewUserPayload = {
-                ...data,
-                perfil_id: parseInt(data.perfil_id, 10),
-                cpf: data.cpf.replace(/\D/g, '')
-            };
-            await createUser(payload); // <-- USA A FUNÇÃO DA API
-
-            toast.success('Usuário cadastrado com sucesso.');
-            setIsDialogOpen(false);
-            reset();
-            onUserAdded();
-
-        } catch (error: any) {
-            console.error('Erro ao criar usuário:', error);
-            toast.error(error.message || 'Ocorreu um erro. Tente novamente.');
-        }
-    }
-
-    return (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-                <Button variant="default">
-                    <CirclePlus className="h-4 w-4" />
-                    <span className="hidden lg:inline ml-2">Novo Usuário</span>
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <form onSubmit={handleSubmit(handleSignUp)}>
-                    <DialogHeader>
-                        <DialogTitle>Novo Usuário</DialogTitle>
-                        <DialogDescription>
-                            Preencha os campos para cadastrar um novo usuário.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="nome" className="text-right">Nome</Label>
-                            <div className="col-span-3"><Input id="nome" {...register('nome')} />{errors.nome && <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>}</div>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email" className="text-right">E-mail</Label>
-                            <div className="col-span-3"><Input id="email" {...register('email')} />{errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}</div>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="cpf" className="text-right">CPF</Label>
-                            <div className="col-span-3"><Controller name="cpf" control={control} defaultValue="" render={({ field }) => (<Input id="cpf" value={cpfMask(field.value)} onChange={(e) => { const unmasked = e.target.value.replace(/\D/g, ''); if (unmasked.length <= 11) field.onChange(unmasked); }} maxLength={14} />)} />{errors.cpf && <p className="text-red-500 text-sm mt-1">{errors.cpf.message}</p>}</div>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="matricula" className="text-right">Matrícula</Label>
-                            <div className="col-span-3"><Input id="matricula" {...register('matricula')} />{errors.matricula && <p className="text-red-500 text-sm mt-1">{errors.matricula.message}</p>}</div>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="perfil_id" className="text-right">Perfil</Label>
-                            <div className="col-span-3"><Controller name="perfil_id" control={control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Escolha um perfil" /></SelectTrigger><SelectContent>{perfis.map(p => (<SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>))}</SelectContent></Select>)} />{errors.perfil_id && <p className="text-red-500 text-sm mt-1">{errors.perfil_id.message}</p>}</div>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="senha" className="text-right">Senha</Label>
-                            <div className="col-span-3"><Input id="senha" type="password" {...register('senha')} />{errors.senha && <p className="text-red-500 text-sm mt-1">{errors.senha.message}</p>}</div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button disabled={isSubmitting} type="submit">
-                            {isSubmitting ? 'Salvando...' : 'Finalizar Cadastro'}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 //================================================================================
 // COMPONENTE DE EXCLUSÃO (REFATORADO)
@@ -338,7 +194,7 @@ export default function UserDataTable() {
                         </Button>
                     )}
                 </form>
-                <NovoUsuario onUserAdded={refreshCurrentPage} />
+                <CadastrarUsuarioSimples onUsuarioCriado={refreshCurrentPage} />
             </div>
 
             {users.length === 0 ? (
@@ -379,6 +235,7 @@ export default function UserDataTable() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center justify-center gap-2">
+                                                    <ConcederPerfis usuario={user} onPerfisUpdated={refreshCurrentPage} />
                                                     <UserEditar user={user} onUserUpdated={refreshCurrentPage} />
                                                     <ExcluirUsuarioDialog user={user} onUserDeleted={refreshCurrentPage} />
                                                 </div>

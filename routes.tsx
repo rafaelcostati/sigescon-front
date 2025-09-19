@@ -7,13 +7,22 @@ import Page from '@/dashboard/page';
 import { ContratosDataTable } from '@/pages/contratos/Contratos';
 import { NovoContrato } from '@/pages/contratos/NovoContrato';
 import { EditarContrato } from '@/pages/contratos/EditarContrato';
+import DetalhesContrato from '@/pages/contratos/DetalhesContrato';
 import UserCard from '@/pages/usuarios/Usuario';
 import { NovoUsuario } from '@/pages/usuarios/CadastrarUsuario';
 import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
-import PrivateRoute from '@/utils/PrivateRoute';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
 import Modalidades from '@/pages/modalidades/Modalidade';
+import { FiscalDashboard } from '@/pages/fiscal/FiscalDashboard';
+import { GestorDashboard } from '@/pages/gestor/GestorDashboard';
+import Relatorios from '@/pages/relatorios/Relatorios';
+import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
+import Pendencias from '@/pages/pendencias/Pendencias';
+
+// Componente para dashboard dinâmico baseado no perfil
+import DashboardRouter from '@/components/DashboardRouter';
 
 export const router = createBrowserRouter([
   // Rotas públicas
@@ -39,39 +48,71 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/home',
-        element: <PrivateRoute><Page /></PrivateRoute>,
+        element: <ProtectedRoute><DashboardRouter /></ProtectedRoute>,
       },
       {
         path: '/dashboard',
-        element: <PrivateRoute><Page /></PrivateRoute>,
+        element: <ProtectedRoute><DashboardRouter /></ProtectedRoute>,
+      },
+      {
+        path: '/dashboard/admin',
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><Page /></ProtectedRoute>,
+      },
+      {
+        path: '/dashboard/gestor',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor']}><GestorDashboard /></ProtectedRoute>,
+      },
+      {
+        path: '/dashboard/fiscal',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><FiscalDashboard /></ProtectedRoute>,
       },
       {
         path: '/contratos',
-        element: <PrivateRoute><ContratosDataTable /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><ContratosDataTable /></ProtectedRoute>,
       },
       {
         path: '/novocontrato',
-        element: <PrivateRoute><NovoContrato /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor']}><NovoContrato /></ProtectedRoute>,
       },
       {
         path: '/contratos/editar/:id',
-        element: <PrivateRoute><EditarContrato /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor']}><EditarContrato /></ProtectedRoute>,
+      },
+      {
+        path: '/contratos/:id',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><DetalhesContrato /></ProtectedRoute>,
       },
       {
         path: '/contratado',
-        element: <PrivateRoute><Contratados /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Contratados /></ProtectedRoute>,
       },
       {
         path: '/modalidades',
-        element: <PrivateRoute><Modalidades /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor']}><Modalidades /></ProtectedRoute>,
       },
       {
         path: '/usuarios',
-        element: <PrivateRoute><UserCard /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><UserCard /></ProtectedRoute>,
       },
       {
         path: '/cadastrarusuario',
-        element: <PrivateRoute><NovoUsuario /></PrivateRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><NovoUsuario /></ProtectedRoute>,
+      },
+      {
+        path: '/pendencias',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Pendencias /></ProtectedRoute>,
+      },
+      {
+        path: '/fiscalizacao',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><Fiscalizacao /></ProtectedRoute>,
+      },
+      {
+        path: '/relatorios',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Relatorios /></ProtectedRoute>,
+      },
+      {
+        path: '/configuracoes',
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><div>Página de Configurações</div></ProtectedRoute>,
       },
     ],
   },

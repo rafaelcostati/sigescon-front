@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
-import { CirclePlus } from 'lucide-react';
+import { CirclePlus, X } from 'lucide-react';
+import { getAllPerfis, createUser, grantProfilesToUser, type Perfil } from '@/lib/api';
 
 // Função para validar dígitos verificadores do CPF (sem alterações)
 function validateCPF(cpf: string): boolean {

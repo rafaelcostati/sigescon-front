@@ -46,6 +46,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Importar as funções da API
 import {
@@ -880,6 +881,7 @@ const columns: ColumnDef<ContratoList>[] = [
 ];
 
 export function ContratosDataTable() {
+    const { user, perfilAtivo } = useAuth();
     const [contratos, setContratos] = React.useState<ContratoList[]>([]);
     const [contratados, setContratados] = React.useState<Contratado[]>([]);
     const [statusList, setStatusList] = React.useState<Status[]>([]);
@@ -956,6 +958,13 @@ export function ContratosDataTable() {
                     per_page: pagination.pageSize,
                 };
 
+                // Filtrar por perfil se for Fiscal ou Gestor
+                if (perfilAtivo?.nome === "Fiscal" && user?.id) {
+                    filters.fiscal_id = user.id;
+                } else if (perfilAtivo?.nome === "Gestor" && user?.id) {
+                    filters.gestor_id = user.id;
+                }
+
                 columnFilters.forEach((filter) => {
                     if (filter.value) {
                         filters[filter.id] = filter.value;
@@ -1004,7 +1013,7 @@ export function ContratosDataTable() {
         } else if (!isLoading) {
             setIsLoading(false);
         }
-    }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout]);
+    }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout, perfilAtivo, user]);
 
     const handleContratoDeleted = (deletedId: number) => {
         setContratos((current) => current.filter((c) => c.id !== deletedId));
