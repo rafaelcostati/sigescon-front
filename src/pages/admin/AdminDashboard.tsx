@@ -2,122 +2,46 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { 
   Users, 
   FileText, 
-  Building2, 
   AlertTriangle, 
   CheckCircle, 
-  Clock, 
-  TrendingUp,
   Eye,
-  Settings,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// Mock data - substituir por dados reais da API
-const mockStats = {
-  totalContratos: 156,
-  contratosAtivos: 89,
-  contratosVencendo: 12,
-  valorTotal: 15420000,
-  pendenciasAbertas: 23,
-  relatoriosPendentes: 8,
-  totalUsuarios: 45,
-  totalContratados: 78,
-  fiscalizacoesRealizadas: 134
-};
-
-const mockContratosRecentes = [
-  {
-    id: 1,
-    numero: "001/2024",
-    objeto: "Prestação de serviços de limpeza",
-    contratado: "Empresa Limpeza Ltda",
-    valor: 120000,
-    dataInicio: "2024-01-15",
-    dataFim: "2024-12-15",
-    status: "Ativo",
-    progresso: 65,
-    gestor: "João Silva",
-    fiscal: "Maria Santos"
-  },
-  {
-    id: 2,
-    numero: "002/2024",
-    objeto: "Fornecimento de material de escritório",
-    contratado: "Papelaria Central",
-    valor: 85000,
-    dataInicio: "2024-02-01",
-    dataFim: "2024-07-31",
-    status: "Vencendo",
-    progresso: 90,
-    gestor: "Ana Costa",
-    fiscal: "Pedro Lima"
-  },
-  {
-    id: 3,
-    numero: "003/2024",
-    objeto: "Manutenção de equipamentos",
-    contratado: "TechService",
-    valor: 200000,
-    dataInicio: "2024-03-01",
-    dataFim: "2025-02-28",
-    status: "Ativo",
-    progresso: 25,
-    gestor: "Carlos Mendes",
-    fiscal: "Lucia Oliveira"
-  }
-];
-
-const mockPendenciasUrgentes = [
-  {
-    id: 1,
-    contrato: "001/2024",
-    descricao: "Relatório mensal de janeiro pendente",
-    prazo: "2024-02-15",
-    status: "Urgente",
-    fiscal: "Maria Santos"
-  },
-  {
-    id: 2,
-    contrato: "002/2024",
-    descricao: "Documentação de renovação",
-    prazo: "2024-03-01",
-    status: "Atrasado",
-    fiscal: "Pedro Lima"
-  }
-];
+import { toast } from "sonner";
+import { 
+  getDashboardAdminCompleto,
+  type DashboardAdminCompletoResponse
+} from "@/lib/api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardAdminCompletoResponse | null>(null);
 
-  useEffect(() => {
-    // Simular carregamento de dados
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Ativo': return 'bg-green-500';
-      case 'Vencendo': return 'bg-yellow-500';
-      case 'Vencido': return 'bg-red-500';
-      case 'Urgente': return 'bg-red-500';
-      case 'Atrasado': return 'bg-red-600';
-      default: return 'bg-gray-500';
+  // Carregar dados do dashboard
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      console.log("🔍 Carregando dashboard completo do administrador...");
+      const data = await getDashboardAdminCompleto();
+      setDashboardData(data);
+      console.log("✅ Dashboard carregado:", data);
+    } catch (error) {
+      console.error("❌ Erro ao carregar dashboard:", error);
+      toast.error("Erro ao carregar dados do dashboard");
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   if (loading) {
     return (
@@ -125,7 +49,7 @@ export default function AdminDashboard() {
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-64 mb-6"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(4)].map((_, i) => (
               <div key={i} className="h-32 bg-gray-200 rounded"></div>
             ))}
           </div>
@@ -134,37 +58,54 @@ export default function AdminDashboard() {
     );
   }
 
+  if (!dashboardData) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-600 mb-2">Erro ao carregar dashboard</h3>
+          <Button onClick={loadDashboardData} variant="outline">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const { contadores, contratos_com_relatorios_pendentes, contratos_com_pendencias } = dashboardData;
+
   return (
     <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard Administrativo</h1>
-          <p className="mt-1">Visão geral completa do sistema</p>
+          <h1 className="text-3xl font-bold text-red-800">Dashboard Administrativo</h1>
+          <p className="text-red-600 mt-1">Visão geral completa do sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate('/configuracoes')} variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
-            <Settings className="w-4 h-4 mr-2" />
-            Configurações
+          <Button onClick={loadDashboardData} variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
           </Button>
-          <Button onClick={() => navigate('/relatorios')} className="bg-red-600 hover:bg-red-700">
+          <Button onClick={() => navigate('/gestao-relatorios')} className="bg-red-600 hover:bg-red-700">
             <BarChart3 className="w-4 h-4 mr-2" />
-            Relatórios
+            Gestão de Relatórios
           </Button>
         </div>
       </div>
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total de Contratos */}
+        {/* Relatórios para Análise */}
         <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-700">Total de Contratos</CardTitle>
+            <CardTitle className="text-sm font-medium text-red-700">Relatórios para Análise</CardTitle>
             <FileText className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-800">{mockStats.totalContratos}</div>
-            <p className="text-xs text-red-600 mt-1">+12% em relação ao mês anterior</p>
+            <div className="text-2xl font-bold text-red-800">{contadores.relatorios_para_analise}</div>
+            <p className="text-xs text-red-600 mt-1">Aguardando aprovação</p>
           </CardContent>
         </Card>
 
@@ -175,164 +116,118 @@ export default function AdminDashboard() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-800">{mockStats.contratosAtivos}</div>
-            <p className="text-xs text-green-600 mt-1">{((mockStats.contratosAtivos / mockStats.totalContratos) * 100).toFixed(1)}% do total</p>
+            <div className="text-2xl font-bold text-green-800">{contadores.contratos_ativos}</div>
+            <p className="text-xs text-green-600 mt-1">Em execução</p>
           </CardContent>
         </Card>
 
-        {/* Contratos Vencendo */}
+        {/* Contratos com Pendências */}
         <Card className="border-yellow-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-700">Vencendo em 30 dias</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-sm font-medium text-yellow-700">Contratos com Pendências</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-800">{mockStats.contratosVencendo}</div>
-            <p className="text-xs text-yellow-600 mt-1">Requer atenção urgente</p>
+            <div className="text-2xl font-bold text-yellow-800">{contadores.contratos_com_pendencias}</div>
+            <p className="text-xs text-yellow-600 mt-1">Requer atenção</p>
           </CardContent>
         </Card>
 
-        {/* Valor Total */}
+        {/* Usuários Ativos */}
         <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Valor Total</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-blue-700">Usuários Ativos</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">{formatCurrency(mockStats.valorTotal)}</div>
-            <p className="text-xs text-blue-600 mt-1">Contratos ativos</p>
-          </CardContent>
-        </Card>
-
-        {/* Pendências Abertas */}
-        <Card className="border-orange-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Pendências Abertas</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-800">{mockStats.pendenciasAbertas}</div>
-            <p className="text-xs text-orange-600 mt-1">Aguardando resolução</p>
-          </CardContent>
-        </Card>
-
-        {/* Total de Usuários */}
-        <Card className="border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Total de Usuários</CardTitle>
-            <Users className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-800">{mockStats.totalUsuarios}</div>
-            <p className="text-xs text-purple-600 mt-1">Usuários ativos no sistema</p>
-          </CardContent>
-        </Card>
-
-        {/* Total de Contratados */}
-        <Card className="border-indigo-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-indigo-700">Total de Contratados</CardTitle>
-            <Building2 className="h-4 w-4 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-indigo-800">{mockStats.totalContratados}</div>
-            <p className="text-xs text-indigo-600 mt-1">Empresas cadastradas</p>
-          </CardContent>
-        </Card>
-
-        {/* Fiscalizações Realizadas */}
-        <Card className="border-teal-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-teal-700">Fiscalizações</CardTitle>
-            <CheckCircle className="h-4 w-4 text-teal-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-teal-800">{mockStats.fiscalizacoesRealizadas}</div>
-            <p className="text-xs text-teal-600 mt-1">Realizadas este ano</p>
+            <div className="text-2xl font-bold text-blue-800">{contadores.usuarios_ativos}</div>
+            <p className="text-xs text-blue-600 mt-1">No sistema</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Seção de Contratos Recentes e Pendências */}
+      {/* Seção de Contratos com Relatórios Pendentes e Contratos com Pendências */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Contratos Recentes */}
+        {/* Contratos com Relatórios Pendentes */}
         <Card className="border-red-200 shadow-lg">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-red-800">Contratos Recentes</CardTitle>
-                <CardDescription>Últimos contratos cadastrados</CardDescription>
+                <CardTitle className="text-red-800">Contratos com Relatórios Pendentes</CardTitle>
+                <CardDescription>Relatórios aguardando análise</CardDescription>
               </div>
               <Button 
-                onClick={() => navigate('/contratos')} 
+                onClick={() => navigate('/gestao-relatorios')} 
                 variant="outline" 
                 size="sm"
                 className="border-red-200 text-red-700 hover:bg-red-50"
               >
-                Ver Todos
+                Analisar
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockContratosRecentes.map((contrato) => (
-              <div key={contrato.id} className="border border-red-100 rounded-lg p-4 hover:bg-red-50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-semibold text-red-800">{contrato.numero}</h4>
-                    <p className="text-sm text-gray-600 truncate">{contrato.objeto}</p>
-                  </div>
-                  <Badge className={`${getStatusColor(contrato.status)} text-white`}>
-                    {contrato.status}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Contratado:</span>
-                    <span className="font-medium">{contrato.contratado}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Valor:</span>
-                    <span className="font-medium">{formatCurrency(contrato.valor)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Gestor:</span>
-                    <span className="font-medium">{contrato.gestor}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Fiscal:</span>
-                    <span className="font-medium">{contrato.fiscal}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Progresso:</span>
-                      <span className="font-medium">{contrato.progresso}%</span>
+            {contratos_com_relatorios_pendentes.length > 0 ? (
+              contratos_com_relatorios_pendentes.slice(0, 3).map((contrato) => (
+                <div key={contrato.id} className="border border-red-100 rounded-lg p-4 hover:bg-red-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold text-red-800">{contrato.nr_contrato}</h4>
+                      <p className="text-sm text-gray-600 truncate">{contrato.objeto}</p>
                     </div>
-                    <Progress value={contrato.progresso} className="h-2" />
+                    <Badge className="bg-red-500 text-white">
+                      {contrato.relatorios_pendentes_count} relatórios
+                    </Badge>
                   </div>
-                  <div className="flex justify-end pt-2">
-                    <Button 
-                      onClick={() => navigate(`/contratos/${contrato.id}`)}
-                      size="sm" 
-                      variant="outline"
-                      className="border-red-200 text-red-700 hover:bg-red-50"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Ver Detalhes
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Contratado:</span>
+                      <span className="font-medium">{contrato.contratado_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Gestor:</span>
+                      <span className="font-medium">{contrato.gestor_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Fiscal:</span>
+                      <span className="font-medium">{contrato.fiscal_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Último relatório:</span>
+                      <span className="font-medium">
+                        {new Date(contrato.ultimo_relatorio_data).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <Button 
+                        onClick={() => navigate(`/contratos/${contrato.id}`)}
+                        size="sm" 
+                        variant="outline"
+                        className="border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver Detalhes
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>Nenhum relatório pendente</p>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
-        {/* Pendências Urgentes */}
+        {/* Contratos com Pendências */}
         <Card className="border-orange-200 shadow-lg">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-orange-800">Pendências Urgentes</CardTitle>
-                <CardDescription>Itens que requerem atenção imediata</CardDescription>
+                <CardTitle className="text-orange-800">Contratos com Pendências</CardTitle>
+                <CardDescription>Contratos que requerem atenção</CardDescription>
               </div>
               <Button 
                 onClick={() => navigate('/pendencias')} 
@@ -345,29 +240,58 @@ export default function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockPendenciasUrgentes.map((pendencia) => (
-              <div key={pendencia.id} className="border border-orange-100 rounded-lg p-4 hover:bg-orange-50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-semibold text-orange-800">Contrato {pendencia.contrato}</h4>
-                    <p className="text-sm text-gray-600">{pendencia.descricao}</p>
+            {contratos_com_pendencias.length > 0 ? (
+              contratos_com_pendencias.slice(0, 3).map((contrato) => (
+                <div key={contrato.id} className="border border-orange-100 rounded-lg p-4 hover:bg-orange-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold text-orange-800">{contrato.nr_contrato}</h4>
+                      <p className="text-sm text-gray-600 truncate">{contrato.objeto}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Badge className="bg-orange-500 text-white">
+                        {contrato.pendencias_count} pendências
+                      </Badge>
+                      {contrato.pendencias_em_atraso > 0 && (
+                        <Badge className="bg-red-500 text-white">
+                          {contrato.pendencias_em_atraso} em atraso
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <Badge className={`${getStatusColor(pendencia.status)} text-white`}>
-                    {pendencia.status}
-                  </Badge>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Contratado:</span>
+                      <span className="font-medium">{contrato.contratado_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Gestor:</span>
+                      <span className="font-medium">{contrato.gestor_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Fiscal:</span>
+                      <span className="font-medium">{contrato.fiscal_nome}</span>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <Button 
+                        onClick={() => navigate(`/contratos/${contrato.id}`)}
+                        size="sm" 
+                        variant="outline"
+                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver Detalhes
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Prazo:</span>
-                    <span className="font-medium">{new Date(pendencia.prazo).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Fiscal:</span>
-                    <span className="font-medium">{pendencia.fiscal}</span>
-                  </div>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>Nenhuma pendência encontrada</p>
               </div>
-            ))}
+            )}
             
             {/* Ações Rápidas */}
             <div className="border-t border-orange-200 pt-4 mt-4">
@@ -392,22 +316,22 @@ export default function AdminDashboard() {
                   Gerenciar Usuários
                 </Button>
                 <Button 
-                  onClick={() => navigate('/pendencias')} 
+                  onClick={() => navigate('/pendencias-vencidas')} 
                   variant="outline" 
                   size="sm"
                   className="border-orange-200 text-orange-700 hover:bg-orange-50"
                 >
                   <AlertTriangle className="w-4 h-4 mr-1" />
-                  Pendências
+                  Pendências Vencidas
                 </Button>
                 <Button 
-                  onClick={() => navigate('/fiscalizacao')} 
+                  onClick={() => navigate('/gestao-relatorios')} 
                   variant="outline" 
                   size="sm"
                   className="border-orange-200 text-orange-700 hover:bg-orange-50"
                 >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  Fiscalização
+                  <BarChart3 className="w-4 h-4 mr-1" />
+                  Gestão Relatórios
                 </Button>
               </div>
             </div>

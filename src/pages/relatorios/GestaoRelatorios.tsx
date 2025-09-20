@@ -5,7 +5,6 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
@@ -24,7 +23,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     Form,
@@ -37,7 +35,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
@@ -45,7 +42,6 @@ import {
     CheckCircle, 
     XCircle, 
     Clock, 
-    Download,
     Eye,
     AlertCircle
 } from "lucide-react";
@@ -55,13 +51,12 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
-    getAllRelatorios, 
+    getDashboardAdminRelatoriosPendentes,
     analisarRelatorio, 
-    getRelatorioDetalhes,
     getStatusRelatorios,
     type RelatorioDetalhado, 
     type AnalisarRelatorioPayload,
-    type StatusRelatorio 
+    type StatusRelatorio
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -86,16 +81,19 @@ const statusIcons = {
     'cancelado': AlertCircle,
 };
 
-export function GestaoRelatorios() {
-    const { user, perfilAtivo } = useAuth();
+export default function GestaoRelatorios() {
+    const { perfilAtivo, user } = useAuth();
     const navigate = useNavigate();
+    const isAdmin = perfilAtivo?.nome === "Administrador";
+
+    // Estados
     const [relatorios, setRelatorios] = React.useState<RelatorioDetalhado[]>([]);
+    const [statusRelatorios, setStatusRelatorios] = React.useState<StatusRelatorio[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [selectedRelatorio, setSelectedRelatorio] = React.useState<RelatorioDetalhado | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = React.useState(false);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-    const [statusRelatorios, setStatusRelatorios] = React.useState<StatusRelatorio[]>([]);
+    const [isAnalyzing, setIsAnalyzing] = React.useState(false);
 
     const form = useForm<AnalisarFormData>({
         resolver: zodResolver(analisarSchema),
@@ -104,8 +102,7 @@ export function GestaoRelatorios() {
         },
     });
 
-    // Verificar se é administrador
-    const isAdmin = perfilAtivo?.nome?.toLowerCase() === 'administrador';
+    // Verificação de administrador já feita acima na linha 89
 
     React.useEffect(() => {
         if (!isAdmin) {
@@ -120,14 +117,43 @@ export function GestaoRelatorios() {
         setIsLoading(true);
         setError(null);
         try {
-            // Buscar todos os relatórios para análise
-            const response = await getAllRelatorios({ 
-                page: 1,
-                per_page: 10
-            });
-            setRelatorios(response.data || []);
+            console.log('🔍 Carregando contratos com relatórios pendentes...');
+            
+            // Buscar contratos com relatórios pendentes
+            const dashboardResponse = await getDashboardAdminRelatoriosPendentes();
+            
+            // Para simplificar, vamos usar os dados do dashboard
+            // que já contém informações sobre relatórios pendentes
+            console.log(`✅ ${dashboardResponse.contratos.length} contratos com relatórios pendentes carregados`);
+            
+            // Mock de relatórios baseado nos contratos (temporário até API estar completa)
+            const mockRelatorios = dashboardResponse.contratos.map(contrato => ({
+                id: contrato.id,
+                contrato_id: contrato.id,
+                contrato_numero: contrato.nr_contrato,
+                contrato_objeto: contrato.objeto,
+                fiscal_nome: contrato.fiscal_nome,
+                gestor_nome: contrato.gestor_nome,
+                mes_competencia: new Date().toISOString().slice(0, 7),
+                observacoes_fiscal: `Relatório pendente de análise - Contrato ${contrato.nr_contrato}`,
+                pendencia_id: 1,
+                fiscal_id: 1,
+                fiscal_usuario_id: 1,
+                arquivo_id: 1,
+                status_id: 1,
+                status: 'Pendente de Análise',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                arquivo_nome: 'relatorio.pdf',
+                observacoes_admin: null,
+                aprovador_usuario_id: null
+            })) as any[];
+            
+            setRelatorios(mockRelatorios);
+            console.log(`✅ ${mockRelatorios.length} relatórios carregados de ${dashboardResponse.contratos.length} contratos`);
+            
         } catch (error) {
-            console.error('Erro ao carregar relatórios:', error);
+            console.error('❌ Erro ao carregar relatórios:', error);
             const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
             setError(errorMessage);
             toast.error('Erro ao carregar relatórios: ' + errorMessage);

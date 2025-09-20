@@ -582,18 +582,8 @@ export async function submitRelatorio(contratoId: number, payload: SubmitRelator
     });
 }
 
-// Função para listar todos os relatórios (para administradores)
-export async function getAllRelatorios(filters?: Record<string, any>): Promise<{ data: RelatorioDetalhado[], total_items: number, total_pages: number, current_page: number, per_page: number }> {
-    const params = new URLSearchParams();
-    if (filters) {
-        Object.keys(filters).forEach(key => {
-            if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-                params.append(key, String(filters[key]));
-            }
-        });
-    }
-    return api<{ data: RelatorioDetalhado[], total_items: number, total_pages: number, current_page: number, per_page: number }>(`/relatorios?${params.toString()}`);
-}
+// FUNÇÃO REMOVIDA: getAllRelatorios - endpoint /relatorios não existe na API
+// Use getDashboardAdminRelatoriosPendentes() + getRelatoriosByContratoId() para obter relatórios
 
 // Função para buscar status de relatórios
 export async function getStatusRelatorios(): Promise<StatusRelatorio[]> {
@@ -1019,3 +1009,435 @@ export type CreateUserPayload = {
     cpf: string;
     matricula?: string;
 };
+
+// --- TIPOS PARA GESTÃO DE PENDÊNCIAS VENCIDAS ---
+
+/**
+ * Tipos para pendências vencidas do dashboard administrativo
+ */
+export type PendenciaVencida = {
+    pendencia_id: number;
+    titulo: string;
+    descricao: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    dias_em_atraso: number;
+    urgencia: "CRÍTICA" | "ALTA" | "MÉDIA";
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    fiscal_nome: string;
+    gestor_nome: string;
+};
+
+export type DashboardAdminPendenciasVencidasResponseOld = {
+    pendencias_vencidas: PendenciaVencida[];
+    total_pendencias_vencidas: number;
+    contratos_afetados: number;
+    pendencias_criticas: number;    // > 30 dias
+    pendencias_altas: number;       // 15-30 dias  
+    pendencias_medias: number;      // 1-14 dias
+};
+
+/**
+ * Tipos para pendências do fiscal
+ */
+export type PendenciaFiscal = {
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    pendencia_id: number;
+    pendencia_titulo: string;
+    pendencia_descricao: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    dias_restantes: number;  // Negativo = vencida
+    em_atraso: boolean;      // Identifica vencidas
+};
+
+export type DashboardFiscalPendenciasResponse = {
+    pendencias: PendenciaFiscal[];
+    total_pendencias: number;
+    pendencias_em_atraso: number;      // Contador de vencidas
+    pendencias_proximas_vencimento: number;
+};
+
+// --- FUNÇÕES API PARA PENDÊNCIAS VENCIDAS ---
+
+/**
+ * Busca pendências vencidas para o dashboard administrativo
+ * GET /api/v1/dashboard/admin/pendencias-vencidas
+ */
+export async function getDashboardAdminPendenciasVencidas(): Promise<DashboardAdminPendenciasVencidasResponseOld> {
+    console.log("🔍 Buscando pendências vencidas do dashboard administrativo...");
+    
+    try {
+        const response = await api<DashboardAdminPendenciasVencidasResponseOld>('/dashboard/admin/pendencias-vencidas');
+        
+        console.log("✅ Pendências vencidas carregadas:", {
+            total: response.total_pendencias_vencidas,
+            criticas: response.pendencias_criticas,
+            altas: response.pendencias_altas,
+            medias: response.pendencias_medias,
+            contratos_afetados: response.contratos_afetados
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências vencidas:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca pendências do fiscal (incluindo vencidas)
+ * GET /api/v1/dashboard/fiscal/minhas-pendencias
+ */
+export async function getDashboardFiscalPendencias(): Promise<DashboardFiscalPendenciasResponse> {
+    console.log("🔍 Buscando pendências do fiscal...");
+    
+    try {
+        const response = await api<DashboardFiscalPendenciasResponse>('/dashboard/fiscal/minhas-pendencias');
+        
+        console.log("✅ Pendências do fiscal carregadas:", {
+            total: response.total_pendencias,
+            em_atraso: response.pendencias_em_atraso,
+            proximas_vencimento: response.pendencias_proximas_vencimento
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências do fiscal:", error);
+        throw error;
+    }
+}
+
+// --- TIPOS PARA NOVOS DASHBOARDS DA API ---
+
+/**
+ * Tipos para contratos com relatórios pendentes
+ */
+export type ContratoComRelatoriosPendentes = {
+    id: number;
+    nr_contrato: string;
+    objeto: string;
+    data_inicio: string;
+    data_fim: string;
+    contratado_nome: string;
+    gestor_nome: string;
+    fiscal_nome: string;
+    status_nome: string;
+    relatorios_pendentes_count: number;
+    ultimo_relatorio_data: string;
+    ultimo_relatorio_fiscal: string;
+};
+
+export type DashboardAdminRelatoriosPendentesResponse = {
+    contratos: ContratoComRelatoriosPendentes[];
+    total_contratos: number;
+    total_relatorios_pendentes: number;
+};
+
+/**
+ * Tipos para contratos com pendências
+ */
+export type ContratoComPendencias = {
+    id: number;
+    nr_contrato: string;
+    objeto: string;
+    data_inicio: string;
+    data_fim: string;
+    contratado_nome: string;
+    gestor_nome: string;
+    fiscal_nome: string;
+    status_nome: string;
+    pendencias_count: number;
+    pendencias_em_atraso: number;
+    ultima_pendencia_data: string;
+};
+
+export type DashboardAdminPendenciasResponse = {
+    contratos: ContratoComPendencias[];
+    total_contratos: number;
+    total_pendencias: number;
+};
+
+/**
+ * Tipos para dashboard completo do administrador
+ */
+export type DashboardContadores = {
+    relatorios_para_analise: number;
+    contratos_com_pendencias: number;
+    usuarios_ativos: number;
+    contratos_ativos: number;
+    minhas_pendencias: number;
+    pendencias_em_atraso: number;
+    relatorios_enviados_mes: number;
+    contratos_sob_gestao: number;
+    relatorios_equipe_pendentes: number;
+};
+
+export type DashboardAdminCompletoResponse = {
+    contadores: DashboardContadores;
+    contratos_com_relatorios_pendentes: ContratoComRelatoriosPendentes[];
+    contratos_com_pendencias: ContratoComPendencias[];
+};
+
+/**
+ * Tipos para pendências do fiscal (atualizado)
+ */
+export type PendenciaFiscalCompleta = {
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    pendencia_id: number;
+    pendencia_titulo: string;
+    pendencia_descricao: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    dias_restantes: number;
+    em_atraso: boolean;
+};
+
+export type DashboardFiscalPendenciasCompletoResponse = {
+    pendencias: PendenciaFiscalCompleta[];
+    total_pendencias: number;
+    pendencias_em_atraso: number;
+    pendencias_proximas_vencimento: number;
+};
+
+export type DashboardFiscalCompletoResponse = {
+    contadores: DashboardContadores;
+    minhas_pendencias: PendenciaFiscalCompleta[];
+};
+
+/**
+ * Tipos para resumo de atividades por perfil
+ */
+export type ResumoAtividadesAdmin = {
+    perfil: "Administrador";
+    relatorios_para_analisar: number;
+    contratos_com_pendencias: number;
+    acao_necessaria: boolean;
+};
+
+export type ResumoAtividadesFiscal = {
+    perfil: "Fiscal";
+    total_pendencias: number;
+    pendencias_em_atraso: number;
+    pendencias_proximas_vencimento: number;
+    acao_necessaria: boolean;
+};
+
+export type ResumoAtividadesGestor = {
+    perfil: "Gestor";
+    contratos_sob_gestao: number;
+    relatorios_equipe_pendentes: number;
+    acao_necessaria: boolean;
+};
+
+export type ResumoAtividades = ResumoAtividadesAdmin | ResumoAtividadesFiscal | ResumoAtividadesGestor;
+
+/**
+ * Tipos para pendências vencidas (atualizado)
+ */
+export type PendenciaVencidaCompleta = {
+    pendencia_id: number;
+    titulo: string;
+    descricao: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    dias_em_atraso: number;
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    fiscal_nome: string;
+    gestor_nome: string;
+    urgencia: "CRÍTICA" | "ALTA" | "MÉDIA";
+};
+
+export type DashboardAdminPendenciasVencidasResponse = {
+    pendencias_vencidas: PendenciaVencidaCompleta[];
+    total_pendencias_vencidas: number;
+    contratos_afetados: number;
+    pendencias_criticas: number;
+    pendencias_altas: number;
+    pendencias_medias: number;
+};
+
+// --- FUNÇÕES API PARA NOVOS DASHBOARDS ---
+
+/**
+ * Busca contratos com relatórios pendentes (Admin)
+ * GET /api/v1/dashboard/admin/contratos-com-relatorios-pendentes
+ */
+export async function getDashboardAdminRelatoriosPendentes(): Promise<DashboardAdminRelatoriosPendentesResponse> {
+    console.log("🔍 Buscando contratos com relatórios pendentes...");
+    
+    try {
+        const response = await api<DashboardAdminRelatoriosPendentesResponse>('/dashboard/admin/contratos-com-relatorios-pendentes');
+        
+        console.log("✅ Contratos com relatórios pendentes carregados:", {
+            total_contratos: response.total_contratos,
+            total_relatorios_pendentes: response.total_relatorios_pendentes
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar contratos com relatórios pendentes:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca contratos com pendências (Admin)
+ * GET /api/v1/dashboard/admin/contratos-com-pendencias
+ */
+export async function getDashboardAdminPendencias(): Promise<DashboardAdminPendenciasResponse> {
+    console.log("🔍 Buscando contratos com pendências...");
+    
+    try {
+        const response = await api<DashboardAdminPendenciasResponse>('/dashboard/admin/contratos-com-pendencias');
+        
+        console.log("✅ Contratos com pendências carregados:", {
+            total_contratos: response.total_contratos,
+            total_pendencias: response.total_pendencias
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar contratos com pendências:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca dashboard completo do administrador
+ * GET /api/v1/dashboard/admin/completo
+ */
+export async function getDashboardAdminCompleto(): Promise<DashboardAdminCompletoResponse> {
+    console.log("🔍 Buscando dashboard completo do administrador...");
+    
+    try {
+        const response = await api<DashboardAdminCompletoResponse>('/dashboard/admin/completo');
+        
+        console.log("✅ Dashboard completo do administrador carregado:", {
+            contadores: response.contadores,
+            contratos_com_relatorios: response.contratos_com_relatorios_pendentes.length,
+            contratos_com_pendencias: response.contratos_com_pendencias.length
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar dashboard completo do administrador:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca pendências do fiscal (atualizada)
+ * GET /api/v1/dashboard/fiscal/minhas-pendencias
+ */
+export async function getDashboardFiscalPendenciasCompleto(): Promise<DashboardFiscalPendenciasCompletoResponse> {
+    console.log("🔍 Buscando pendências completas do fiscal...");
+    
+    try {
+        const response = await api<DashboardFiscalPendenciasCompletoResponse>('/dashboard/fiscal/minhas-pendencias');
+        
+        console.log("✅ Pendências completas do fiscal carregadas:", {
+            total_pendencias: response.total_pendencias,
+            pendencias_em_atraso: response.pendencias_em_atraso,
+            pendencias_proximas_vencimento: response.pendencias_proximas_vencimento
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências completas do fiscal:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca dashboard completo do fiscal
+ * GET /api/v1/dashboard/fiscal/completo
+ */
+export async function getDashboardFiscalCompleto(): Promise<DashboardFiscalCompletoResponse> {
+    console.log("🔍 Buscando dashboard completo do fiscal...");
+    
+    try {
+        const response = await api<DashboardFiscalCompletoResponse>('/dashboard/fiscal/completo');
+        
+        console.log("✅ Dashboard completo do fiscal carregado:", {
+            contadores: response.contadores,
+            minhas_pendencias: response.minhas_pendencias.length
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar dashboard completo do fiscal:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca contadores gerais do dashboard
+ * GET /api/v1/dashboard/contadores
+ */
+export async function getDashboardContadores(): Promise<DashboardContadores> {
+    console.log("🔍 Buscando contadores do dashboard...");
+    
+    try {
+        const response = await api<DashboardContadores>('/dashboard/contadores');
+        
+        console.log("✅ Contadores do dashboard carregados:", response);
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar contadores do dashboard:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca resumo de atividades por perfil
+ * GET /api/v1/dashboard/resumo-atividades
+ */
+export async function getDashboardResumoAtividades(): Promise<ResumoAtividades> {
+    console.log("🔍 Buscando resumo de atividades...");
+    
+    try {
+        const response = await api<ResumoAtividades>('/dashboard/resumo-atividades');
+        
+        console.log("✅ Resumo de atividades carregado:", response);
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar resumo de atividades:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca pendências vencidas do administrador (atualizada)
+ * GET /api/v1/dashboard/admin/pendencias-vencidas
+ */
+export async function getDashboardAdminPendenciasVencidasCompleto(): Promise<DashboardAdminPendenciasVencidasResponse> {
+    console.log("🔍 Buscando pendências vencidas completas do administrador...");
+    
+    try {
+        const response = await api<DashboardAdminPendenciasVencidasResponse>('/dashboard/admin/pendencias-vencidas');
+        
+        console.log("✅ Pendências vencidas completas carregadas:", {
+            total_pendencias_vencidas: response.total_pendencias_vencidas,
+            contratos_afetados: response.contratos_afetados,
+            pendencias_criticas: response.pendencias_criticas,
+            pendencias_altas: response.pendencias_altas,
+            pendencias_medias: response.pendencias_medias
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências vencidas completas:", error);
+        throw error;
+    }
+}

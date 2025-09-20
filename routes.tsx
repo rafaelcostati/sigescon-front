@@ -9,7 +9,7 @@ import { NovoContrato } from '@/pages/contratos/NovoContrato';
 import { EditarContrato } from '@/pages/contratos/EditarContrato';
 import DetalhesContrato from '@/pages/contratos/DetalhesContrato';
 import UserCard from '@/pages/usuarios/Usuario';
-import { NovoUsuario } from '@/pages/usuarios/CadastrarUsuario';
+import { CadastrarUsuarioSimples } from '@/pages/usuarios/CadastrarUsuarioSimples';
 import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -18,9 +18,10 @@ import Modalidades from '@/pages/modalidades/Modalidade';
 import { FiscalDashboard } from '@/pages/fiscal/FiscalDashboard';
 import { GestorDashboard } from '@/pages/gestor/GestorDashboard';
 import Relatorios from '@/pages/relatorios/Relatorios';
-import { GestaoRelatorios } from '@/pages/relatorios/GestaoRelatorios';
+import GestaoRelatorios from '@/pages/relatorios/GestaoRelatorios';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
 import Pendencias from '@/pages/pendencias/Pendencias';
+import GestaoPendenciasVencidas from '@/pages/pendencias/GestaoPendenciasVencidas';
 
 // Componente para dashboard dinâmico baseado no perfil
 import DashboardRouter from '@/components/DashboardRouter';
@@ -97,11 +98,15 @@ export const router = createBrowserRouter([
       },
       {
         path: '/cadastrarusuario',
-        element: <ProtectedRoute requiredProfiles={['Administrador']}><NovoUsuario /></ProtectedRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><CadastrarUsuarioSimples /></ProtectedRoute>,
       },
       {
         path: '/pendencias',
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Pendencias /></ProtectedRoute>,
+      },
+      {
+        path: '/pendencias-vencidas',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><GestaoPendenciasVencidas /></ProtectedRoute>,
       },
       {
         path: '/fiscalizacao',

@@ -68,6 +68,11 @@ const getNavigationByProfile = (perfilNome: string) => {
           url: "/gestao-relatorios",
           icon: IconClipboardList,
         },
+        {
+          title: "Pendências Vencidas",
+          url: "/pendencias-vencidas",
+          icon: IconAlertTriangle,
+        },
       ];
 
     case "Gestor":
@@ -118,6 +123,11 @@ const getNavigationByProfile = (perfilNome: string) => {
           title: "Relatórios",
           url: "/relatorios",
           icon: IconReportAnalytics,
+        },
+        {
+          title: "Pendências Vencidas",
+          url: "/pendencias-vencidas",
+          icon: IconAlertTriangle,
         },
       ];
 

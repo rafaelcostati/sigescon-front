@@ -1041,6 +1041,7 @@ export function ContratosDataTable() {
 
                 setError(errorMessage);
                 toast.error("Erro ao carregar dados de suporte: " + errorMessage);
+                setIsLoading(false); // Finalizar loading em caso de erro
             }
         };
         fetchInitialData();
@@ -1117,8 +1118,6 @@ export function ContratosDataTable() {
         
         if (dadosCompletos) {
             fetchContratos();
-        } else if (!isLoading) {
-            setIsLoading(false);
         }
     }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout, perfilAtivo, user, isFiscal, isGestor, isAdmin]);
 
@@ -1189,7 +1188,24 @@ export function ContratosDataTable() {
                 </div>
                 <TabsContent value="all" className="relative mt-4 flex flex-col gap-4">
                     {isLoading ? (
-                        <div className="py-8 text-center">Carregando...</div>
+                        <div className="flex h-60 items-center justify-center">
+                            <div className="text-center">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                </div>
+                                <h3 className="mt-4 text-lg font-semibold text-gray-900">
+                                    Carregando contratos...
+                                </h3>
+                                <p className="mt-2 text-sm text-gray-500">
+                                    {isFiscal 
+                                        ? "Buscando seus contratos de fiscalização"
+                                        : isGestor 
+                                        ? "Buscando seus contratos de gestão"
+                                        : "Buscando todos os contratos do sistema"
+                                    }
+                                </p>
+                            </div>
+                        </div>
                     ) : (
                         <>
                             <DndContext
@@ -1216,19 +1232,37 @@ export function ContratosDataTable() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex h-60 items-center justify-center rounded-lg border border-dashed">
+                                        <div className="flex h-60 items-center justify-center rounded-lg border border-dashed border-gray-300">
                                             <div className="text-center">
-                                                <h3 className="mt-4 text-lg font-semibold">
+                                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                                                    <IconExclamationCircle className="h-6 w-6 text-gray-400" />
+                                                </div>
+                                                <h3 className="mt-4 text-lg font-semibold text-gray-900">
                                                     Nenhum contrato encontrado
                                                 </h3>
-                                                <p className="mt-1 text-sm text-slate-500">
+                                                <p className="mt-2 text-sm text-gray-500">
                                                     {isFiscal 
                                                         ? "Você não possui contratos sob sua fiscalização."
                                                         : isGestor 
                                                         ? "Você não possui contratos sob sua gestão."
-                                                        : "Tente limpar os filtros ou cadastre um novo contrato."
+                                                        : "Não há contratos cadastrados no sistema."
                                                     }
                                                 </p>
+                                                {!isFiscal && !isGestor && (
+                                                    <div className="mt-4">
+                                                        <p className="text-xs text-gray-400 mb-2">
+                                                            Tente limpar os filtros ou cadastre um novo contrato.
+                                                        </p>
+                                                        {canManageContratos && (
+                                                            <NavLink to="/novocontrato">
+                                                                <Button variant="outline" size="sm" className="gap-2">
+                                                                    <PlusCircle className="h-4 w-4" />
+                                                                    Cadastrar Primeiro Contrato
+                                                                </Button>
+                                                            </NavLink>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
