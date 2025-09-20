@@ -9,7 +9,9 @@ import {
   CheckCircle, 
   Eye,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  Building,
+  TrendingUp
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -96,16 +98,28 @@ export default function AdminDashboard() {
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Relatórios para Análise */}
-        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Usuários Ativos */}
+        <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-700">Relatórios para Análise</CardTitle>
-            <FileText className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium text-blue-700">Usuários Ativos</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-800">{contadores.relatorios_para_analise}</div>
-            <p className="text-xs text-red-600 mt-1">Aguardando aprovação</p>
+            <div className="text-2xl font-bold text-blue-800">{contadores.usuarios_ativos}</div>
+            <p className="text-xs text-blue-600 mt-1">No sistema</p>
+          </CardContent>
+        </Card>
+
+        {/* Contratados com Pendências Vencidas */}
+        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-red-700">Contratados c/ Pendências</CardTitle>
+            <Building className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-800">{contadores.contratados_com_pendencias_vencidas || 0}</div>
+            <p className="text-xs text-red-600 mt-1">Com pendências vencidas</p>
           </CardContent>
         </Card>
 
@@ -121,27 +135,27 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Contratos com Pendências */}
-        <Card className="border-yellow-200 shadow-lg hover:shadow-xl transition-shadow">
+        {/* Relatórios para Análise */}
+        <Card className="border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-700">Contratos com Pendências</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-sm font-medium text-purple-700">Relatórios para Análise</CardTitle>
+            <FileText className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-800">{contadores.contratos_com_pendencias}</div>
-            <p className="text-xs text-yellow-600 mt-1">Requer atenção</p>
+            <div className="text-2xl font-bold text-purple-800">{contadores.relatorios_para_analise}</div>
+            <p className="text-xs text-purple-600 mt-1">Aguardando aprovação</p>
           </CardContent>
         </Card>
 
-        {/* Usuários Ativos */}
-        <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
+        {/* Total de Contratações */}
+        <Card className="border-orange-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Usuários Ativos</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-orange-700">Total Contratações</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">{contadores.usuarios_ativos}</div>
-            <p className="text-xs text-blue-600 mt-1">No sistema</p>
+            <div className="text-2xl font-bold text-orange-800">{contadores.total_contratacoes || 0}</div>
+            <p className="text-xs text-orange-600 mt-1">Todas as contratações</p>
           </CardContent>
         </Card>
       </div>

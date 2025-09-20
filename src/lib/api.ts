@@ -1170,11 +1170,13 @@ export type DashboardContadores = {
     contratos_com_pendencias: number;
     usuarios_ativos: number;
     contratos_ativos: number;
-    minhas_pendencias: number;
-    pendencias_em_atraso: number;
-    relatorios_enviados_mes: number;
-    contratos_sob_gestao: number;
-    relatorios_equipe_pendentes: number;
+    contratos_vencendo: number;
+    valor_total_contratos: number;
+    total_pendencias: number;
+    total_contratados: number;
+    total_fiscalizacoes: number;
+    contratados_com_pendencias_vencidas: number;
+    total_contratacoes: number;
 };
 
 export type DashboardAdminCompletoResponse = {

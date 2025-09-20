@@ -13,10 +13,7 @@ import {
   Clock, 
   Search,
   Eye,
-  TrendingUp,
-  Building,
   Users,
-  AlertCircle,
   Filter,
   RefreshCw
 } from "lucide-react";
@@ -35,12 +32,13 @@ export default function GestaoPendenciasVencidas() {
   const { perfilAtivo } = useAuth();
   const isAdmin = perfilAtivo?.nome === "Administrador";
   const isFiscal = perfilAtivo?.nome === "Fiscal";
+  const isGestor = perfilAtivo?.nome === "Gestor";
 
   // Estados para administrador
   const [dashboardAdmin, setDashboardAdmin] = useState<DashboardAdminPendenciasVencidasResponseOld | null>(null);
   const [pendenciasVencidas, setPendenciasVencidas] = useState<PendenciaVencida[]>([]);
 
-  // Estados para fiscal
+  // Estados para fiscal e gestor
   const [dashboardFiscal, setDashboardFiscal] = useState<DashboardFiscalPendenciasResponse | null>(null);
   const [pendenciasFiscal, setPendenciasFiscal] = useState<PendenciaFiscal[]>([]);
 
@@ -64,8 +62,8 @@ export default function GestaoPendenciasVencidas() {
         const response = await getDashboardAdminPendenciasVencidas();
         setDashboardAdmin(response);
         setPendenciasVencidas(response.pendencias_vencidas);
-      } else if (isFiscal) {
-        console.log("🔍 Carregando pendências para fiscal...");
+      } else if (isFiscal || isGestor) {
+        console.log(`🔍 Carregando pendências para ${perfilAtivo.nome.toLowerCase()}...`);
         const response = await getDashboardFiscalPendencias();
         setDashboardFiscal(response);
         
@@ -150,12 +148,14 @@ export default function GestaoPendenciasVencidas() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-red-800">
-            {isAdmin ? "Gestão de Pendências Vencidas" : "Minhas Pendências Vencidas"}
+            {isAdmin ? "Gestão de Pendências Vencidas" : isGestor ? "Pendências Vencidas - Gestão" : "Minhas Pendências Vencidas"}
           </h1>
           <p className="text-red-600 mt-1">
             {isAdmin 
-              ? "Visão geral de todas as pendências vencidas do sistema" 
-              : "Suas pendências que estão em atraso"
+              ? "Contratos com pendências vencidas no sistema" 
+              : isGestor
+              ? "Contratos sob sua gestão com pendências vencidas"
+              : "Seus contratos com pendências em atraso"
             }
           </p>
         </div>
@@ -169,114 +169,33 @@ export default function GestaoPendenciasVencidas() {
         </Button>
       </div>
 
-      {/* Cards de Estatísticas */}
-      {isAdmin && dashboardAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Vencidas</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {dashboardAdmin.total_pendencias_vencidas}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Críticas</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-700" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-700">
-                {dashboardAdmin.pendencias_criticas}
-              </div>
-              <p className="text-xs text-red-600">+30 dias</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-orange-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Altas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {dashboardAdmin.pendencias_altas}
-              </div>
-              <p className="text-xs text-orange-600">15-30 dias</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-yellow-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Médias</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {dashboardAdmin.pendencias_medias}
-              </div>
-              <p className="text-xs text-yellow-600">1-14 dias</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contratos Afetados</CardTitle>
-              <Building className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {dashboardAdmin.contratos_afetados}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Cards de Estatísticas para Fiscal */}
-      {isFiscal && dashboardFiscal && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendências em Atraso</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {dashboardFiscal.pendencias_em_atraso}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-yellow-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Próximas ao Vencimento</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {dashboardFiscal.pendencias_proximas_vencimento}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Pendências</CardTitle>
-              <FileText className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {dashboardFiscal.total_pendencias}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Card de Estatísticas Simplificado */}
+      <div className="grid grid-cols-1 gap-4">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold text-red-800">
+              Total de Pendências Vencidas
+            </CardTitle>
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-red-600">
+              {isAdmin 
+                ? dashboardAdmin?.total_pendencias_vencidas || 0
+                : dashboardFiscal?.pendencias_em_atraso || 0
+              }
+            </div>
+            <p className="text-sm text-red-600 mt-2">
+              {isAdmin 
+                ? `${dashboardAdmin?.contratos_afetados || 0} contratos afetados`
+                : isGestor
+                ? "Contratos sob sua gestão"
+                : "Seus contratos em atraso"
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filtros */}
       <Card>
@@ -448,8 +367,10 @@ export default function GestaoPendenciasVencidas() {
             <p className="text-gray-500 text-center">
               {busca || filtroUrgencia !== "todos"
                 ? "Tente ajustar os filtros para encontrar pendências."
-                : isAdmin 
+                : isAdmin
                   ? "Parabéns! Não há pendências vencidas no sistema."
+                  : isGestor
+                  ? "Você não possui contratos com pendências vencidas."
                   : "Você não possui pendências vencidas no momento."
               }
             </p>

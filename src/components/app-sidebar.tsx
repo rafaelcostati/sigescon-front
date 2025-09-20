@@ -6,7 +6,6 @@ import {
   IconFileText,
   IconFileCertificate,
   IconClipboardList,
-  IconReportAnalytics,
   IconAlertTriangle,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
@@ -59,11 +58,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           icon: IconUsers,
         },
         {
-          title: "Relatórios",
-          url: "/relatorios",
-          icon: IconReportAnalytics,
-        },
-        {
           title: "Gestão de Relatórios",
           url: "/gestao-relatorios",
           icon: IconClipboardList,
@@ -84,19 +78,9 @@ const getNavigationByProfile = (perfilNome: string) => {
           icon: IconFileText,
         },
         {
-          title: "Contratados",
-          url: "/contratado",
-          icon: IconBuilding,
-        },
-        {
-          title: "Pendências",
-          url: "/pendencias",
+          title: "Pendências Vencidas",
+          url: "/pendencias-vencidas",
           icon: IconAlertTriangle,
-        },
-        {
-          title: "Relatórios",
-          url: "/relatorios",
-          icon: IconReportAnalytics,
         },
       ];
 
@@ -108,21 +92,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           url: "/contratos",
           icon: IconFileText,
           isReadOnly: true, // Apenas visualização
-        },
-        {
-          title: "Pendências",
-          url: "/pendencias",
-          icon: IconAlertTriangle,
-        },
-        {
-          title: "Fiscalização",
-          url: "/fiscalizacao",
-          icon: IconClipboardList,
-        },
-        {
-          title: "Relatórios",
-          url: "/relatorios",
-          icon: IconReportAnalytics,
         },
         {
           title: "Pendências Vencidas",
