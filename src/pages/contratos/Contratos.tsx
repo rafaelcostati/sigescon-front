@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { EnviarRelatorio } from "@/components/EnviarRelatorio";
 
 // Importar as funções da API
 import {
@@ -66,6 +67,7 @@ import {
     type Status,
     type User,
     type ArquivosResponse,
+    type Perfil,
 } from "@/lib/api";
 
 import {
@@ -306,11 +308,16 @@ function ContratosFilters({
     table,
     statusList,
     usuarios,
+    perfilAtivo,
+    pageDescription,
 }: {
     table: Table<ContratoList>;
     statusList: Status[];
     usuarios: User[];
+    perfilAtivo: Perfil | null;
+    pageDescription: string;
 }) {
+    const isAdmin = perfilAtivo?.nome === "Administrador";
     const [filters, setFilters] = React.useState({
         objeto: "",
         nr_contrato: "",
@@ -370,7 +377,7 @@ function ContratosFilters({
             <CardHeader>
                 <CardTitle>Filtros de Contratos</CardTitle>
                 <CardDescription>
-                    Utilize os campos abaixo para refinar sua busca.
+                    {pageDescription}
                 </CardDescription>
             </CardHeader>
             <form onSubmit={handleApplyFilters} className="p-4">
@@ -431,44 +438,49 @@ function ContratosFilters({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label>Gestor</Label>
-                        <Select
-                            value={filters.gestor_id}
-                            onValueChange={(value) => handleFilterChange("gestor_id", value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Escolha um gestor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os Gestores</SelectItem>
-                                {(usuarios || []).map((user) => (
-                                    <SelectItem key={user.id} value={String(user.id)}>
-                                        {user.nome}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label>Fiscal</Label>
-                        <Select
-                            value={filters.fiscal_id}
-                            onValueChange={(value) => handleFilterChange("fiscal_id", value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Escolha um fiscal" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os Fiscais</SelectItem>
-                                {(usuarios || []).map((user) => (
-                                    <SelectItem key={user.id} value={String(user.id)}>
-                                        {user.nome}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* Mostrar filtros de Gestor e Fiscal apenas para Administradores */}
+                    {isAdmin && (
+                        <>
+                            <div className="space-y-1.5">
+                                <Label>Gestor</Label>
+                                <Select
+                                    value={filters.gestor_id}
+                                    onValueChange={(value) => handleFilterChange("gestor_id", value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Escolha um gestor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos os Gestores</SelectItem>
+                                        {(usuarios || []).map((user) => (
+                                            <SelectItem key={user.id} value={String(user.id)}>
+                                                {user.nome}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Fiscal</Label>
+                                <Select
+                                    value={filters.fiscal_id}
+                                    onValueChange={(value) => handleFilterChange("fiscal_id", value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Escolha um fiscal" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos os Fiscais</SelectItem>
+                                        {(usuarios || []).map((user) => (
+                                            <SelectItem key={user.id} value={String(user.id)}>
+                                                {user.nome}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </>
+                    )}
                     <div className="flex flex-col gap-2 self-end md:flex-row">
                         <Button type="submit" className="w-full md:w-auto">
                             <IconSearch className="mr-2 h-4 w-4" /> Pesquisar
@@ -716,10 +728,30 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
 function DraggableContratoCard({
     contrato,
     onContratoDeleted,
+    canManageContratos,
+    isFiscal,
 }: {
     contrato: ContratoList;
     onContratoDeleted: (id: number) => void;
+    canManageContratos: boolean;
+    isFiscal: boolean;
 }) {
+    const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
+    
+    // Carregar pendências quando for fiscal
+    React.useEffect(() => {
+        if (isFiscal) {
+            const fetchPendencias = async () => {
+                try {
+                    const response = await getPendenciasByContratoId(contrato.id);
+                    setPendencias(response || []);
+                } catch (error) {
+                    console.error('Erro ao carregar pendências:', error);
+                }
+            };
+            fetchPendencias();
+        }
+    }, [isFiscal, contrato.id]);
     const { transform, transition, setNodeRef, isDragging } = useSortable({
         id: contrato.id as UniqueIdentifier,
     });
@@ -785,36 +817,44 @@ function DraggableContratoCard({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                                onClick={handleEditClick}
-                                className="flex cursor-pointer items-center gap-2"
-                            >
-                                <Pencil className="h-4 w-4" />
-                                <span>Editar</span>
-                            </DropdownMenuItem>
-                            <CriarPendenciaDialog
-                                contratoId={contrato.id}
-                                contratoNumero={contrato.nr_contrato}
-                                onPendenciaCriada={() => { }}
-                            >
+                            {canManageContratos && (
                                 <DropdownMenuItem
-                                    onSelect={(e) => e.preventDefault()}
+                                    onClick={handleEditClick}
                                     className="flex cursor-pointer items-center gap-2"
                                 >
-                                    <PlusCircle className="h-4 w-4" />
-                                    <span>Criar Pendência</span>
+                                    <Pencil className="h-4 w-4" />
+                                    <span>Editar</span>
                                 </DropdownMenuItem>
-                            </CriarPendenciaDialog>
-                            <DropdownMenuSeparator />
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                    className="flex cursor-pointer items-center gap-2 text-red-600 focus:text-red-600"
-                                    onSelect={(e) => e.preventDefault()}
+                            )}
+                            {canManageContratos && (
+                                <CriarPendenciaDialog
+                                    contratoId={contrato.id}
+                                    contratoNumero={contrato.nr_contrato}
+                                    onPendenciaCriada={() => { }}
                                 >
-                                    <IconX className="h-4 w-4" />
-                                    <span>Excluir</span>
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
+                                    <DropdownMenuItem
+                                        onSelect={(e) => e.preventDefault()}
+                                        className="flex cursor-pointer items-center gap-2"
+                                    >
+                                        <PlusCircle className="h-4 w-4" />
+                                        <span>Criar Pendência</span>
+                                    </DropdownMenuItem>
+                                </CriarPendenciaDialog>
+                            )}
+                            {canManageContratos && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem
+                                            className="flex cursor-pointer items-center gap-2 text-red-600 focus:text-red-600"
+                                            onSelect={(e) => e.preventDefault()}
+                                        >
+                                            <IconX className="h-4 w-4" />
+                                            <span>Excluir</span>
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <AlertDialogContent>
@@ -862,8 +902,29 @@ function DraggableContratoCard({
                     </div>
                 </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
                 <ContratoDetailsViewer contrato={contrato} />
+                {isFiscal && (
+                    <div className="flex-shrink-0">
+                        <EnviarRelatorio
+                            contratoId={contrato.id}
+                            contratoNumero={contrato.nr_contrato}
+                            pendencias={pendencias}
+                            onRelatorioEnviado={() => {
+                                // Recarregar pendências após envio
+                                const fetchPendencias = async () => {
+                                    try {
+                                        const response = await getPendenciasByContratoId(contrato.id);
+                                        setPendencias(response || []);
+                                    } catch (error) {
+                                        console.error('Erro ao recarregar pendências:', error);
+                                    }
+                                };
+                                fetchPendencias();
+                            }}
+                        />
+                    </div>
+                )}
             </CardFooter>
         </Card>
     );
@@ -888,6 +949,25 @@ export function ContratosDataTable() {
     const [usuarios, setUsuarios] = React.useState<User[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+
+    // Determinar permissões baseadas no perfil
+    const isAdmin = perfilAtivo?.nome === "Administrador";
+    const isGestor = perfilAtivo?.nome === "Gestor";
+    const isFiscal = perfilAtivo?.nome === "Fiscal";
+    const canManageContratos = isAdmin; // Apenas admin pode criar/editar/excluir
+    
+    // Título dinâmico baseado no perfil
+    const getPageTitle = () => {
+        if (isFiscal) return "Meus Contratos - Fiscalização";
+        if (isGestor) return "Meus Contratos - Gestão";
+        return "Todos os Contratos";
+    };
+    
+    const getPageDescription = () => {
+        if (isFiscal) return "Contratos sob sua responsabilidade de fiscalização";
+        if (isGestor) return "Contratos sob sua responsabilidade de gestão";
+        return "Gerenciamento completo de contratos do sistema";
+    };
 
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [sorting, setSorting] = React.useState<SortingState>([
@@ -921,15 +1001,33 @@ export function ContratosDataTable() {
         const fetchInitialData = async () => {
             setIsLoading(true);
             try {
-                const [contratadosResponse, statusResponse, usuariosResponse] = await Promise.all([
+                // Carregar dados básicos sempre necessários
+                const promises = [
                     getContratados({ page: 1, per_page: 10 }),
                     getStatus(),
-                    getUsers({ page: 1, per_page: 10 }),
-                ]);
+                ];
 
+                // Adicionar busca de usuários apenas para administradores
+                if (isAdmin) {
+                    promises.push(getUsers({ page: 1, per_page: 10 }));
+                }
+
+                const responses = await Promise.all(promises);
+                
+                // Processar respostas com tipos corretos
+                const contratadosResponse = responses[0] as any; // ContratadoApiResponse
+                const statusResponse = responses[1] as Status[];
+                
                 setContratados(contratadosResponse.data || []);
                 setStatusList(statusResponse || []);
-                setUsuarios(usuariosResponse.data || []);
+                
+                // Definir usuários apenas se for admin
+                if (isAdmin && responses[2]) {
+                    const usuariosResponse = responses[2] as any; // UserApiResponse
+                    setUsuarios(usuariosResponse.data || []);
+                } else {
+                    setUsuarios([]); // Lista vazia para não-admins
+                }
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
 
@@ -946,7 +1044,7 @@ export function ContratosDataTable() {
             }
         };
         fetchInitialData();
-    }, [handleLogout]);
+    }, [handleLogout, isAdmin]);
 
     React.useEffect(() => {
         const fetchContratos = async () => {
@@ -958,11 +1056,15 @@ export function ContratosDataTable() {
                     per_page: pagination.pageSize,
                 };
 
-                // Filtrar por perfil se for Fiscal ou Gestor
-                if (perfilAtivo?.nome === "Fiscal" && user?.id) {
+                // Aplicar filtros automáticos baseados no perfil
+                if (isFiscal && user?.id) {
                     filters.fiscal_id = user.id;
-                } else if (perfilAtivo?.nome === "Gestor" && user?.id) {
+                    console.log(`🔍 Filtro Fiscal aplicado: fiscal_id=${user.id}`);
+                } else if (isGestor && user?.id) {
                     filters.gestor_id = user.id;
+                    console.log(`🔍 Filtro Gestor aplicado: gestor_id=${user.id}`);
+                } else if (isAdmin) {
+                    console.log(`🔍 Admin: carregando todos os contratos`);
                 }
 
                 columnFilters.forEach((filter) => {
@@ -1008,12 +1110,17 @@ export function ContratosDataTable() {
             }
         };
 
-        if (contratados.length > 0 && statusList.length > 0 && usuarios.length > 0) {
+        // Verificar se os dados básicos estão carregados
+        const dadosBasicosCarregados = contratados.length > 0 && statusList.length > 0;
+        // Para admins, também aguardar usuários; para outros perfis, não é necessário
+        const dadosCompletos = isAdmin ? dadosBasicosCarregados && usuarios.length > 0 : dadosBasicosCarregados;
+        
+        if (dadosCompletos) {
             fetchContratos();
         } else if (!isLoading) {
             setIsLoading(false);
         }
-    }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout, perfilAtivo, user]);
+    }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout, perfilAtivo, user, isFiscal, isGestor, isAdmin]);
 
     const handleContratoDeleted = (deletedId: number) => {
         setContratos((current) => current.filter((c) => c.id !== deletedId));
@@ -1063,18 +1170,22 @@ export function ContratosDataTable() {
                 table={table}
                 statusList={statusList}
                 usuarios={usuarios}
+                perfilAtivo={perfilAtivo}
+                pageDescription={getPageDescription()}
             />
             <Tabs defaultValue="all" className="w-full">
                 <div className="flex items-center justify-between">
                     <TabsList>
-                        <TabsTrigger value="all">Todos os Contratos</TabsTrigger>
+                        <TabsTrigger value="all">{getPageTitle()}</TabsTrigger>
                     </TabsList>
-                    <NavLink to="/novocontrato">
-                        <Button variant="default" size="sm" className="gap-2">
-                            <IconPlus className="h-4 w-4" />
-                            <span className="hidden lg:inline">Novo Contrato</span>
-                        </Button>
-                    </NavLink>
+                    {canManageContratos && (
+                        <NavLink to="/novocontrato">
+                            <Button variant="default" size="sm" className="gap-2">
+                                <IconPlus className="h-4 w-4" />
+                                <span className="hidden lg:inline">Novo Contrato</span>
+                            </Button>
+                        </NavLink>
+                    )}
                 </div>
                 <TabsContent value="all" className="relative mt-4 flex flex-col gap-4">
                     {isLoading ? (
@@ -1099,6 +1210,8 @@ export function ContratosDataTable() {
                                                     key={row.original.id}
                                                     contrato={row.original}
                                                     onContratoDeleted={handleContratoDeleted}
+                                                    canManageContratos={canManageContratos}
+                                                    isFiscal={isFiscal}
                                                 />
                                             ))}
                                         </div>
@@ -1109,7 +1222,12 @@ export function ContratosDataTable() {
                                                     Nenhum contrato encontrado
                                                 </h3>
                                                 <p className="mt-1 text-sm text-slate-500">
-                                                    Tente limpar os filtros ou cadastre um novo contrato.
+                                                    {isFiscal 
+                                                        ? "Você não possui contratos sob sua fiscalização."
+                                                        : isGestor 
+                                                        ? "Você não possui contratos sob sua gestão."
+                                                        : "Tente limpar os filtros ou cadastre um novo contrato."
+                                                    }
                                                 </p>
                                             </div>
                                         </div>

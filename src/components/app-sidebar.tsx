@@ -63,6 +63,11 @@ const getNavigationByProfile = (perfilNome: string) => {
           url: "/relatorios",
           icon: IconReportAnalytics,
         },
+        {
+          title: "Gestão de Relatórios",
+          url: "/gestao-relatorios",
+          icon: IconClipboardList,
+        },
       ];
 
     case "Gestor":

@@ -514,6 +514,97 @@ export function getContratoDetalhado(id: number): Promise<ContratoDetalhado> { r
 
 export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: Relatorio[] }> { return api<{ data: Relatorio[] }>(`/contratos/${contratoId}/relatorios/`); }
 
+// Tipos para envio de relatórios
+export type SubmitRelatorioPayload = {
+    observacoes_fiscal: string;
+    mes_competencia: string; // formato: "YYYY-MM"
+    pendencia_id: number;
+    arquivo: File;
+};
+
+export type RelatorioResponse = {
+    id: number;
+    mes_competencia: string;
+    observacoes_fiscal: string;
+    pendencia_id: number;
+    contrato_id: number;
+    fiscal_usuario_id: number;
+    arquivo_id: number;
+    status_id: number;
+    created_at: string;
+    updated_at: string;
+    enviado_por: string;
+    status_relatorio: string;
+    nome_arquivo: string;
+};
+
+// Tipos para análise de relatórios
+export type AnalisarRelatorioPayload = {
+    acao: 'aprovar' | 'rejeitar' | 'cancelar';
+    observacoes_admin?: string;
+};
+
+export type RelatorioDetalhado = RelatorioResponse & {
+    contrato_numero?: string;
+    fiscal_nome?: string;
+    pendencia_descricao?: string;
+};
+
+// Função para enviar relatório fiscal
+export async function submitRelatorio(contratoId: number, payload: SubmitRelatorioPayload): Promise<RelatorioResponse> {
+    const formData = new FormData();
+    formData.append('observacoes_fiscal', payload.observacoes_fiscal);
+    formData.append('mes_competencia', payload.mes_competencia);
+    formData.append('pendencia_id', payload.pendencia_id.toString());
+    formData.append('arquivo', payload.arquivo);
+    
+    console.log(`📄 Enviando relatório para contrato ${contratoId}:`, {
+        observacoes_fiscal: payload.observacoes_fiscal,
+        mes_competencia: payload.mes_competencia,
+        pendencia_id: payload.pendencia_id,
+        arquivo_nome: payload.arquivo.name,
+        arquivo_tamanho: payload.arquivo.size
+    });
+    
+    return api<RelatorioResponse>(`/contratos/${contratoId}/relatorios/`, {
+        method: 'POST',
+        body: formData,
+        // Não definir Content-Type para FormData - o browser define automaticamente
+        headers: {}
+    });
+}
+
+// Função para listar todos os relatórios (para administradores)
+export async function getAllRelatorios(filters?: Record<string, any>): Promise<{ data: RelatorioDetalhado[], total_items: number, total_pages: number, current_page: number, per_page: number }> {
+    const params = new URLSearchParams();
+    if (filters) {
+        Object.keys(filters).forEach(key => {
+            if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+                params.append(key, String(filters[key]));
+            }
+        });
+    }
+    return api<{ data: RelatorioDetalhado[], total_items: number, total_pages: number, current_page: number, per_page: number }>(`/relatorios?${params.toString()}`);
+}
+
+// Função para analisar relatório (aprovar/rejeitar/cancelar)
+export async function analisarRelatorio(contratoId: number, relatorioId: number, payload: AnalisarRelatorioPayload): Promise<RelatorioResponse> {
+    console.log(`📊 Analisando relatório ${relatorioId} do contrato ${contratoId}:`, payload);
+    
+    return api<RelatorioResponse>(`/contratos/${contratoId}/relatorios/${relatorioId}/analise`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+}
+
+// Função para obter detalhes de um relatório
+export async function getRelatorioDetalhes(contratoId: number, relatorioId: number): Promise<RelatorioDetalhado> {
+    return api<RelatorioDetalhado>(`/contratos/${contratoId}/relatorios/${relatorioId}`);
+}
+
 export function downloadArquivoContrato(contratoId: number, arquivoId: number): Promise<Blob> {
     return apiBlob(`/contratos/${contratoId}/arquivos/${arquivoId}/download`);
 }

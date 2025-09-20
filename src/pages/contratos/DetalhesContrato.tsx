@@ -23,6 +23,7 @@ import {
   type ContratoDetalhado
 } from "@/lib/api";
 import { toast } from "sonner";
+import { RelatoriosContrato } from "@/components/RelatoriosContrato";
 
 // Tipos locais para arquivos
 type Arquivo = {
@@ -252,9 +253,10 @@ export default function DetalhesContrato() {
         {/* Sidebar */}
         <div className="space-y-6">
           <Tabs defaultValue="arquivos" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
               <TabsTrigger value="pendencias">Pendências</TabsTrigger>
+              <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
             </TabsList>
             
             <TabsContent value="arquivos" className="space-y-4">
@@ -306,6 +308,14 @@ export default function DetalhesContrato() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="relatorios" className="space-y-4">
+              <RelatoriosContrato 
+                contratoId={parseInt(id!)}
+                contratoNumero={contrato?.nr_contrato || ''}
+                showOnlyApproved={true}
+              />
             </TabsContent>
           </Tabs>
         </div>

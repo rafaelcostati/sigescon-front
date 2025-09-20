@@ -18,6 +18,7 @@ import Modalidades from '@/pages/modalidades/Modalidade';
 import { FiscalDashboard } from '@/pages/fiscal/FiscalDashboard';
 import { GestorDashboard } from '@/pages/gestor/GestorDashboard';
 import Relatorios from '@/pages/relatorios/Relatorios';
+import { GestaoRelatorios } from '@/pages/relatorios/GestaoRelatorios';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
 import Pendencias from '@/pages/pendencias/Pendencias';
 
@@ -109,6 +110,10 @@ export const router = createBrowserRouter([
       {
         path: '/relatorios',
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Relatorios /></ProtectedRoute>,
+      },
+      {
+        path: '/gestao-relatorios',
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><GestaoRelatorios /></ProtectedRoute>,
       },
       {
         path: '/configuracoes',

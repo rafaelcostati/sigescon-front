@@ -11,7 +11,6 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -22,8 +21,6 @@ import { UserRoundPen } from 'lucide-react';
 import { 
     getUserById, 
     updateUser, 
-    getPerfis,
-    type Perfil,
     type UserDetail,
     type EditUserPayload
 } from '../../lib/api';
@@ -73,7 +70,7 @@ interface UserEditarProps {
 
 export function UserEditar({ user, onUserUpdated }: UserEditarProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [perfis, setPerfis] = useState<Perfil[]>([]);
+   
     const [originalUserData, setOriginalUserData] = useState<UserDetail | null>(null);
 
     const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<EditUserForm>({
@@ -87,12 +84,12 @@ export function UserEditar({ user, onUserUpdated }: UserEditarProps) {
         const loadDataForEdit = async () => {
             try {
                 // Busca perfis e dados do usuário em paralelo
-                const [perfisData, userData] = await Promise.all([
-                    getPerfis(),
+                const [userData] = await Promise.all([
+                    
                     getUserById(user.id)
                 ]);
 
-                setPerfis(perfisData);
+            
                 setOriginalUserData(userData); // Armazena os dados originais completos
 
             } catch (error: any) {
@@ -216,30 +213,7 @@ export function UserEditar({ user, onUserUpdated }: UserEditarProps) {
                                 <Input id="matricula" {...register('matricula')} />
                             </div>
                         </div>
-                        {/* Perfil */}
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="perfil_id" className="text-right">Perfil</Label>
-                            <div className="col-span-3">
-                                <Controller
-                                    name="perfil_id"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecione um perfil" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {perfis.map(perfil => (
-                                                    <SelectItem key={perfil.id} value={String(perfil.id)}>
-                                                        {perfil.nome}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            </div>
-                        </div>
+                      
                         {/* Senha opcional */}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="senha" className="text-right">Nova Senha</Label>
