@@ -4,21 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  ArrowLeft, 
-  Calendar, 
-  User, 
-  Building, 
-  FileText, 
-  DollarSign, 
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  Building,
+  FileText,
+  DollarSign,
   Clock,
   Edit,
   Download,
   CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  getContratoDetalhado, 
+import {
+  getContratoDetalhado,
   getArquivosByContratoId,
   getPendenciasByContratoId,
   type ContratoDetalhado
@@ -52,7 +52,7 @@ export default function DetalhesContrato() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { perfilAtivo } = useAuth();
-  
+
   const [contrato, setContrato] = useState<ContratoDetalhado | null>(null);
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
@@ -63,12 +63,33 @@ export default function DetalhesContrato() {
   useEffect(() => {
     const fetchDetalhes = async () => {
       if (!id) return;
-      
+
       setLoading(true);
       try {
         // Carregar detalhes do contrato
         const contratoResponse = await getContratoDetalhado(parseInt(id));
         setContrato(contratoResponse);
+
+        // Carregar arquivos
+        try {
+          const arquivosResponse = await getArquivosByContratoId(parseInt(id));
+          if (arquivosResponse && arquivosResponse.arquivos) {
+            // Converter para o tipo local Arquivo
+            const arquivosConvertidos: Arquivo[] = arquivosResponse.arquivos.map((arquivo: any) => ({
+              id: arquivo.id,
+              nome_arquivo: arquivo.nome_arquivo || arquivo.nome,
+              tamanho: arquivo.tamanho_bytes || arquivo.tamanho,
+              tipo: arquivo.tipo_arquivo || arquivo.tipo,
+              data_upload: arquivo.created_at || arquivo.data_upload
+            }));
+            setArquivos(arquivosConvertidos);
+          } else {
+            setArquivos([]);
+          }
+        } catch (error) {
+          console.log("Nenhum arquivo encontrado");
+          setArquivos([]);
+        }
 
         // Carregar pendências
         try {

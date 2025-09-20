@@ -737,7 +737,7 @@ function DraggableContratoCard({
     isFiscal: boolean;
 }) {
     const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
-    
+
     // Carregar pendências quando for fiscal
     React.useEffect(() => {
         if (isFiscal) {
@@ -752,6 +752,7 @@ function DraggableContratoCard({
             fetchPendencias();
         }
     }, [isFiscal, contrato.id]);
+
     const { transform, transition, setNodeRef, isDragging } = useSortable({
         id: contrato.id as UniqueIdentifier,
     });
@@ -786,10 +787,24 @@ function DraggableContratoCard({
     const getStatusIcon = (statusName: string | null) => {
         if (!statusName) return <IconClockHour4 className="text-blue-500" />;
         if (statusName.toLowerCase().includes("vencido"))
-            return <IconExclamationCircle className="text-gray-500" />;
+            return <IconExclamationCircle className="text-red-500" />;
         if (statusName.toLowerCase().includes("ativo"))
             return <IconCircleCheckFilled className="text-green-500" />;
         return <IconClockHour4 className="text-blue-500" />;
+    };
+
+    const getStatusColor = (statusName: string | null) => {
+        if (!statusName) return "from-blue-500 to-blue-600";
+        if (statusName.toLowerCase().includes("vencido")) return "from-red-500 to-red-600";
+        if (statusName.toLowerCase().includes("ativo")) return "from-green-500 to-green-600";
+        return "from-blue-500 to-blue-600";
+    };
+
+    const getStatusBadgeColor = (statusName: string | null) => {
+        if (!statusName) return "bg-blue-100 text-blue-800 border-blue-200";
+        if (statusName.toLowerCase().includes("vencido")) return "bg-red-100 text-red-800 border-red-200";
+        if (statusName.toLowerCase().includes("ativo")) return "bg-green-100 text-green-800 border-green-200";
+        return "bg-blue-100 text-blue-800 border-blue-200";
     };
 
     return (
@@ -797,139 +812,179 @@ function DraggableContratoCard({
             ref={setNodeRef}
             style={{ transform: CSS.Transform.toString(transform), transition }}
             data-dragging={isDragging}
-            className="relative z-0 flex flex-col data-[dragging=true]:z-10 data-[dragging=true]:shadow-lg data-[dragging=true]:bg-accent"
+            className="group relative z-0 overflow-hidden bg-white border border-gray-200/60 shadow-lg hover:shadow-2xl hover:border-gray-300/80 transition-all duration-500 ease-out data-[dragging=true]:z-10 data-[dragging=true]:shadow-2xl data-[dragging=true]:scale-105 data-[dragging=true]:rotate-2"
         >
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div className="flex flex-col gap-1.5">
-                    <CardTitle className="text-base">{contrato.nr_contrato}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                        {contrato.objeto}
-                    </CardDescription>
-                </div>
-                <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-muted-foreground"
-                            >
-                                <IconDotsVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            {canManageContratos && (
+            {/* Header com gradiente */}
+            <div className={`h-1 bg-gradient-to-r ${getStatusColor(contrato.status_nome)} relative overflow-hidden`}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+            </div>
+
+            <CardHeader className="pb-2 pt-3">
+                <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center gap-1 mb-1">
+                            <Badge className={`${getStatusBadgeColor(contrato.status_nome)} text-xs font-medium border px-1 py-0.5`}>
+                                {getStatusIcon(contrato.status_nome)}
+                                <span className="ml-0.5">{contrato.status_nome || "Pendente"}</span>
+                            </Badge>
+                            {pendencias.length > 0 && (
+                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 text-xs px-1 py-0.5">
+                                    <IconExclamationCircle className="w-3 h-3 mr-0.5" />
+                                    {pendencias.length}
+                                </Badge>
+                            )}
+                        </div>
+                        <h3 className="font-bold text-sm text-gray-900 leading-tight truncate group-hover:text-blue-700 transition-colors">
+                            {contrato.nr_contrato}
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-1 leading-relaxed group-hover:text-gray-700 transition-colors">
+                            {contrato.objeto}
+                        </p>
+                    </div>
+
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full"
+                                >
+                                    <IconDotsVertical className="h-3 w-3" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 p-0.5">
                                 <DropdownMenuItem
-                                    onClick={handleEditClick}
-                                    className="flex cursor-pointer items-center gap-2"
+                                    onClick={() => navigate(`/contratos/${contrato.id}`)}
+                                    className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-blue-50 text-xs"
                                 >
-                                    <Pencil className="h-4 w-4" />
-                                    <span>Editar</span>
+                                    <IconSearch className="h-3 w-3 text-blue-600" />
+                                    <span>Ver Detalhes</span>
                                 </DropdownMenuItem>
-                            )}
-                            {canManageContratos && (
-                                <CriarPendenciaDialog
-                                    contratoId={contrato.id}
-                                    contratoNumero={contrato.nr_contrato}
-                                    onPendenciaCriada={() => { }}
-                                >
+                                {canManageContratos && (
                                     <DropdownMenuItem
-                                        onSelect={(e) => e.preventDefault()}
-                                        className="flex cursor-pointer items-center gap-2"
+                                        onClick={handleEditClick}
+                                        className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-green-50 text-xs"
                                     >
-                                        <PlusCircle className="h-4 w-4" />
-                                        <span>Criar Pendência</span>
+                                        <Pencil className="h-3 w-3 text-green-600" />
+                                        <span>Editar</span>
                                     </DropdownMenuItem>
-                                </CriarPendenciaDialog>
-                            )}
-                            {canManageContratos && (
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <AlertDialogTrigger asChild>
+                                )}
+                                {canManageContratos && (
+                                    <CriarPendenciaDialog
+                                        contratoId={contrato.id}
+                                        contratoNumero={contrato.nr_contrato}
+                                        onPendenciaCriada={() => { }}
+                                    >
                                         <DropdownMenuItem
-                                            className="flex cursor-pointer items-center gap-2 text-red-600 focus:text-red-600"
                                             onSelect={(e) => e.preventDefault()}
+                                            className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-orange-50 text-xs"
                                         >
-                                            <IconX className="h-4 w-4" />
-                                            <span>Excluir</span>
+                                            <IconPlus className="h-3 w-3 text-orange-600" />
+                                            <span>Criar Pendência</span>
                                         </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta ação excluirá permanentemente o contrato "
-                                {contrato.nr_contrato}".
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleDeleteContrato}
-                                className="bg-red-600 hover:bg-red-700"
-                            >
-                                Sim, excluir
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                                    </CriarPendenciaDialog>
+                                )}
+                                {canManageContratos && (
+                                    <>
+                                        <DropdownMenuSeparator className="my-0.5" />
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem
+                                                className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm text-red-600 hover:bg-red-50 focus:text-red-600 text-xs"
+                                                onSelect={(e) => e.preventDefault()}
+                                            >
+                                                <IconX className="h-3 w-3" />
+                                                <span>Excluir</span>
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta ação excluirá permanentemente o contrato "{contrato.nr_contrato}".
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDeleteContrato}
+                                        className="bg-red-600 hover:bg-red-700"
+                                    >
+                                        Sim, excluir
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </DropdownMenu>
+                    </AlertDialog>
+                </div>
             </CardHeader>
-            <CardContent className="flex flex-grow flex-col gap-4 text-sm">
-                <div className="flex flex-col gap-2">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">Status</Label>
-                        <Badge variant={"secondary"} className="gap-1.5 whitespace-nowrap">
-                            {getStatusIcon(contrato.status_nome)}
-                            {contrato.status_nome || "Não informado"}
-                        </Badge>
-                    </div>
-                    <div>
-                        <Label className="text-xs text-muted-foreground">Contratado</Label>
-                        <p className="font-medium">
+
+            <CardContent className="pt-0 pb-2 px-3 space-y-1.5">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between py-1 px-1.5 bg-gray-50/80 rounded-sm">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Contratado</span>
+                        <span className="text-xs font-medium text-gray-900 truncate ml-1">
                             {contrato.contratado_nome || "Não informado"}
-                        </p>
+                        </span>
                     </div>
-                </div>
-                <div className="grid grid-cols-1 gap-4">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">Data Fim</Label>
-                        <p className="whitespace-nowrap font-medium">
+
+                    <div className="flex items-center justify-between py-1 px-1.5 bg-gray-50/80 rounded-sm">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Data Fim</span>
+                        <span className="text-xs font-medium text-gray-900">
                             {formatDate(contrato.data_fim)}
-                        </p>
+                        </span>
                     </div>
                 </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-                <ContratoDetailsViewer contrato={contrato} />
-                {isFiscal && (
-                    <div className="w-full">
-                        <EnviarRelatorio
-                            contratoId={contrato.id}
-                            contratoNumero={contrato.nr_contrato}
-                            pendencias={pendencias}
-                            onRelatorioEnviado={() => {
-                                // Recarregar pendências após envio
-                                const fetchPendencias = async () => {
-                                    try {
-                                        const response = await getPendenciasByContratoId(contrato.id);
-                                        setPendencias(response || []);
-                                    } catch (error) {
-                                        console.error('Erro ao recarregar pendências:', error);
-                                    }
-                                };
-                                fetchPendencias();
-                            }}
-                        />
+
+                {/* Indicador visual de urgência */}
+                {contrato.status_nome?.toLowerCase().includes("vencido") && (
+                    <div className="flex items-center gap-1 p-1.5 bg-red-50 border border-red-200/50 rounded-sm">
+                        <IconExclamationCircle className="h-3 w-3 text-red-600 flex-shrink-0" />
+                        <span className="text-xs font-medium text-red-800">Vencido</span>
                     </div>
                 )}
+
+                {/* Indicador de contratos próximos ao vencimento */}
+                {contrato.status_nome?.toLowerCase().includes("ativo") && (
+                    <div className="flex items-center gap-1 p-1.5 bg-blue-50 border border-blue-200/50 rounded-sm">
+                        <IconClockHour4 className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                        <span className="text-xs font-medium text-blue-800">Em Execução</span>
+                    </div>
+                )}
+            </CardContent>
+
+            <CardFooter className="pt-2 pb-3 px-3 border-t border-gray-100 bg-gray-50/50">
+                <div className="flex flex-col gap-1.5 w-full">
+                    <ContratoDetailsViewer contrato={contrato} />
+
+                    {isFiscal && (
+                        <div className="w-full">
+                            <EnviarRelatorio
+                                contratoId={contrato.id}
+                                contratoNumero={contrato.nr_contrato}
+                                pendencias={pendencias}
+                                onRelatorioEnviado={() => {
+                                    // Recarregar pendências após envio
+                                    const fetchPendencias = async () => {
+                                        try {
+                                            const response = await getPendenciasByContratoId(contrato.id);
+                                            setPendencias(response || []);
+                                        } catch (error) {
+                                            console.error('Erro ao recarregar pendências:', error);
+                                        }
+                                    };
+                                    fetchPendencias();
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
             </CardFooter>
         </Card>
     );
 }
-
 const columns: ColumnDef<ContratoList>[] = [
     { accessorKey: "objeto" },
     { accessorKey: "nr_contrato" },
@@ -975,7 +1030,7 @@ export function ContratosDataTable() {
     ]);
     const [pagination, setPagination] = React.useState({
         pageIndex: 0,
-        pageSize: 9,
+        pageSize: 12,
     });
     const [paginationMeta, setPaginationMeta] = React.useState<PaginationMeta | null>(null);
 
@@ -1220,7 +1275,7 @@ export function ContratosDataTable() {
                                     strategy={verticalListSortingStrategy}
                                 >
                                     {table.getRowModel().rows?.length ? (
-                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {table.getRowModel().rows.map((row) => (
                                                 <DraggableContratoCard
                                                     key={row.original.id}
@@ -1288,7 +1343,7 @@ export function ContratosDataTable() {
                                                 />
                                             </SelectTrigger>
                                             <SelectContent side="top">
-                                                {[9, 12, 24, 48].map((pageSize) => (
+                                                {[6, 12, 18, 24].map((pageSize) => (
                                                     <SelectItem key={pageSize} value={`${pageSize}`}>
                                                         {pageSize}
                                                     </SelectItem>
