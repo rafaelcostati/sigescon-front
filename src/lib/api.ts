@@ -538,10 +538,18 @@ export type RelatorioResponse = {
     nome_arquivo: string;
 };
 
-// Tipos para análise de relatórios
+// Tipos para status de relatórios
+export type StatusRelatorio = {
+    id: number;
+    nome: string;
+    descricao?: string;
+};
+
+// Tipos para análise de relatórios (conforme API)
 export type AnalisarRelatorioPayload = {
-    acao: 'aprovar' | 'rejeitar' | 'cancelar';
-    observacoes_admin?: string;
+    aprovador_usuario_id: number;
+    status_id: number;
+    observacoes_aprovador?: string;
 };
 
 export type RelatorioDetalhado = RelatorioResponse & {
@@ -587,7 +595,12 @@ export async function getAllRelatorios(filters?: Record<string, any>): Promise<{
     return api<{ data: RelatorioDetalhado[], total_items: number, total_pages: number, current_page: number, per_page: number }>(`/relatorios?${params.toString()}`);
 }
 
-// Função para analisar relatório (aprovar/rejeitar/cancelar)
+// Função para buscar status de relatórios
+export async function getStatusRelatorios(): Promise<StatusRelatorio[]> {
+    return api<StatusRelatorio[]>('/statusrelatorio/');
+}
+
+// Função para analisar relatório (conforme API)
 export async function analisarRelatorio(contratoId: number, relatorioId: number, payload: AnalisarRelatorioPayload): Promise<RelatorioResponse> {
     console.log(`📊 Analisando relatório ${relatorioId} do contrato ${contratoId}:`, payload);
     

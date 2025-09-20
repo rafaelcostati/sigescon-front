@@ -902,10 +902,10 @@ function DraggableContratoCard({
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <CardFooter className="flex flex-col gap-3">
                 <ContratoDetailsViewer contrato={contrato} />
                 {isFiscal && (
-                    <div className="flex-shrink-0">
+                    <div className="w-full">
                         <EnviarRelatorio
                             contratoId={contrato.id}
                             contratoNumero={contrato.nr_contrato}

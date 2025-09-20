@@ -870,7 +870,7 @@
 "Usuários"
 ],
 "summary": "Listar todos os usuários",
-"description": "Lista todos os usuários ativos do sistema com paginação.\n\nPermite filtrar por nome (busca parcial).\n\n**Requer permissão de administrador.**",
+"description": "Lista todos os usuários ativos do sistema com paginação.\n\nPermite filtrar por nome (busca parcial).\n\n**Requer usuário com perfil ativo (Administrador, Gestor ou Fiscal).**",
 "operationId": "list_users_api_v1_usuarios__get",
 "security": [
 {
@@ -952,7 +952,7 @@
 "Usuários"
 ],
 "summary": "Criar novo usuário",
-"description": "Cria um novo usuário no sistema.\n\n**Requer permissão de administrador.**\n\nValidações:\n- Email deve ser único\n- CPF deve ter 11 dígitos\n- Senha deve ter no mínimo 6 caracteres",
+"description": "Cria um novo usuário no sistema SEM PERFIL.\n\n**Requer permissão de administrador.**\n\n**IMPORTANTE:** O usuário é criado sem perfil. Para conceder perfis, use:\n`POST /api/v1/usuarios/{user_id}/perfis/conceder`\n\nValidações:\n- Email deve ser único\n- CPF deve ter 11 dígitos\n- Senha deve ter no mínimo 6 caracteres\n- perfil_id é ignorado (sempre NULL)",
 "operationId": "create_user_api_v1_usuarios__post",
 "security": [
 {
@@ -993,13 +993,60 @@
 }
 }
 },
+"/api/v1/usuarios/com-perfis": {
+"post": {
+"tags": [
+"Usuários"
+],
+"summary": "Criar usuário e conceder perfis",
+"description": "Cria um novo usuário e concede perfis em uma única operação.\n\n**Requer permissão de administrador.**\n\nEste endpoint é uma conveniência que combina:\n1. Criação do usuário (sem perfil)\n2. Concessão dos perfis especificados\n\nParâmetros:\n- user: Dados do usuário (perfil_id é ignorado)\n- perfil_ids: Lista de IDs dos perfis a serem concedidos",
+"operationId": "create_user_with_profiles_api_v1_usuarios_com_perfis_post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Body_create_user_with_profiles_api_v1_usuarios_com_perfis_post"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/Usuario"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+},
+"security": [
+{
+"OAuth2PasswordBearer": []
+}
+]
+}
+},
 "/api/v1/usuarios/{user_id}": {
 "get": {
 "tags": [
 "Usuários"
 ],
 "summary": "Buscar usuário por ID",
-"description": "Busca um usuário específico pelo ID.\n\n**Requer autenticação válida.**",
+"description": "Busca um usuário específico pelo ID.\n\n**Requer usuário com perfil ativo (Administrador, Gestor ou Fiscal).**",
 "operationId": "get_user_by_id_api_v1_usuarios__user_id__get",
 "security": [
 {
@@ -3438,6 +3485,26 @@
 ],
 "title": "Body_create_contrato_api_v1_contratos__post"
 },
+"Body_create_user_with_profiles_api_v1_usuarios_com_perfis_post": {
+"properties": {
+"user": {
+"$ref": "#/components/schemas/UsuarioCreate"
+},
+"perfil_ids": {
+"items": {
+"type": "integer"
+},
+"type": "array",
+"title": "Perfil Ids"
+}
+},
+"type": "object",
+"required": [
+"user",
+"perfil_ids"
+],
+"title": "Body_create_user_with_profiles_api_v1_usuarios_com_perfis_post"
+},
 "Body_login_for_access_token_auth_login_post": {
 "properties": {
 "grant_type": {
@@ -5225,10 +5292,17 @@
 "description": "Matrícula do usuário"
 },
 "perfil_id": {
+"anyOf": [
+{
 "type": "integer",
-"exclusiveMinimum": 0,
+"exclusiveMinimum": 0
+},
+{
+"type": "null"
+}
+],
 "title": "Perfil Id",
-"description": "ID do perfil do usuário"
+"description": "ID do perfil do usuário (legado)"
 },
 "id": {
 "type": "integer",
@@ -5269,7 +5343,6 @@
 "nome",
 "email",
 "cpf",
-"perfil_id",
 "id"
 ],
 "title": "Usuario"
@@ -5393,10 +5466,16 @@
 "description": "Matrícula do usuário"
 },
 "perfil_id": {
-"type": "integer",
-"exclusiveMinimum": 0,
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
 "title": "Perfil Id",
-"description": "ID do perfil do usuário"
+"description": "Perfil legado - não usado na criação"
 },
 "senha": {
 "type": "string",
@@ -5410,7 +5489,6 @@
 "nome",
 "email",
 "cpf",
-"perfil_id",
 "senha"
 ],
 "title": "UsuarioCreate"

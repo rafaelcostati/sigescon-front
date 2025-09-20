@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
     FileText, 
     CheckCircle, 
@@ -57,14 +58,16 @@ import {
     getAllRelatorios, 
     analisarRelatorio, 
     getRelatorioDetalhes,
+    getStatusRelatorios,
     type RelatorioDetalhado, 
-    type AnalisarRelatorioPayload 
+    type AnalisarRelatorioPayload,
+    type StatusRelatorio 
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const analisarSchema = z.object({
-    acao: z.enum(['aprovar', 'rejeitar', 'cancelar']),
-    observacoes_admin: z.string().optional(),
+    status_id: z.number().min(1, "Selecione um status"),
+    observacoes_aprovador: z.string().optional(),
 });
 
 type AnalisarFormData = z.infer<typeof analisarSchema>;
@@ -92,11 +95,12 @@ export function GestaoRelatorios() {
     const [selectedRelatorio, setSelectedRelatorio] = React.useState<RelatorioDetalhado | null>(null);
     const [isAnalyzing, setIsAnalyzing] = React.useState(false);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+    const [statusRelatorios, setStatusRelatorios] = React.useState<StatusRelatorio[]>([]);
 
     const form = useForm<AnalisarFormData>({
         resolver: zodResolver(analisarSchema),
         defaultValues: {
-            observacoes_admin: "",
+            observacoes_aprovador: "",
         },
     });
 
@@ -109,17 +113,17 @@ export function GestaoRelatorios() {
             return;
         }
         fetchRelatorios();
+        fetchStatusRelatorios();
     }, [isAdmin, navigate]);
 
     const fetchRelatorios = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Buscar apenas relatórios pendentes de análise
+            // Buscar todos os relatórios para análise
             const response = await getAllRelatorios({ 
-                status: 'pendente',
                 page: 1,
-                per_page: 10 
+                per_page: 10
             });
             setRelatorios(response.data || []);
         } catch (error) {
@@ -132,9 +136,21 @@ export function GestaoRelatorios() {
         }
     };
 
+    const fetchStatusRelatorios = async () => {
+        try {
+            const status = await getStatusRelatorios();
+            setStatusRelatorios(status);
+        } catch (error) {
+            console.error('Erro ao carregar status:', error);
+        }
+    };
+
     const handleAnalyzeClick = (relatorio: RelatorioDetalhado) => {
         setSelectedRelatorio(relatorio);
-        form.reset({ observacoes_admin: "" });
+        form.reset({ 
+            status_id: 0,
+            observacoes_aprovador: "" 
+        });
         setIsDialogOpen(true);
     };
 
@@ -142,17 +158,19 @@ export function GestaoRelatorios() {
         if (!selectedRelatorio) return;
 
         setIsAnalyzing(true);
-        const toastId = toast.loading(`${data.acao === 'aprovar' ? 'Aprovando' : data.acao === 'rejeitar' ? 'Rejeitando' : 'Cancelando'} relatório...`);
+        const statusSelecionado = statusRelatorios.find(s => s.id === data.status_id);
+        const toastId = toast.loading(`Alterando status para ${statusSelecionado?.nome || 'selecionado'}...`);
 
         try {
             const payload: AnalisarRelatorioPayload = {
-                acao: data.acao,
-                observacoes_admin: data.observacoes_admin || undefined,
+                aprovador_usuario_id: user?.id || 0,
+                status_id: data.status_id,
+                observacoes_aprovador: data.observacoes_aprovador || undefined,
             };
 
             await analisarRelatorio(selectedRelatorio.contrato_id, selectedRelatorio.id, payload);
 
-            toast.success(`Relatório ${data.acao === 'aprovar' ? 'aprovado' : data.acao === 'rejeitar' ? 'rejeitado' : 'cancelado'} com sucesso!`, {
+            toast.success(`Status alterado para ${statusSelecionado?.nome} com sucesso!`, {
                 id: toastId,
             });
 
@@ -364,10 +382,35 @@ export function GestaoRelatorios() {
                                 <form onSubmit={form.handleSubmit(onSubmitAnalise)} className="space-y-4">
                                     <FormField
                                         control={form.control}
-                                        name="observacoes_admin"
+                                        name="status_id"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Observações do Administrador (Opcional)</FormLabel>
+                                                <FormLabel>Status do Relatório *</FormLabel>
+                                                <FormControl>
+                                                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Selecione o status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {statusRelatorios.map((status) => (
+                                                                <SelectItem key={status.id} value={status.id.toString()}>
+                                                                    {status.nome}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="observacoes_aprovador"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Observações do Aprovador (Opcional)</FormLabel>
                                                 <FormControl>
                                                     <Textarea
                                                         placeholder="Adicione observações sobre sua decisão..."
@@ -390,27 +433,11 @@ export function GestaoRelatorios() {
                                             Cancelar
                                         </Button>
                                         <Button
-                                            type="button"
-                                            variant="destructive"
-                                            onClick={() => {
-                                                form.setValue('acao', 'rejeitar');
-                                                form.handleSubmit(onSubmitAnalise)();
-                                            }}
-                                            disabled={isAnalyzing}
-                                        >
-                                            <XCircle className="h-4 w-4 mr-1" />
-                                            Rejeitar
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            onClick={() => {
-                                                form.setValue('acao', 'aprovar');
-                                                form.handleSubmit(onSubmitAnalise)();
-                                            }}
+                                            type="submit"
                                             disabled={isAnalyzing}
                                         >
                                             <CheckCircle className="h-4 w-4 mr-1" />
-                                            Aprovar
+                                            Alterar Status
                                         </Button>
                                     </DialogFooter>
                                 </form>

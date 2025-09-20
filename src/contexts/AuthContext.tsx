@@ -9,7 +9,6 @@ import {
   alternarPerfil as apiAlternarPerfil,
   type LoginCredentials,
   type ContextoSessao,
-  type Perfil,
   type AlternarPerfilPayload
 } from "@/lib/api"; 
 
@@ -18,15 +17,27 @@ type UserData = {
   id: number;
   nome: string;
   email: string;
-  perfil_ativo: Perfil;
-  perfis_disponiveis: Perfil[];
+  perfil_ativo: {
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  };
+  perfis_disponiveis: {
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  }[];
 };
 
 type AuthContextType = {
   user: UserData | null;
   contextoSessao: ContextoSessao | null;
-  perfilAtivo: Perfil | null;
-  perfisDisponiveis: Perfil[];
+  perfilAtivo: {
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  } | null;
+  perfisDisponiveis: {
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  }[];
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -51,8 +62,14 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [contextoSessao, setContextoSessao] = useState<ContextoSessao | null>(null);
-  const [perfilAtivo, setPerfilAtivo] = useState<Perfil | null>(null);
-  const [perfisDisponiveis, setPerfisDisponiveis] = useState<Perfil[]>([]);
+  const [perfilAtivo, setPerfilAtivo] = useState<{
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  } | null>(null);
+  const [perfisDisponiveis, setPerfisDisponiveis] = useState<{
+    id: number;
+    nome: "Administrador" | "Gestor" | "Fiscal";
+  }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Efeito para inicializar a autenticação ao carregar a aplicação
@@ -76,12 +93,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setContextoSessao(contexto);
         
-        // Buscar dados básicos do usuário
+        // Tenta buscar informações do usuário
         let userInfo;
         try {
           userInfo = await getCurrentUserInfo();
-          console.log("✅ Dados do usuário carregados:", userInfo);
-        } catch (error) {
+          console.log('✅ Dados do usuário carregados:', userInfo);
+        } catch (userError) {
           console.warn("⚠️ Não foi possível carregar dados do usuário, usando dados básicos");
           userInfo = {
             id: contexto.usuario_id,
@@ -158,10 +175,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (loginResponse.contexto_sessao) {
         console.log('🔄 Adaptando dados do contexto para formato UserData...');
         
+        // Buscar dados reais do usuário
+        let userInfo;
+        try {
+          userInfo = await getCurrentUserInfo();
+        } catch (error) {
+          console.warn('⚠️ Usando dados básicos do usuário');
+          userInfo = {
+            id: loginResponse.contexto_sessao.usuario_id,
+            nome: "Usuário",
+            email: credentials.email
+          };
+        }
+        
         const userData: UserData = {
           id: loginResponse.contexto_sessao.usuario_id,
-          nome: "Usuário", // Pode ser obtido de outro endpoint
-          email: credentials.email,
+          nome: userInfo.nome,
+          email: userInfo.email,
           perfil_ativo: {
             id: loginResponse.contexto_sessao.perfil_ativo_id,
             nome: loginResponse.contexto_sessao.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"
@@ -225,7 +255,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setContextoSessao(response);
       
       // Cria novo perfil ativo baseado na resposta
-      const novoPerfilAtivo: Perfil = {
+      const novoPerfilAtivo = {
         id: response.perfil_ativo_id,
         nome: response.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"
       };
