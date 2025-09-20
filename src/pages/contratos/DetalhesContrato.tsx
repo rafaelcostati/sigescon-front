@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   getContratoDetalhado, 
   getArquivosByContratoId,
+  getPendenciasByContratoId,
   type ContratoDetalhado
 } from "@/lib/api";
 import { toast } from "sonner";
@@ -34,6 +35,19 @@ type Arquivo = {
   data_upload: string;
 };
 
+type Pendencia = {
+  id: number;
+  titulo: string;
+  descricao: string;
+  status_id: number;
+  status_nome: string;
+  data_criacao: string;
+  prazo_entrega: string;
+  em_atraso: boolean;
+  dias_em_atraso?: number;
+  urgencia?: string;
+};
+
 export default function DetalhesContrato() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,6 +55,7 @@ export default function DetalhesContrato() {
   
   const [contrato, setContrato] = useState<ContratoDetalhado | null>(null);
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
+  const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [loading, setLoading] = useState(true);
 
   const podeEditar = perfilAtivo?.nome === "Administrador" || perfilAtivo?.nome === "Gestor";
@@ -55,18 +70,17 @@ export default function DetalhesContrato() {
         const contratoResponse = await getContratoDetalhado(parseInt(id));
         setContrato(contratoResponse);
 
-        // Carregar arquivos
+        // Carregar pendências
         try {
-          const arquivosResponse = await getArquivosByContratoId(parseInt(id));
-          // Adaptar a resposta da API para o tipo local
-          if (Array.isArray(arquivosResponse)) {
-            setArquivos(arquivosResponse as Arquivo[]);
+          const pendenciasResponse = await getPendenciasByContratoId(parseInt(id));
+          if (Array.isArray(pendenciasResponse)) {
+            setPendencias(pendenciasResponse as unknown as Pendencia[]);
           } else {
-            setArquivos([]);
+            setPendencias([]);
           }
         } catch (error) {
-          console.log("Nenhum arquivo encontrado");
-          setArquivos([]);
+          console.log("Nenhuma pendência encontrada");
+          setPendencias([]);
         }
 
 
@@ -298,14 +312,41 @@ export default function DetalhesContrato() {
             <TabsContent value="pendencias" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Pendências (0)</CardTitle>
+                  <CardTitle className="text-lg">Pendências ({pendencias.length})</CardTitle>
                   <CardDescription>Pendências relacionadas ao contrato</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <CheckCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Nenhuma pendência encontrada</p>
-                  </div>
+                  {pendencias.length > 0 ? (
+                    <div className="space-y-3">
+                      {pendencias.map((pendencia) => (
+                        <div key={pendencia.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold">{pendencia.titulo}</h4>
+                            <div className="flex gap-1">
+                              <Badge className={`${pendencia.em_atraso ? 'bg-red-500' : 'bg-green-500'} text-white`}>
+                                {pendencia.status_nome}
+                              </Badge>
+                              {pendencia.em_atraso && pendencia.dias_em_atraso && (
+                                <Badge className="bg-red-600 text-white">
+                                  {pendencia.dias_em_atraso} dias atraso
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>Criada em: {formatDate(pendencia.data_criacao)}</span>
+                            <span>Prazo: {formatDate(pendencia.prazo_entrega)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <CheckCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Nenhuma pendência encontrada</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

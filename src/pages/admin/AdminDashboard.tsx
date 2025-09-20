@@ -15,24 +15,40 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { 
+import {
   getDashboardAdminCompleto,
-  type DashboardAdminCompletoResponse
+  getDashboardAdminPendenciasVencidasCompleto,
+  type DashboardAdminCompletoResponse,
+  type DashboardAdminPendenciasVencidasResponse
 } from "@/lib/api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardAdminCompletoResponse | null>(null);
+  const [pendenciasVencidasData, setPendenciasVencidasData] = useState<DashboardAdminPendenciasVencidasResponse | null>(null);
 
   // Carregar dados do dashboard
   const loadDashboardData = async () => {
     setLoading(true);
     try {
       console.log("🔍 Carregando dashboard completo do administrador...");
+
+      // Carregar dados principais
       const data = await getDashboardAdminCompleto();
       setDashboardData(data);
       console.log("✅ Dashboard carregado:", data);
+
+      // Carregar dados de pendências vencidas
+      try {
+        console.log("🔍 Carregando pendências vencidas...");
+        const pendenciasData = await getDashboardAdminPendenciasVencidasCompleto();
+        setPendenciasVencidasData(pendenciasData);
+        console.log("✅ Pendências vencidas carregadas:", pendenciasData);
+      } catch (pendenciasError) {
+        console.warn("⚠️ Erro ao carregar pendências vencidas:", pendenciasError);
+        // Não falha o carregamento completo se as pendências não carregarem
+      }
     } catch (error) {
       console.error("❌ Erro ao carregar dashboard:", error);
       toast.error("Erro ao carregar dados do dashboard");
@@ -75,7 +91,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const { contadores, contratos_com_relatorios_pendentes, contratos_com_pendencias } = dashboardData;
+  const { contadores, contratos_com_relatorios_pendentes } = dashboardData;
 
   return (
     <div className="p-6 space-y-6 min-h-screen">
@@ -160,8 +176,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Seção de Contratos com Relatórios Pendentes e Contratos com Pendências */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contratos com Relatórios Pendentes */}
         <Card className="border-red-200 shadow-lg">
           <CardHeader>
@@ -170,9 +184,9 @@ export default function AdminDashboard() {
                 <CardTitle className="text-red-800">Contratos com Relatórios Pendentes</CardTitle>
                 <CardDescription>Relatórios aguardando análise</CardDescription>
               </div>
-              <Button 
-                onClick={() => navigate('/gestao-relatorios')} 
-                variant="outline" 
+              <Button
+                onClick={() => navigate('/gestao-relatorios')}
+                variant="outline"
                 size="sm"
                 className="border-red-200 text-red-700 hover:bg-red-50"
               >
@@ -187,7 +201,7 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-semibold text-red-800">{contrato.nr_contrato}</h4>
-                      <p className="text-sm text-gray-600 truncate">{contrato.objeto}</p>
+                      <p className="text-sm text-gray-600 truncate max-w-[250px]" title={contrato.objeto}>{contrato.objeto}</p>
                     </div>
                     <Badge className="bg-red-500 text-white">
                       {contrato.relatorios_pendentes_count} relatórios
@@ -213,9 +227,9 @@ export default function AdminDashboard() {
                       </span>
                     </div>
                     <div className="flex justify-end pt-2">
-                      <Button 
+                      <Button
                         onClick={() => navigate(`/contratos/${contrato.id}`)}
-                        size="sm" 
+                        size="sm"
                         variant="outline"
                         className="border-red-200 text-red-700 hover:bg-red-50"
                       >
@@ -235,123 +249,97 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Contratos com Pendências */}
-        <Card className="border-orange-200 shadow-lg">
+        {/* Contratos com Pendências Vencidas */}
+        <Card className="border-red-200 shadow-lg">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-orange-800">Contratos com Pendências</CardTitle>
-                <CardDescription>Contratos que requerem atenção</CardDescription>
+                <CardTitle className="text-red-800">Contratos com Pendências Vencidas</CardTitle>
+                <CardDescription>Pendências em atraso que requerem atenção urgente</CardDescription>
               </div>
-              <Button 
-                onClick={() => navigate('/pendencias')} 
-                variant="outline" 
+              <Button
+                onClick={() => navigate('/pendencias-vencidas')}
+                variant="outline"
                 size="sm"
-                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                className="border-red-200 text-red-700 hover:bg-red-50"
               >
                 Ver Todas
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {contratos_com_pendencias.length > 0 ? (
-              contratos_com_pendencias.slice(0, 3).map((contrato) => (
-                <div key={contrato.id} className="border border-orange-100 rounded-lg p-4 hover:bg-orange-50 transition-colors">
+            {pendenciasVencidasData?.pendencias_vencidas && pendenciasVencidasData.pendencias_vencidas.length > 0 ? (
+              pendenciasVencidasData.pendencias_vencidas.slice(0, 5).map((pendencia) => (
+                <div key={pendencia.pendencia_id} className="border border-red-100 rounded-lg p-4 hover:bg-red-50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-semibold text-orange-800">{contrato.nr_contrato}</h4>
-                      <p className="text-sm text-gray-600 truncate">{contrato.objeto}</p>
+                      <h4 className="font-semibold text-red-800">{pendencia.contrato_numero}</h4>
+                      <p className="text-sm text-gray-600 truncate max-w-[250px]" title={pendencia.contrato_objeto}>{pendencia.contrato_objeto}</p>
                     </div>
                     <div className="flex gap-1">
-                      <Badge className="bg-orange-500 text-white">
-                        {contrato.pendencias_count} pendências
+                      <Badge className="bg-red-500 text-white">
+                        {pendencia.dias_em_atraso} dias atraso
                       </Badge>
-                      {contrato.pendencias_em_atraso > 0 && (
-                        <Badge className="bg-red-500 text-white">
-                          {contrato.pendencias_em_atraso} em atraso
-                        </Badge>
-                      )}
+                      <Badge className="bg-red-600 text-white">
+                        {pendencia.urgencia}
+                      </Badge>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Contratado:</span>
-                      <span className="font-medium">{contrato.contratado_nome}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Gestor:</span>
-                      <span className="font-medium">{contrato.gestor_nome}</span>
+                      <span className="text-gray-600">Título:</span>
+                      <span className="font-medium">{pendencia.titulo}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Fiscal:</span>
-                      <span className="font-medium">{contrato.fiscal_nome}</span>
+                      <span className="font-medium">{pendencia.fiscal_nome}</span>
                     </div>
-                    <div className="flex justify-end pt-2">
-                      <Button 
-                        onClick={() => navigate(`/contratos/${contrato.id}`)}
-                        size="sm" 
-                        variant="outline"
-                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Ver Detalhes
-                      </Button>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Gestor:</span>
+                      <span className="font-medium">{pendencia.gestor_nome}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Prazo:</span>
+                      <span className="font-medium text-red-600">
+                        {new Date(pendencia.prazo_entrega).toLocaleDateString('pt-BR')}
+                      </span>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>Nenhuma pendência encontrada</p>
+                <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>Nenhuma pendência vencida encontrada</p>
               </div>
             )}
-            
-            {/* Ações Rápidas */}
-            <div className="border-t border-orange-200 pt-4 mt-4">
-              <h5 className="font-semibold text-orange-800 mb-3">Ações Rápidas</h5>
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  onClick={() => navigate('/contratos')} 
-                  variant="outline" 
-                  size="sm"
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                >
-                  <Eye className="w-4 h-4 mr-1" />
-                  Ver Contratos
-                </Button>
-                <Button 
-                  onClick={() => navigate('/usuarios')} 
-                  variant="outline" 
-                  size="sm"
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                >
-                  <Users className="w-4 h-4 mr-1" />
-                  Gerenciar Usuários
-                </Button>
-                <Button 
-                  onClick={() => navigate('/pendencias-vencidas')} 
-                  variant="outline" 
-                  size="sm"
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-1" />
-                  Pendências Vencidas
-                </Button>
-                <Button 
-                  onClick={() => navigate('/gestao-relatorios')} 
-                  variant="outline" 
-                  size="sm"
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                >
-                  <BarChart3 className="w-4 h-4 mr-1" />
-                  Gestão Relatórios
-                </Button>
+
+            {/* Estatísticas de Pendências Vencidas */}
+            {pendenciasVencidasData && (
+              <div className="border-t border-red-200 pt-4 mt-4">
+                <h5 className="font-semibold text-red-800 mb-3">Resumo das Pendências Vencidas</h5>
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{pendenciasVencidasData.pendencias_criticas}</div>
+                    <div className="text-red-600">Críticas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">{pendenciasVencidasData.pendencias_altas}</div>
+                    <div className="text-orange-600">Altas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600">{pendenciasVencidasData.pendencias_medias}</div>
+                    <div className="text-yellow-600">Médias</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-600">{pendenciasVencidasData.contratos_afetados}</div>
+                    <div className="text-gray-600">Contratos</div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }
