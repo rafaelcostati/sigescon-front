@@ -6,13 +6,10 @@ import {
   IconBuilding,
   IconAlertTriangle,
   IconReportAnalytics,
-  IconUsers,
   IconPlus,
-  IconEye,
   IconRefresh,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   getDashboardContadores,
@@ -107,7 +104,7 @@ export function GestorDashboard() {
             <IconFileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">{contadores.contratos_sob_gestao}</div>
+            <div className="text-2xl font-bold text-blue-800">{contadores.contratos_ativos}</div>
             <p className="text-xs text-blue-600">
               Contratos gerenciados
             </p>
@@ -120,22 +117,22 @@ export function GestorDashboard() {
             <IconReportAnalytics className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-800">{contadores.relatorios_equipe_pendentes}</div>
+            <div className="text-2xl font-bold text-orange-800">{contadores.relatorios_para_analise}</div>
             <p className="text-xs text-orange-600">
               Pendentes de revisão
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Contratos Ativos</CardTitle>
-            <IconBuilding className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-red-700">Contratos com Pendências</CardTitle>
+            <IconAlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-800">{contadores.contratos_ativos}</div>
-            <p className="text-xs text-green-600">
-              Em execução
+            <div className="text-2xl font-bold text-red-800">{contadores.contratos_com_pendencias}</div>
+            <p className="text-xs text-red-600">
+              Requerem atenção
             </p>
           </CardContent>
         </Card>
@@ -200,12 +197,12 @@ export function GestorDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {contadores.relatorios_equipe_pendentes > 0 && (
+            {contadores.relatorios_para_analise > 0 && (
               <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <IconReportAnalytics className="h-5 w-5 text-orange-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-orange-800">
-                    {contadores.relatorios_equipe_pendentes} relatórios da equipe pendentes
+                    {contadores.relatorios_para_analise} relatórios da equipe pendentes
                   </p>
                   <p className="text-xs text-orange-600">
                     Aguardando sua revisão e aprovação
@@ -222,12 +219,12 @@ export function GestorDashboard() {
               </div>
             )}
             
-            {contadores.contratos_sob_gestao > 0 && (
+            {contadores.contratos_ativos > 0 && (
               <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <IconFileText className="h-5 w-5 text-blue-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-800">
-                    {contadores.contratos_sob_gestao} contratos sob sua gestão
+                    {contadores.contratos_ativos} contratos sob sua gestão
                   </p>
                   <p className="text-xs text-blue-600">
                     Acompanhe o andamento e prazos
@@ -244,17 +241,25 @@ export function GestorDashboard() {
               </div>
             )}
             
-            {contadores.contratos_ativos > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <IconBuilding className="h-5 w-5 text-green-600" />
+            {contadores.contratos_vencendo > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <IconAlertTriangle className="h-5 w-5 text-yellow-600" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-green-800">
-                    {contadores.contratos_ativos} contratos ativos no sistema
+                  <p className="text-sm font-medium text-yellow-800">
+                    {contadores.contratos_vencendo} contratos vencendo em breve
                   </p>
-                  <p className="text-xs text-green-600">
-                    Contratos em execução
+                  <p className="text-xs text-yellow-600">
+                    Requerem renovação ou encerramento
                   </p>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/contratos")}
+                  className="border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                >
+                  Ver Contratos
+                </Button>
               </div>
             )}
           </div>
