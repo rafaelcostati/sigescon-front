@@ -38,6 +38,7 @@ export default function AdminDashboard() {
       const data = await getDashboardAdminCompleto();
       setDashboardData(data);
       console.log("✅ Dashboard carregado:", data);
+      console.log("📊 RELATÓRIOS PARA ANÁLISE:", data.contadores.relatorios_para_analise);
 
       // Carregar dados de pendências vencidas
       try {
@@ -151,15 +152,29 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Relatórios para Análise */}
-        <Card className="border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
+        {/* Relatórios Aguardando Análise */}
+        <Card className="border-amber-200 shadow-lg hover:shadow-xl transition-shadow cursor-pointer hover:scale-105"
+              onClick={() => navigate('/gestao-relatorios')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Relatórios para Análise</CardTitle>
-            <FileText className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-amber-700">⏳ Aguardando Análise</CardTitle>
+            <div className="relative">
+              <FileText className="h-4 w-4 text-amber-600" />
+              {contadores.relatorios_para_analise > 0 && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-800">{contadores.relatorios_para_analise}</div>
-            <p className="text-xs text-purple-600 mt-1">Aguardando aprovação</p>
+            <div className="text-2xl font-bold text-amber-800">{contadores.relatorios_para_analise}</div>
+            <p className="text-xs text-amber-600 mt-1">
+              {contadores.relatorios_para_analise === 0
+                ? "Nenhum relatório pendente"
+                : `${contadores.relatorios_para_analise} relatório${contadores.relatorios_para_analise > 1 ? 's' : ''} para analisar`
+              }
+            </p>
+            {contadores.relatorios_para_analise > 0 && (
+              <Badge className="mt-2 bg-amber-100 text-amber-800 text-xs">AÇÃO NECESSÁRIA</Badge>
+            )}
           </CardContent>
         </Card>
 
@@ -176,35 +191,37 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-        {/* Contratos com Relatórios Pendentes */}
-        <Card className="border-red-200 shadow-lg">
+        {/* Contratos com Relatórios Aguardando Análise */}
+        <Card className="border-amber-200 shadow-lg">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-red-800">Contratos com Relatórios Pendentes</CardTitle>
-                <CardDescription>Relatórios aguardando análise</CardDescription>
+                <CardTitle className="text-amber-800 flex items-center gap-2">
+                  ⏳ Contratos com Relatórios Aguardando Análise
+                </CardTitle>
+                <CardDescription>Relatórios enviados pelos fiscais que precisam ser analisados</CardDescription>
               </div>
               <Button
                 onClick={() => navigate('/gestao-relatorios')}
                 variant="outline"
                 size="sm"
-                className="border-red-200 text-red-700 hover:bg-red-50"
+                className="border-amber-200 text-amber-700 hover:bg-amber-50"
               >
-                Analisar
+                📋 Analisar Relatórios
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {contratos_com_relatorios_pendentes.length > 0 ? (
               contratos_com_relatorios_pendentes.slice(0, 3).map((contrato) => (
-                <div key={contrato.id} className="border border-red-100 rounded-lg p-4 hover:bg-red-50 transition-colors">
+                <div key={contrato.id} className="border border-amber-100 rounded-lg p-4 hover:bg-amber-50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-semibold text-red-800">{contrato.nr_contrato}</h4>
+                      <h4 className="font-semibold text-amber-800">{contrato.nr_contrato}</h4>
                       <p className="text-sm text-gray-600 truncate max-w-[250px]" title={contrato.objeto}>{contrato.objeto}</p>
                     </div>
-                    <Badge className="bg-red-500 text-white">
-                      {contrato.relatorios_pendentes_count} relatórios
+                    <Badge className="bg-amber-500 text-white">
+                      {contrato.relatorios_pendentes_count} relatório{contrato.relatorios_pendentes_count > 1 ? 's' : ''}
                     </Badge>
                   </div>
                   <div className="space-y-2">
@@ -231,7 +248,7 @@ export default function AdminDashboard() {
                         onClick={() => navigate(`/contratos/${contrato.id}`)}
                         size="sm"
                         variant="outline"
-                        className="border-red-200 text-red-700 hover:bg-red-50"
+                        className="border-amber-200 text-amber-700 hover:bg-amber-50"
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Ver Detalhes

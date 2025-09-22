@@ -302,41 +302,59 @@ export function NavUser() {
                   <div className="mt-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Perfil ativo:</span>
-                      <Badge className={`text-xs ${getProfileColor(perfilAtivo.nome)}`}>
+                      <Badge className={`text-xs ${getProfileColor(perfilAtivo.nome)} border`}>
                         {getProfileIcon()}
-                        {perfilAtivo.nome}
+                        <span className="ml-1">{perfilAtivo.nome}</span>
                       </Badge>
                     </div>
                   </div>
-                  
+
                   {/* Seletor de Perfil */}
                   {perfisDisponiveis.length > 1 && (
-                    <div className="mt-3">
-                      <label className="text-xs text-muted-foreground mb-1 block">
-                        Alternar perfil:
+                    <div className="mt-3 p-2 bg-gray-50 rounded-md">
+                      <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                        💼 Alternar perfil:
                       </label>
                       <Select
                         value={perfilAtivo.id.toString()}
                         onValueChange={handleProfileChange}
                         disabled={isChangingProfile}
                       >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:border-gray-300 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              perfilAtivo.nome === 'Administrador' ? 'bg-red-500' :
+                              perfilAtivo.nome === 'Gestor' ? 'bg-blue-500' : 'bg-green-500'
+                            }`} />
+                            <SelectValue />
+                          </div>
                           {isChangingProfile && (
                             <div className="ml-2 h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
                           )}
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="min-w-[200px]">
                           {perfisDisponiveis.map((perfil) => (
-                            <SelectItem key={perfil.id} value={perfil.id.toString()}>
-                              <div className="flex items-center gap-2">
+                            <SelectItem key={perfil.id} value={perfil.id.toString()} className="cursor-pointer">
+                              <div className="flex items-center gap-2 w-full">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  perfil.nome === 'Administrador' ? 'bg-red-500' :
+                                  perfil.nome === 'Gestor' ? 'bg-blue-500' : 'bg-green-500'
+                                }`} />
                                 {getProfileIcon()}
-                                <span>{perfil.nome}</span>
+                                <span className="flex-1">{perfil.nome}</span>
+                                {perfil.id === perfilAtivo.id && (
+                                  <Badge variant="secondary" className="text-xs ml-auto">
+                                    Ativo
+                                  </Badge>
+                                )}
                               </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Você tem {perfisDisponiveis.length} perfis disponíveis
+                      </p>
                     </div>
                   )}
                 </div>

@@ -38,7 +38,7 @@ export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
 
-const API_BASE_URL = "http://10.96.0.67/v1/"; // <-- SUBSTITUA PELA URL REAL DA SUA API
+const API_BASE_URL = "http://127.0.0.1:8000/api/v1/";
 
 // Função auxiliar para tratar as respostas
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -58,7 +58,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
  * GET /contratos
  */
 export async function getContratos(params?: { gestor_id?: number; fiscal_id?: number }): Promise<Contrato[]> {
-    const url = new URL(`${API_BASE_URL}/contratos`);
+    const url = new URL(`${API_BASE_URL}contratos`);
     if (params?.gestor_id) url.searchParams.append('gestor_id', String(params.gestor_id));
     if (params?.fiscal_id) url.searchParams.append('fiscal_id', String(params.fiscal_id));
 
@@ -71,7 +71,7 @@ export async function getContratos(params?: { gestor_id?: number; fiscal_id?: nu
  * GET /contratos/<id>
  */
 export async function getContratoById(id: number): Promise<Contrato> {
-    const response = await fetch(`${API_BASE_URL}/contratos/${id}`);
+    const response = await fetch(`${API_BASE_URL}contratos/${id}`);
     return handleResponse<Contrato>(response);
 }
 
@@ -80,7 +80,7 @@ export async function getContratoById(id: number): Promise<Contrato> {
  * POST /contratos
  */
 export async function createContrato(formData: FormData): Promise<Contrato> {
-    const response = await fetch(`${API_BASE_URL}/contratos`, {
+    const response = await fetch(`${API_BASE_URL}contratos`, {
         method: 'POST',
         body: formData, // O Content-Type é definido automaticamente pelo navegador para multipart/form-data
     });
@@ -94,7 +94,7 @@ export async function createContrato(formData: FormData): Promise<Contrato> {
 export async function updateContrato(id: number, formData: FormData): Promise<Contrato> {
     // A API para edição pode usar PUT ou POST com _method=PUT em FormData. Verifique a documentação.
     // Usaremos PUT como exemplo.
-    const response = await fetch(`${API_BASE_URL}/contratos/${id}`, {
+    const response = await fetch(`${API_BASE_URL}contratos/${id}`, {
         method: 'PUT',
         body: formData,
     });
@@ -107,21 +107,21 @@ export async function updateContrato(id: number, formData: FormData): Promise<Co
 // ============================================================================
 
 export async function getContratados(): Promise<Contratado[]> {
-    const response = await fetch(`${API_BASE_URL}/contratados`);
+    const response = await fetch(`${API_BASE_URL}contratados`);
     return handleResponse<Contratado[]>(response);
 }
 
 export async function getModalidades(): Promise<Modalidade[]> {
-    const response = await fetch(`${API_BASE_URL}/modalidades`);
+    const response = await fetch(`${API_BASE_URL}modalidades`);
     return handleResponse<Modalidade[]>(response);
 }
 
 export async function getStatus(): Promise<Status[]> {
-    const response = await fetch(`${API_BASE_URL}/status`);
+    const response = await fetch(`${API_BASE_URL}status`);
     return handleResponse<Status[]>(response);
 }
 
 export async function getUsuarios(): Promise<Usuario[]> {
-    const response = await fetch(`${API_BASE_URL}/usuarios`);
+    const response = await fetch(`${API_BASE_URL}usuarios`);
     return handleResponse<Usuario[]>(response);
 }

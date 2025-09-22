@@ -25,6 +25,8 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { RelatoriosContrato } from "@/components/RelatoriosContrato";
+import { ContratoArquivos } from "@/components/ContratoArquivos";
+import { RelatoriosArquivos } from "@/components/RelatoriosArquivos";
 
 // Tipos locais para arquivos
 type Arquivo = {
@@ -285,49 +287,17 @@ export default function DetalhesContrato() {
 
         </div>
 
-        {/* Sidebar */}
+        {/* Gerenciamento de Arquivos e Relatórios */}
         <div className="space-y-6">
           <Tabs defaultValue="arquivos" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
-              <TabsTrigger value="pendencias">Pendências</TabsTrigger>
-              <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+              <TabsTrigger value="arquivos">📁 Arquivos</TabsTrigger>
+              <TabsTrigger value="pendencias">⚠️ Pendências</TabsTrigger>
+              <TabsTrigger value="relatorios">📊 Relatórios</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="arquivos" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Arquivos ({arquivos.length})</CardTitle>
-                  <CardDescription>Documentos anexados ao contrato</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {arquivos.length > 0 ? (
-                    <div className="space-y-3">
-                      {arquivos.map((arquivo) => (
-                        <div key={arquivo.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-4 h-4 text-gray-500" />
-                            <div>
-                              <p className="font-medium text-sm">{arquivo.nome_arquivo}</p>
-                              <p className="text-xs text-gray-500">
-                                {formatFileSize(arquivo.tamanho)} • {formatDate(arquivo.data_upload)}
-                              </p>
-                            </div>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            <Download className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Nenhum arquivo anexado</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <ContratoArquivos contratoId={parseInt(id!)} />
             </TabsContent>
 
             <TabsContent value="pendencias" className="space-y-4">
@@ -373,11 +343,7 @@ export default function DetalhesContrato() {
             </TabsContent>
 
             <TabsContent value="relatorios" className="space-y-4">
-              <RelatoriosContrato 
-                contratoId={parseInt(id!)}
-                contratoNumero={contrato?.nr_contrato || ''}
-                showOnlyApproved={true}
-              />
+              <RelatoriosArquivos contratoId={parseInt(id!)} />
             </TabsContent>
           </Tabs>
         </div>

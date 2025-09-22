@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Componentes
+import { ProfileSelectionModal } from "@/components/ProfileSelectionModal";
+
 // Ícones e Logo
 import { LockKeyhole, User, AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.svg";
@@ -25,8 +28,10 @@ type SignInForm = z.infer<typeof signInFormSchema>;
 
 export function SignIn() {
   const navigate = useNavigate();
-  const { user, login, loading: authLoading } = useAuth(); // 'login' aqui é do seu AuthContext
+  const { user, login, loading: authLoading, perfisDisponiveis } = useAuth(); // 'login' aqui é do seu AuthContext
   const [error, setError] = useState("");
+  const [showProfileSelection, setShowProfileSelection] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   const {
     register,
@@ -36,25 +41,46 @@ export function SignIn() {
     resolver: zodResolver(signInFormSchema),
   });
 
-  // Redireciona se o usuário já estiver logado
+  // Redireciona se o usuário já estiver logado e não precisa selecionar perfil
   useEffect(() => {
-    if (!authLoading && user && user.id) {
+    if (!authLoading && user && user.id && !showProfileSelection) {
       console.log("Usuário autenticado detectado, redirecionando para /dashboard");
       navigate("/dashboard", { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, showProfileSelection]);
+
+  // Verifica se precisa mostrar seleção de perfil após login bem-sucedido
+  useEffect(() => {
+    if (loginSuccess && user && perfisDisponiveis.length > 1) {
+      console.log("Múltiplos perfis detectados, exibindo seleção de perfil");
+      setShowProfileSelection(true);
+    } else if (loginSuccess && user) {
+      console.log("Login bem-sucedido, redirecionando para dashboard");
+      navigate("/dashboard", { replace: true });
+    }
+  }, [loginSuccess, user, perfisDisponiveis, navigate]);
 
   // Função para lidar com o submit do formulário, agora sem o perfil
   const onSubmit = async ({ email, password }: SignInForm) => {
     setError("");
+    setLoginSuccess(false);
     try {
       // Chama a função 'login' do seu AuthContext com apenas email e senha
       await login(email, password);
-      // O redirecionamento ocorre no useEffect acima
-    } catch (err: any)      {
+      setLoginSuccess(true);
+      // O redirecionamento ou seleção de perfil ocorre nos useEffects acima
+    } catch (err: any) {
       console.error("Erro no login:", err);
       setError(err.message || "E-mail ou senha inválidos. Tente novamente.");
+      setLoginSuccess(false);
     }
+  };
+
+  // Função chamada quando um perfil é selecionado
+  const handleProfileSelected = () => {
+    setShowProfileSelection(false);
+    console.log("Perfil selecionado, redirecionando para dashboard");
+    navigate("/dashboard", { replace: true });
   };
 
   // Tela de loading inicial
@@ -136,6 +162,12 @@ export function SignIn() {
           </form>
         </div>
       </div>
+
+      {/* Modal de Seleção de Perfil */}
+      <ProfileSelectionModal
+        open={showProfileSelection}
+        onProfileSelected={handleProfileSelected}
+      />
     </div>
   );
 }

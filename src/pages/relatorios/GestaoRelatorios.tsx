@@ -37,24 +37,27 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-    FileText, 
-    CheckCircle, 
-    XCircle, 
-    Clock, 
+import {
+    FileText,
+    CheckCircle,
+    XCircle,
+    Clock,
     Eye,
-    AlertCircle
+    AlertCircle,
+    Download,
+    File
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { 
-    getDashboardAdminRelatoriosPendentes,
-    analisarRelatorio, 
+import {
+    getDashboardAdminCompleto,
+    analisarRelatorio,
     getStatusRelatorios,
-    type RelatorioDetalhado, 
+    downloadArquivoContrato,
+    type RelatorioDetalhado,
     type AnalisarRelatorioPayload,
     type StatusRelatorio
 } from "@/lib/api";
@@ -94,6 +97,7 @@ export default function GestaoRelatorios() {
     const [selectedRelatorio, setSelectedRelatorio] = React.useState<RelatorioDetalhado | null>(null);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+    const [isDownloading, setIsDownloading] = React.useState(false);
 
     const form = useForm<AnalisarFormData>({
         resolver: zodResolver(analisarSchema),
@@ -117,40 +121,168 @@ export default function GestaoRelatorios() {
         setIsLoading(true);
         setError(null);
         try {
-            console.log('🔍 Carregando contratos com relatórios pendentes...');
-            
-            // Buscar contratos com relatórios pendentes
-            const dashboardResponse = await getDashboardAdminRelatoriosPendentes();
-            
-            // Para simplificar, vamos usar os dados do dashboard
-            // que já contém informações sobre relatórios pendentes
-            console.log(`✅ ${dashboardResponse.contratos.length} contratos com relatórios pendentes carregados`);
-            
-            // Mock de relatórios baseado nos contratos (temporário até API estar completa)
-            const mockRelatorios = dashboardResponse.contratos.map(contrato => ({
-                id: contrato.id,
-                contrato_id: contrato.id,
-                contrato_numero: contrato.nr_contrato,
-                contrato_objeto: contrato.objeto,
-                fiscal_nome: contrato.fiscal_nome,
-                gestor_nome: contrato.gestor_nome,
-                mes_competencia: new Date().toISOString().slice(0, 7),
-                observacoes_fiscal: `Relatório pendente de análise - Contrato ${contrato.nr_contrato}`,
-                pendencia_id: 1,
-                fiscal_id: 1,
-                fiscal_usuario_id: 1,
-                arquivo_id: 1,
-                status_id: 1,
-                status: 'Pendente de Análise',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                arquivo_nome: 'relatorio.pdf',
-                observacoes_admin: null,
-                aprovador_usuario_id: null
-            })) as any[];
-            
-            setRelatorios(mockRelatorios);
-            console.log(`✅ ${mockRelatorios.length} relatórios carregados de ${dashboardResponse.contratos.length} contratos`);
+            console.log('🔍 Carregando relatórios pendentes (usando API do dashboard)...');
+
+            // Usar a mesma API que o dashboard para garantir consistência
+            const dashboardResponse = await getDashboardAdminCompleto();
+
+            // Usar os contratos com relatórios pendentes da API principal
+            // Verificar diferentes possíveis nomes da propriedade
+            let contratosComRelatorios = [];
+            let fonteUsada = '';
+
+            if (dashboardResponse.contratos_com_relatorios_pendentes?.length > 0) {
+                contratosComRelatorios = dashboardResponse.contratos_com_relatorios_pendentes;
+                fonteUsada = 'contratos_com_relatorios_pendentes';
+            } else if (dashboardResponse.contratos_com_pendencias?.length > 0) {
+                contratosComRelatorios = dashboardResponse.contratos_com_pendencias;
+                fonteUsada = 'contratos_com_pendencias';
+            } else {
+                contratosComRelatorios = [];
+                fonteUsada = 'nenhuma (arrays vazios ou inexistentes)';
+            }
+
+            console.log(`🎯 FONTE DE DADOS USADA: ${fonteUsada}`);
+
+            console.log(`✅ ${contratosComRelatorios.length} contratos com relatórios pendentes carregados`);
+            console.log("📋 DADOS COMPLETOS DA API:", dashboardResponse);
+            console.log("📊 TOTAL RELATÓRIOS PARA ANÁLISE:", dashboardResponse.contadores.relatorios_para_analise);
+            console.log("🔍 CONTRATOS COM RELATÓRIOS PENDENTES:", contratosComRelatorios);
+
+            // Debug: verificar todas as propriedades disponíveis
+            console.log("🔍 PROPRIEDADES DISPONÍVEIS:", Object.keys(dashboardResponse));
+            console.log("🔍 contratos_com_relatorios_pendentes:", dashboardResponse.contratos_com_relatorios_pendentes);
+            console.log("🔍 contratos_com_pendencias:", dashboardResponse.contratos_com_pendencias);
+
+            // Debug: estrutura detalhada dos contratos
+            if (contratosComRelatorios.length > 0) {
+                console.log("🔍 ESTRUTURA DO PRIMEIRO CONTRATO:", contratosComRelatorios[0]);
+                console.log("🔍 PROPRIEDADES DO CONTRATO:", Object.keys(contratosComRelatorios[0]));
+
+                // Verificar se há uma lista de relatórios dentro do contrato
+                if (contratosComRelatorios[0].relatorios) {
+                    console.log("🔍 RELATÓRIOS DENTRO DO CONTRATO:", contratosComRelatorios[0].relatorios);
+                }
+            }
+
+            // Verificar se há discrepância entre contador e lista
+            if (dashboardResponse.contadores.relatorios_para_analise > 0 && contratosComRelatorios.length === 0) {
+                console.warn("⚠️ DISCREPÂNCIA DETECTADA:");
+                console.warn(`- Contador diz: ${dashboardResponse.contadores.relatorios_para_analise} relatórios`);
+                console.warn(`- Lista tem: ${contratosComRelatorios.length} contratos`);
+                console.warn("- Isso indica um problema no backend ou estrutura da API");
+            }
+
+            // Expandir cada contrato em seus relatórios individuais
+            const relatóriosExpandidos: any[] = [];
+
+            if (contratosComRelatorios.length > 0) {
+                // Caso normal: temos contratos com dados reais
+                contratosComRelatorios.forEach((contrato, index) => {
+                    console.log(`🔍 PROCESSANDO CONTRATO ${index + 1}:`, contrato);
+
+                    // Verificar se há uma lista de relatórios dentro do contrato
+                    if (contrato.relatorios && Array.isArray(contrato.relatorios)) {
+                        // Caso 1: Contrato tem lista de relatórios
+                        console.log(`📋 Contrato ${contrato.nr_contrato} tem ${contrato.relatorios.length} relatórios`);
+                        contrato.relatorios.forEach(relatorio => {
+                            relatóriosExpandidos.push({
+                                id: relatorio.id, // ID REAL do relatório
+                                contrato_id: contrato.id,
+                                contrato_numero: contrato.nr_contrato,
+                                contrato_objeto: contrato.objeto,
+                                fiscal_nome: contrato.fiscal_nome,
+                                gestor_nome: contrato.gestor_nome,
+                                mes_competencia: relatorio.mes_competencia || new Date().toISOString().slice(0, 7),
+                                observacoes_fiscal: relatorio.observacoes_fiscal || `Relatório pendente de análise - ${contrato.nr_contrato}`,
+                                pendencia_id: relatorio.pendencia_id || 1,
+                                fiscal_id: relatorio.fiscal_id || 1,
+                                fiscal_usuario_id: relatorio.fiscal_usuario_id || 1,
+                                arquivo_id: relatorio.arquivo_id, // ID REAL do arquivo
+                                status_id: relatorio.status_id || 1,
+                                status: relatorio.status || 'Pendente de Análise',
+                                status_relatorio: relatorio.status_relatorio || 'pendente',
+                                created_at: relatorio.created_at || contrato.ultimo_relatorio_data || new Date().toISOString(),
+                                updated_at: relatorio.updated_at || contrato.ultimo_relatorio_data || new Date().toISOString(),
+                                arquivo_nome: relatorio.arquivo_nome || relatorio.nome_arquivo || 'relatorio.pdf',
+                                nome_arquivo: relatorio.nome_arquivo || relatorio.arquivo_nome || 'relatorio.pdf',
+                                enviado_por: relatorio.enviado_por || contrato.ultimo_relatorio_fiscal || contrato.fiscal_nome,
+                                observacoes_admin: relatorio.observacoes_admin,
+                                aprovador_usuario_id: relatorio.aprovador_usuario_id,
+                                is_mock: false // Dados reais do backend
+                            });
+                        });
+                    } else {
+                        // Caso 2: Usar dados do próprio contrato (fallback)
+                        console.log(`📋 Contrato ${contrato.nr_contrato} sem lista de relatórios, usando dados do contrato`);
+                        const numRelatorios = contrato.relatorios_pendentes_count || 1;
+
+                        for (let i = 0; i < numRelatorios; i++) {
+                            relatóriosExpandidos.push({
+                                id: contrato.relatorio_id || `${contrato.id}_${i}`, // Usar ID real se disponível
+                                contrato_id: contrato.id,
+                                contrato_numero: contrato.nr_contrato,
+                                contrato_objeto: contrato.objeto,
+                                fiscal_nome: contrato.fiscal_nome,
+                                gestor_nome: contrato.gestor_nome,
+                                mes_competencia: new Date().toISOString().slice(0, 7),
+                                observacoes_fiscal: contrato.observacoes_fiscal || `Relatório pendente de análise - ${contrato.nr_contrato}`,
+                                pendencia_id: 1,
+                                fiscal_id: 1,
+                                fiscal_usuario_id: 1,
+                                arquivo_id: contrato.arquivo_id, // ID REAL do arquivo se disponível
+                                status_id: 1,
+                                status: 'Pendente de Análise',
+                                status_relatorio: 'pendente',
+                                created_at: contrato.ultimo_relatorio_data || new Date().toISOString(),
+                                updated_at: contrato.ultimo_relatorio_data || new Date().toISOString(),
+                                arquivo_nome: contrato.arquivo_nome || contrato.nome_arquivo || 'relatorio.pdf',
+                                nome_arquivo: contrato.nome_arquivo || contrato.arquivo_nome || 'relatorio.pdf',
+                                enviado_por: contrato.ultimo_relatorio_fiscal || contrato.fiscal_nome,
+                                observacoes_admin: null,
+                                aprovador_usuario_id: null,
+                                is_mock: !contrato.relatorio_id && !contrato.arquivo_id // Mock se não tem IDs reais
+                            });
+                        }
+                    }
+                });
+            } else if (dashboardResponse.contadores.relatorios_para_analise > 0) {
+                // Fallback: se o contador mostra relatórios mas não há contratos na lista
+                // Criar itens mock baseados no contador
+                console.log("🔧 USANDO FALLBACK: Criando relatórios mock baseados no contador");
+
+                for (let i = 0; i < dashboardResponse.contadores.relatorios_para_analise; i++) {
+                    relatóriosExpandidos.push({
+                        id: `mock_${i}`,
+                        contrato_id: 999,
+                        contrato_numero: `CONTRATO-${i + 1}`,
+                        contrato_objeto: "Objeto do contrato pendente de análise",
+                        fiscal_nome: "Fiscal Responsável",
+                        gestor_nome: "Gestor Responsável",
+                        mes_competencia: new Date().toISOString().slice(0, 7),
+                        observacoes_fiscal: `Relatório ${i + 1} pendente de análise`,
+                        pendencia_id: 1,
+                        fiscal_id: 1,
+                        fiscal_usuario_id: 1,
+                        arquivo_id: null, // Marca como mock - sem arquivo real
+                        status_id: 1,
+                        status: 'Pendente de Análise',
+                        status_relatorio: 'pendente',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                        arquivo_nome: `relatorio_${i + 1}.pdf`,
+                        nome_arquivo: `relatorio_${i + 1}.pdf`,
+                        enviado_por: "Fiscal Sistema",
+                        observacoes_admin: null,
+                        aprovador_usuario_id: null,
+                        is_mock: true // Flag para identificar dados mock
+                    });
+                }
+            }
+
+            setRelatorios(relatóriosExpandidos);
+            console.log(`✅ ${relatóriosExpandidos.length} relatórios carregados de ${contratosComRelatorios.length} contratos`);
+            console.log(`📊 Total esperado: ${dashboardResponse.contadores.relatorios_para_analise} relatórios`);
             
         } catch (error) {
             console.error('❌ Erro ao carregar relatórios:', error);
@@ -183,9 +315,15 @@ export default function GestaoRelatorios() {
     const onSubmitAnalise = async (data: AnalisarFormData) => {
         if (!selectedRelatorio) return;
 
+        // Verificar se é um relatório mock (não pode ser analisado)
+        if (selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id) {
+            toast.error("Este é um relatório de exemplo e não pode ser analisado. Aguarde a sincronização com dados reais do backend.");
+            return;
+        }
+
         setIsAnalyzing(true);
         const statusSelecionado = statusRelatorios.find(s => s.id === data.status_id);
-        const toastId = toast.loading(`Alterando status para ${statusSelecionado?.nome || 'selecionado'}...`);
+        const toastId = toast.loading(`Realizando avaliação para ${statusSelecionado?.nome || 'status selecionado'}...`);
 
         try {
             const payload: AnalisarRelatorioPayload = {
@@ -196,7 +334,7 @@ export default function GestaoRelatorios() {
 
             await analisarRelatorio(selectedRelatorio.contrato_id, selectedRelatorio.id, payload);
 
-            toast.success(`Status alterado para ${statusSelecionado?.nome} com sucesso!`, {
+            toast.success(`Avaliação realizada com sucesso! Status: ${statusSelecionado?.nome}`, {
                 id: toastId,
             });
 
@@ -211,7 +349,7 @@ export default function GestaoRelatorios() {
             console.error('Erro ao analisar relatório:', error);
             const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
             
-            toast.error('Falha ao analisar relatório', {
+            toast.error('Falha ao realizar avaliação', {
                 id: toastId,
                 description: errorMessage
             });
@@ -233,6 +371,66 @@ export default function GestaoRelatorios() {
             return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR });
         } catch {
             return dateString;
+        }
+    };
+
+    const getFileIcon = (fileName: string) => {
+        const extension = fileName.split('.').pop()?.toLowerCase();
+        const iconProps = { size: 20, className: "text-blue-600" };
+
+        switch (extension) {
+            case 'pdf':
+                return <FileText {...iconProps} className="text-red-600" />;
+            case 'doc':
+            case 'docx':
+                return <FileText {...iconProps} className="text-blue-600" />;
+            case 'xls':
+            case 'xlsx':
+                return <FileText {...iconProps} className="text-green-600" />;
+            case 'png':
+            case 'jpg':
+            case 'jpeg':
+            case 'gif':
+                return <File {...iconProps} className="text-purple-600" />;
+            default:
+                return <File {...iconProps} />;
+        }
+    };
+
+    const handleDownloadArquivo = async () => {
+        if (!selectedRelatorio) return;
+
+        // Verificar se é um relatório mock (sem arquivo real)
+        if (selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id) {
+            toast.error("Este é um relatório de exemplo. O arquivo real não está disponível para download.");
+            return;
+        }
+
+        setIsDownloading(true);
+        const toastId = toast.loading("Preparando download do arquivo...");
+
+        try {
+            console.log("📥 Fazendo download do arquivo do relatório:", selectedRelatorio.nome_arquivo);
+
+            // Usar a função de download de arquivo do contrato
+            const blob = await downloadArquivoContrato(selectedRelatorio.contrato_id, selectedRelatorio.arquivo_id);
+
+            // Criar URL temporária para download
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = selectedRelatorio.nome_arquivo || selectedRelatorio.arquivo_nome || 'relatorio.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success("Download realizado com sucesso!", { id: toastId });
+        } catch (error: any) {
+            console.error("❌ Erro no download:", error);
+            toast.error("Erro ao fazer download do arquivo", { id: toastId });
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -403,9 +601,97 @@ export default function GestaoRelatorios() {
                                 </div>
                             </div>
 
+                            {/* Arquivo Anexado */}
+                            <div className={`border rounded-lg p-4 ${
+                                selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                    ? 'border-orange-200 bg-orange-50'
+                                    : 'border-blue-200 bg-blue-50'
+                            }`}>
+                                <Label className={`text-sm font-medium ${
+                                    selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                        ? 'text-orange-800'
+                                        : 'text-blue-800'
+                                }`}>
+                                    {selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                        ? 'Arquivo Simulado (Dados de Exemplo)'
+                                        : 'Arquivo Anexado pelo Fiscal'
+                                    }
+                                </Label>
+                                <div className="mt-2 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-md ${
+                                            selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                ? 'bg-orange-100'
+                                                : 'bg-blue-100'
+                                        }`}>
+                                            {getFileIcon(selectedRelatorio.nome_arquivo || selectedRelatorio.arquivo_nome || 'relatorio.pdf')}
+                                        </div>
+                                        <div>
+                                            <p className={`font-medium ${
+                                                selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                    ? 'text-orange-900'
+                                                    : 'text-blue-900'
+                                            }`}>
+                                                {selectedRelatorio.nome_arquivo || selectedRelatorio.arquivo_nome || 'relatorio.pdf'}
+                                            </p>
+                                            <p className={`text-xs ${
+                                                selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                    ? 'text-orange-600'
+                                                    : 'text-blue-600'
+                                            }`}>
+                                                {selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                    ? 'Dados simulados • Arquivo não disponível para download'
+                                                    : `Enviado em ${formatDateTime(selectedRelatorio.created_at)} • Clique para baixar e analisar`
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDownloadArquivo}
+                                        disabled={isDownloading || selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id}
+                                        className={
+                                            selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                ? 'border-orange-300 text-orange-700 opacity-50 cursor-not-allowed'
+                                                : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                                        }
+                                    >
+                                        {isDownloading ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                                                Baixando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Download className="h-4 w-4 mr-2" />
+                                                {selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
+                                                    ? 'Indisponível'
+                                                    : 'Baixar Arquivo'
+                                                }
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
                             {/* Formulário de Análise */}
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmitAnalise)} className="space-y-4">
+                            {selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id ? (
+                                <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                        <Label className="text-sm font-medium text-yellow-800">
+                                            Avaliação Indisponível
+                                        </Label>
+                                    </div>
+                                    <p className="text-sm text-yellow-700">
+                                        Este relatório é simulado para demonstração. A avaliação só estará disponível quando o backend retornar dados reais dos contratos com relatórios pendentes.
+                                    </p>
+                                </div>
+                            ) : (
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(onSubmitAnalise)} className="space-y-4">
                                     <FormField
                                         control={form.control}
                                         name="status_id"
@@ -463,11 +749,12 @@ export default function GestaoRelatorios() {
                                             disabled={isAnalyzing}
                                         >
                                             <CheckCircle className="h-4 w-4 mr-1" />
-                                            Alterar Status
+                                            Realizar Avaliação
                                         </Button>
                                     </DialogFooter>
                                 </form>
                             </Form>
+                            )}
                         </div>
                     )}
                 </DialogContent>
