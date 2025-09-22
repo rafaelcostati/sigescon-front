@@ -6,7 +6,6 @@ import {
   IconFileText,
   IconFileCertificate,
   IconClipboardList,
-  IconAlertTriangle,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -62,11 +61,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           url: "/gestao-relatorios",
           icon: IconClipboardList,
         },
-        {
-          title: "Pendências Vencidas",
-          url: "/pendencias-vencidas",
-          icon: IconAlertTriangle,
-        },
       ];
 
     case "Gestor":
@@ -76,11 +70,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           title: "Contratos",
           url: "/contratos",
           icon: IconFileText,
-        },
-        {
-          title: "Pendências Vencidas",
-          url: "/pendencias-vencidas",
-          icon: IconAlertTriangle,
         },
       ];
 

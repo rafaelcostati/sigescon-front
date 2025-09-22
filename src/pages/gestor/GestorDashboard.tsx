@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import {
   IconFileText,
   IconAlertTriangle,
-  IconReportAnalytics,
-  IconPlus,
   IconRefresh,
   IconClock,
   IconCheck,
@@ -93,7 +91,7 @@ export function GestorDashboard() {
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-700">Contratos Sob Gestão</CardTitle>
@@ -107,18 +105,6 @@ export function GestorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-orange-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Relatórios da Equipe</CardTitle>
-            <IconReportAnalytics className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-800">{dashboardData.contadores.relatorios_equipe_aguardando}</div>
-            <p className="text-xs text-orange-600">
-              Pendentes de revisão
-            </p>
-          </CardContent>
-        </Card>
 
         <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -172,7 +158,7 @@ export function GestorDashboard() {
                         {pendencia.urgencia}
                       </span>
                     </div>
-                    <p className="text-xs text-red-700 mb-2">{pendencia.pendencia_titulo}</p>
+                    <p className="text-xs text-red-700 mb-2">{(pendencia as any).descricao || pendencia.pendencia_titulo || 'Sem descrição'}</p>
                     <div className="flex items-center justify-between text-xs text-red-600">
                       <div className="flex items-center gap-1">
                         <IconUser className="w-3 h-3" />
@@ -180,10 +166,17 @@ export function GestorDashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <IconClock className="w-3 h-3" />
-                        {pendencia.dias_restantes && !isNaN(pendencia.dias_restantes) 
-                          ? `${Math.abs(pendencia.dias_restantes)} dias em atraso`
-                          : 'Em atraso'
-                        }
+                        {(() => {
+                          const dataPrazo = (pendencia as any).data_prazo || pendencia.prazo_entrega;
+                          if (dataPrazo) {
+                            const prazo = new Date(dataPrazo);
+                            const hoje = new Date();
+                            const diffTime = hoje.getTime() - prazo.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return diffDays > 0 ? `${diffDays} dias em atraso` : 'No prazo';
+                          }
+                          return 'Em atraso';
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -230,10 +223,20 @@ export function GestorDashboard() {
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm text-yellow-900">{pendencia.contrato_numero}</h4>
                       <span className="text-xs text-yellow-700 bg-yellow-200 px-2 py-1 rounded-full">
-                        {pendencia.dias_restantes > 0 ? `${pendencia.dias_restantes} dias restantes` : 'Vence hoje'}
+                        {(() => {
+                          const dataPrazo = (pendencia as any).data_prazo || pendencia.prazo_entrega;
+                          if (dataPrazo) {
+                            const prazo = new Date(dataPrazo);
+                            const hoje = new Date();
+                            const diffTime = prazo.getTime() - hoje.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return diffDays > 0 ? `${diffDays} dias restantes` : 'Vence hoje';
+                          }
+                          return 'Vence hoje';
+                        })()}
                       </span>
                     </div>
-                    <p className="text-xs text-yellow-700 mb-2">{pendencia.pendencia_titulo}</p>
+                    <p className="text-xs text-yellow-700 mb-2">{(pendencia as any).descricao || pendencia.pendencia_titulo || 'Sem descrição'}</p>
                     <div className="flex items-center justify-between text-xs text-yellow-600">
                       <div className="flex items-center gap-1">
                         <IconUser className="w-3 h-3" />
@@ -241,10 +244,17 @@ export function GestorDashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <IconCalendar className="w-3 h-3" />
-                        Prazo: {pendencia.prazo_entrega && pendencia.prazo_entrega !== 'Invalid Date'
-                          ? new Date(pendencia.prazo_entrega).toLocaleDateString('pt-BR')
-                          : 'Data inválida'
-                        }
+                        Prazo: {(() => {
+                          const dataPrazo = (pendencia as any).data_prazo || pendencia.prazo_entrega;
+                          if (dataPrazo && dataPrazo !== 'Invalid Date') {
+                            try {
+                              return new Date(dataPrazo).toLocaleDateString('pt-BR');
+                            } catch {
+                              return 'Data inválida';
+                            }
+                          }
+                          return 'Data inválida';
+                        })()}
                       </div>
                     </div>
                   </div>

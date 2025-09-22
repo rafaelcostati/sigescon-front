@@ -1504,7 +1504,10 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
     console.log("🔍 Buscando dashboard completo do gestor...");
     
     try {
-        // Buscar contadores e pendências em paralelo
+        // Remover a busca do contexto e usar apenas as APIs disponíveis
+        // O ID do gestor será obtido automaticamente pelo backend baseado no token
+        
+        // Buscar apenas contadores e pendências (remover contratos por enquanto)
         const [contadoresResponse, pendenciasResponse] = await Promise.allSettled([
             api<any>('/dashboard/gestor/completo'),
             api<DashboardGestorPendenciasResponse>('/dashboard/gestor/pendencias')
@@ -1521,6 +1524,8 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
             contratos_proximos_vencimento: 0
         };
         
+        // Remover a lógica de contratos por enquanto - será calculado das pendências
+        
         if (contadoresResponse.status === 'fulfilled') {
             const response = contadoresResponse.value;
             console.log("🔍 Dados dos contadores recebidos:", response.contadores);
@@ -1528,9 +1533,7 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
             // Tentar diferentes campos baseado nos logs
             const contadoresData = response.contadores || response;
             contadores = {
-                contratos_sob_gestao: contadoresData?.contratos_ativos || 
-                                     contadoresData?.total_contratacoes || 
-                                     contadoresData?.contratos_sob_gestao || 0,
+                ...contadores, // Manter o contratos_sob_gestao calculado acima
                 equipe_pendencias_atraso: contadoresData?.contratos_com_pendencias || 
                                          contadoresData?.pendencias_vencidas || 0,
                 relatorios_equipe_aguardando: contadoresData?.relatorios_para_analise || 0,
@@ -1576,6 +1579,30 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
                     canceladas: pendenciasData.pendencias?.canceladas?.length || 0
                 }
             };
+            
+            // Usar dados das pendências para calcular contadores se não conseguiu dos contratos
+            if (contadores.contratos_sob_gestao === 0) {
+                // Contar contratos únicos das pendências
+                const contratosUnicos = new Set();
+                const todasPendencias = [
+                    ...(pendenciasData.pendencias?.vencidas || []), 
+                    ...(pendenciasData.pendencias?.pendentes || []), 
+                    ...(pendenciasData.pendencias?.concluidas || []),
+                    ...(pendenciasData.pendencias?.canceladas || [])
+                ];
+                
+                todasPendencias.forEach(p => {
+                    if (p.contrato_id) {
+                        contratosUnicos.add(p.contrato_id);
+                    }
+                });
+                
+                contadores.contratos_sob_gestao = contratosUnicos.size;
+                contadores.equipe_pendencias_atraso = pendenciasData.pendencias?.vencidas?.length || 0;
+                
+                console.log("🔍 Contratos únicos encontrados:", Array.from(contratosUnicos));
+                console.log("✅ Contadores calculados a partir das pendências:", contadores);
+            }
             
             console.log("✅ Pendências processadas:", pendencias);
         } else {
