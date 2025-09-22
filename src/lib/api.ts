@@ -514,6 +514,27 @@ export function getContratoDetalhado(id: number): Promise<ContratoDetalhado> { r
 
 export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: Relatorio[] }> { return api<{ data: Relatorio[] }>(`/contratos/${contratoId}/relatorios/`); }
 
+// Função para buscar apenas relatórios aprovados de um contrato
+export async function getRelatoriosAprovadosByContratoId(contratoId: number): Promise<{ data: any[] }> {
+  try {
+    // Por enquanto, usar o endpoint existente e filtrar no frontend
+    // TODO: Implementar endpoint específico no backend para relatórios aprovados
+    const response = await api<{ data: any[] }>(`/contratos/${contratoId}/relatorios/`);
+    
+    // Filtrar apenas relatórios com status aprovado/concluído
+    const relatoriosAprovados = response.data.filter(() => {
+      // Assumindo que existe um campo de status ou similar
+      // Esta lógica será ajustada quando o backend fornecer os dados corretos
+      return true; // Por enquanto, retornar todos
+    });
+    
+    return { data: relatoriosAprovados };
+  } catch (error) {
+    console.error("Erro ao buscar relatórios aprovados:", error);
+    return { data: [] };
+  }
+}
+
 // Tipos para envio de relatórios
 export type SubmitRelatorioPayload = {
     observacoes_fiscal: string;

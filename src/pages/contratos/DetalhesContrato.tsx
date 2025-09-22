@@ -13,29 +13,17 @@ import {
   DollarSign,
   Clock,
   Edit,
-  Download,
   CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getContratoDetalhado,
-  getArquivosByContratoId,
   getPendenciasByContratoId,
   type ContratoDetalhado
 } from "@/lib/api";
 import { toast } from "sonner";
-import { RelatoriosContrato } from "@/components/RelatoriosContrato";
 import { ContratoArquivos } from "@/components/ContratoArquivos";
-import { RelatoriosArquivos } from "@/components/RelatoriosArquivos";
 
-// Tipos locais para arquivos
-type Arquivo = {
-  id: number;
-  nome_arquivo: string;
-  tamanho: number;
-  tipo: string;
-  data_upload: string;
-};
 
 type Pendencia = {
   id: number;
@@ -56,7 +44,6 @@ export default function DetalhesContrato() {
   const { perfilAtivo } = useAuth();
 
   const [contrato, setContrato] = useState<ContratoDetalhado | null>(null);
-  const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,26 +59,6 @@ export default function DetalhesContrato() {
         const contratoResponse = await getContratoDetalhado(parseInt(id));
         setContrato(contratoResponse);
 
-        // Carregar arquivos
-        try {
-          const arquivosResponse = await getArquivosByContratoId(parseInt(id));
-          if (arquivosResponse && arquivosResponse.arquivos) {
-            // Converter para o tipo local Arquivo
-            const arquivosConvertidos: Arquivo[] = arquivosResponse.arquivos.map((arquivo: any) => ({
-              id: arquivo.id,
-              nome_arquivo: arquivo.nome_arquivo || arquivo.nome,
-              tamanho: arquivo.tamanho_bytes || arquivo.tamanho,
-              tipo: arquivo.tipo_arquivo || arquivo.tipo,
-              data_upload: arquivo.created_at || arquivo.data_upload
-            }));
-            setArquivos(arquivosConvertidos);
-          } else {
-            setArquivos([]);
-          }
-        } catch (error) {
-          console.log("Nenhum arquivo encontrado");
-          setArquivos([]);
-        }
 
         // Carregar pendências
         try {
@@ -130,13 +97,6 @@ export default function DetalhesContrato() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -299,10 +259,9 @@ export default function DetalhesContrato() {
         {/* Gerenciamento de Arquivos e Relatórios */}
         <div className="space-y-6">
           <Tabs defaultValue="arquivos" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="arquivos">📁 Arquivos</TabsTrigger>
               <TabsTrigger value="pendencias">⚠️ Pendências</TabsTrigger>
-              <TabsTrigger value="relatorios">📊 Relatórios</TabsTrigger>
             </TabsList>
 
             <TabsContent value="arquivos" className="space-y-4">
@@ -351,9 +310,6 @@ export default function DetalhesContrato() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="relatorios" className="space-y-4">
-              <RelatoriosArquivos contratoId={parseInt(id!)} />
-            </TabsContent>
           </Tabs>
         </div>
       </div>

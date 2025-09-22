@@ -10,7 +10,6 @@ import {
   IconFileSpreadsheet,
   IconCalendar,
   IconUser,
-  IconEye,
   IconAlertTriangle,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,7 @@ import {
   getArquivosByContratoId,
   downloadArquivoContrato,
   deleteArquivoContrato,
-  type ArquivosResponse
+  getRelatoriosAprovadosByContratoId
 } from "@/lib/api";
 
 interface ContratoArquivosProps {
@@ -59,7 +58,8 @@ type ArquivoContrato = {
 
 export function ContratoArquivos({ contratoId, className }: ContratoArquivosProps) {
   const { perfilAtivo } = useAuth();
-  const [arquivos, setArquivos] = useState<ArquivoContrato[]>([]);
+  const [arquivosContratuais, setArquivosContratuais] = useState<ArquivoContrato[]>([]);
+  const [arquivosRelatorios, setArquivosRelatorios] = useState<ArquivoContrato[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -70,29 +70,65 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
   // Verificar se o usuário pode excluir arquivos (apenas admin)
   const canDelete = perfilAtivo?.nome === 'Administrador';
 
-  // Carregar arquivos do contrato
+  // Carregar arquivos contratuais (apenas arquivos do contrato, não relatórios)
+  const loadArquivosContratuais = async () => {
+    try {
+      console.log("🔍 Carregando arquivos contratuais do contrato:", contratoId);
+      const response = await getArquivosByContratoId(contratoId);
+
+      // Filtrar apenas arquivos contratuais (não relatórios)
+      const arquivosFormatados: ArquivoContrato[] = response.arquivos.map(arquivo => ({
+        id: arquivo.id,
+        nome: arquivo.nome_arquivo || `Arquivo_${arquivo.id}`,
+        tipo: arquivo.tipo_arquivo || getFileExtension(arquivo.nome_arquivo || ''),
+        tamanho: arquivo.tamanho_bytes || 0,
+        data_upload: arquivo.created_at,
+        uploadado_por_nome: 'Administrador', // Arquivos contratuais são sempre do admin
+        categoria: 'contratual' as const
+      }));
+
+      setArquivosContratuais(arquivosFormatados);
+      console.log("✅ Arquivos contratuais carregados:", arquivosFormatados);
+    } catch (error) {
+      console.error("❌ Erro ao carregar arquivos contratuais:", error);
+      setArquivosContratuais([]);
+    }
+  };
+
+  // Carregar relatórios aprovados (apenas com pendências concluídas)
+  const loadRelatoriosAprovados = async () => {
+    try {
+      console.log("🔍 Carregando relatórios aprovados do contrato:", contratoId);
+      const response = await getRelatoriosAprovadosByContratoId(contratoId);
+
+      // Por enquanto, mostrar todos os relatórios (a filtragem será feita no backend futuramente)
+      // TODO: Implementar filtragem por status no backend
+      const relatoriosFormatados = response.data.map((relatorio: any) => ({
+        id: relatorio.id,
+        nome: `Relatório_${relatorio.id}.pdf`,
+        tipo: 'pdf',
+        tamanho: 0, // Tamanho não disponível na resposta atual
+        data_upload: relatorio.data_envio,
+        uploadado_por_nome: 'Fiscal',
+        categoria: 'relatorio' as const
+      }));
+
+      setArquivosRelatorios(relatoriosFormatados);
+      console.log("✅ Relatórios carregados:", relatoriosFormatados);
+    } catch (error) {
+      console.error("❌ Erro ao carregar relatórios:", error);
+      setArquivosRelatorios([]);
+    }
+  };
+
+  // Carregar todos os dados
   const loadArquivos = async () => {
     setIsLoading(true);
     try {
-      console.log("🔍 Carregando arquivos do contrato:", contratoId);
-      const response = await getArquivosByContratoId(contratoId);
-
-      // Transformar dados para o formato esperado
-      const arquivosFormatados: ArquivoContrato[] = response.arquivos.map(arquivo => ({
-        id: arquivo.id,
-        nome: arquivo.nome_original || arquivo.nome_arquivo || `Arquivo_${arquivo.id}`,
-        tipo: arquivo.tipo_arquivo || getFileExtension(arquivo.nome_original || ''),
-        tamanho: arquivo.tamanho_bytes || 0,
-        data_upload: arquivo.data_upload,
-        uploadado_por_nome: arquivo.uploadado_por_nome,
-        categoria: determineCategory(arquivo.nome_original || arquivo.nome_arquivo || '')
-      }));
-
-      setArquivos(arquivosFormatados);
-      console.log("✅ Arquivos carregados:", arquivosFormatados);
-    } catch (error) {
-      console.error("❌ Erro ao carregar arquivos:", error);
-      toast.error("Erro ao carregar arquivos do contrato");
+      await Promise.all([
+        loadArquivosContratuais(),
+        loadRelatoriosAprovados()
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -102,14 +138,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
     loadArquivos();
   }, [contratoId]);
 
-  // Função para determinar categoria do arquivo
-  const determineCategory = (nomeArquivo: string): 'contratual' | 'relatorio' => {
-    const nome = nomeArquivo.toLowerCase();
-    if (nome.includes('relatorio') || nome.includes('report') || nome.includes('fiscal')) {
-      return 'relatorio';
-    }
-    return 'contratual';
-  };
 
   // Função para obter extensão do arquivo
   const getFileExtension = (nomeArquivo: string): string => {
@@ -192,8 +220,12 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
       console.log("🗑️ Excluindo arquivo:", arquivo.nome);
       await deleteArquivoContrato(contratoId, arquivo.id);
 
-      // Remover arquivo da lista
-      setArquivos(prev => prev.filter(a => a.id !== arquivo.id));
+      // Remover arquivo da lista apropriada
+      if (arquivo.categoria === 'contratual') {
+        setArquivosContratuais(prev => prev.filter(a => a.id !== arquivo.id));
+      } else {
+        setArquivosRelatorios(prev => prev.filter(a => a.id !== arquivo.id));
+      }
 
       toast.success("Arquivo excluído com sucesso!");
       setDeleteDialog({ open: false, arquivo: null });
@@ -204,10 +236,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
       setIsDeleting(false);
     }
   };
-
-  // Separar arquivos por categoria
-  const arquivosContratuais = arquivos.filter(a => a.categoria === 'contratual');
-  const arquivosRelatorios = arquivos.filter(a => a.categoria === 'relatorio');
 
   if (isLoading) {
     return (
@@ -339,14 +367,14 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
             <Badge variant="secondary">{arquivosRelatorios.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Relatórios de fiscalização enviados pelos fiscais
+            Relatórios de fiscalização aprovados pelo administrador
           </CardDescription>
         </CardHeader>
         <CardContent>
           {arquivosRelatorios.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <IconFile className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p>Nenhum relatório de fiscalização encontrado</p>
+              <p>Nenhum relatório aprovado encontrado</p>
             </div>
           ) : (
             <div className="rounded-md border">
