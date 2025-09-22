@@ -88,15 +88,15 @@ const getNavigationByProfile = (perfilNome: string) => {
       return [
         ...baseItems,
         {
-          title: "Contratos",
+          title: "Meus Contratos",
           url: "/contratos",
           icon: IconFileText,
           isReadOnly: true, // Apenas visualização
         },
         {
-          title: "Pendências Vencidas",
-          url: "/pendencias-vencidas",
-          icon: IconAlertTriangle,
+          title: "Enviar Relatório",
+          url: "/enviar-relatorio",
+          icon: IconClipboardList,
         },
       ];
 

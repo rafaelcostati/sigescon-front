@@ -241,7 +241,7 @@ export default function GestaoRelatorios() {
                                 enviado_por: contrato.ultimo_relatorio_fiscal || contrato.fiscal_nome,
                                 observacoes_admin: null,
                                 aprovador_usuario_id: null,
-                                is_mock: !contrato.relatorio_id && !contrato.arquivo_id // Mock se não tem IDs reais
+                                is_mock: false // Dados reais vindo do backend
                             });
                         }
                     }
