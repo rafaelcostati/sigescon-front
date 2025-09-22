@@ -11,7 +11,6 @@ import {
   IconX,
   IconClock,
   IconEye,
-  IconMessageCircle,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,10 +32,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  getRelatoriosByContratoId,
   downloadArquivoContrato,
-  type Relatorio
-} from "@/lib/api";
+  getRelatoriosByContratoId,
+  type RelatorioDetalhado
+} from "@/services/api";
 
 interface RelatoriosArquivosProps {
   contratoId: number;
@@ -44,10 +43,9 @@ interface RelatoriosArquivosProps {
 }
 
 export function RelatoriosArquivos({ contratoId, className }: RelatoriosArquivosProps) {
-  const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
+  const [relatorios, setRelatorios] = useState<RelatorioDetalhado[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRelatorio, setSelectedRelatorio] = useState<Relatorio | null>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedRelatorio, setSelectedRelatorio] = useState<RelatorioDetalhado | null>(null);
 
   // Carregar relatórios do contrato
   const loadRelatorios = async () => {
@@ -115,7 +113,7 @@ export function RelatoriosArquivos({ contratoId, className }: RelatoriosArquivos
   };
 
   // Função para download de arquivo
-  const handleDownload = async (relatorio: Relatorio) => {
+  const handleDownload = async (relatorio: RelatorioDetalhado) => {
     try {
       if (!relatorio.arquivo_id) {
         toast.error("Arquivo não encontrado para este relatório");

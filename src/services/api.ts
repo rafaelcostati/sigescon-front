@@ -37,8 +37,85 @@ export type Modalidade = { id: number; nome: string; };
 export type Status = { id: number; nome: string; };
 export type Usuario = { id: number; nome: string; perfil: string; };
 
+// Tipos para relatórios
+export type RelatorioDetalhado = {
+    id: number;
+    descricao: string;
+    data_envio: string;
+    titulo?: string;
+    observacoes?: string;
+    observacoes_fiscal?: string;
+    status_relatorio: string;
+    fiscal_nome?: string;
+    data_analise?: string;
+    analisado_por_nome?: string;
+    observacoes_analise?: string;
+    arquivo_id?: number;
+    arquivo_nome?: string;
+    nome_arquivo?: string;
+    contrato_id: number;
+    contrato_numero: string;
+    enviado_por?: string;
+    mes_competencia?: string;
+    created_at?: string;
+    is_mock?: boolean;
+};
 
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1/";
+export type StatusRelatorio = {
+    id: number;
+    nome: string;
+};
+
+// Tipos para pendências
+export type PendenciaFiscalCompleta = {
+    id: number;
+    pendencia_id: number;
+    descricao: string;
+    pendencia_descricao: string;
+    pendencia_titulo: string;
+    data_prazo: string;
+    data_vencimento: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    status_pendencia: string;
+    criado_por_nome?: string;
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+};
+
+// Tipos para dashboard
+export type DashboardContadores = {
+    contratos_ativos: number;
+    contratos_vencidos: number;
+    relatorios_pendentes: number;
+    relatorios_para_analise: number;
+    minhas_pendencias?: number;
+    pendencias_em_atraso?: number;
+    pendencias_pendentes?: number;
+    pendencias_aguardando_analise?: number;
+    pendencias_concluidas?: number;
+};
+
+export type DashboardFiscalPendenciasCompletoResponse = {
+    contadores: DashboardContadores;
+    minhas_pendencias: PendenciaFiscalCompleta[];
+};
+
+export type DashboardAdminCompletoResponse = {
+    contadores: DashboardContadores;
+    contratos_com_relatorios_pendentes: any[];
+    contratos_com_pendencias: any[];
+};
+
+// Tipo para análise de relatório
+export type AnalisarRelatorioPayload = {
+    observacoes_analise?: string;
+    status_id: number;
+};
+
+
+const API_BASE_URL = "http://10.96.0.67/api/v1/";
 
 // Função auxiliar para tratar as respostas
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -124,4 +201,58 @@ export async function getStatus(): Promise<Status[]> {
 export async function getUsuarios(): Promise<Usuario[]> {
     const response = await fetch(`${API_BASE_URL}usuarios`);
     return handleResponse<Usuario[]>(response);
+}
+
+// ============================================================================
+// FUNÇÕES PARA RELATÓRIOS E DASHBOARD
+// ============================================================================
+
+export async function getRelatoriosPendentesAnalise(): Promise<RelatorioDetalhado[]> {
+    const response = await fetch(`${API_BASE_URL}relatorios/pendentes-analise`);
+    return handleResponse<RelatorioDetalhado[]>(response);
+}
+
+export async function getStatusRelatorios(): Promise<StatusRelatorio[]> {
+    const response = await fetch(`${API_BASE_URL}status-relatorios`);
+    return handleResponse<StatusRelatorio[]>(response);
+}
+
+export async function getDashboardFiscalPendenciasCompleto(): Promise<DashboardFiscalPendenciasCompletoResponse> {
+    const response = await fetch(`${API_BASE_URL}dashboard/fiscal/pendencias-completo`);
+    return handleResponse<DashboardFiscalPendenciasCompletoResponse>(response);
+}
+
+export async function getDashboardAdminCompleto(): Promise<DashboardAdminCompletoResponse> {
+    const response = await fetch(`${API_BASE_URL}dashboard/admin/completo`);
+    return handleResponse<DashboardAdminCompletoResponse>(response);
+}
+
+export async function getDashboardFiscalCompleto(): Promise<DashboardFiscalPendenciasCompletoResponse> {
+    const response = await fetch(`${API_BASE_URL}dashboard/fiscal/completo`);
+    return handleResponse<DashboardFiscalPendenciasCompletoResponse>(response);
+}
+
+export async function analisarRelatorio(relatorioId: number, payload: AnalisarRelatorioPayload): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}relatorios/${relatorioId}/analisar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+    return handleResponse<void>(response);
+}
+
+export async function downloadArquivoContrato(contratoId: number, arquivoId: number): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}contratos/${contratoId}/arquivos/${arquivoId}/download`);
+    if (!response.ok) {
+        throw new Error('Erro ao fazer download do arquivo');
+    }
+    return response.blob();
+}
+
+export async function getRelatoriosByContratoId(contratoId: number): Promise<{ data: RelatorioDetalhado[] }> {
+    const response = await fetch(`${API_BASE_URL}contratos/${contratoId}/relatorios`);
+    const data = await handleResponse<RelatorioDetalhado[]>(response);
+    return { data };
 }

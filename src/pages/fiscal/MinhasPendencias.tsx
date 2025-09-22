@@ -11,9 +11,9 @@ import {
   IconEye,
   IconCalendar,
   IconUser,
-  IconCheckCircle,
+  IconCheck,
   IconHourglass,
-  IconXCircle,
+  IconX,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
   getDashboardFiscalPendenciasCompleto,
   type DashboardFiscalPendenciasCompletoResponse,
   type PendenciaFiscalCompleta
-} from "@/lib/api";
+} from "@/services/api";
 
 export function MinhasPendencias() {
   const navigate = useNavigate();
@@ -52,41 +52,6 @@ export function MinhasPendencias() {
     loadPendenciasData();
   }, []);
 
-  // Função para obter cor do status da pendência
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pendente":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "aguardando_analise":
-      case "aguardando análise":
-        return "bg-amber-100 text-amber-800 border-amber-200";
-      case "concluida":
-      case "concluída":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "cancelada":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
-    }
-  };
-
-  // Função para obter ícone do status
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pendente":
-        return <IconAlertTriangle className="w-4 h-4" />;
-      case "aguardando_analise":
-      case "aguardando análise":
-        return <IconHourglass className="w-4 h-4" />;
-      case "concluida":
-      case "concluída":
-        return <IconCheckCircle className="w-4 h-4" />;
-      case "cancelada":
-        return <IconXCircle className="w-4 h-4" />;
-      default:
-        return <IconClock className="w-4 h-4" />;
-    }
-  };
 
   // Filtrar pendências por status
   const getPendenciasByStatus = (status: string) => {
@@ -188,7 +153,7 @@ export function MinhasPendencias() {
         <Card className="border-green-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-700">✅ Concluídas</CardTitle>
-            <IconCheckCircle className="h-4 w-4 text-green-600" />
+            <IconCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-800">{contadores.pendencias_concluidas}</div>
@@ -288,9 +253,9 @@ function PendenciasList({ pendencias }: { pendencias: PendenciaFiscalCompleta[] 
         return <IconHourglass className="w-4 h-4" />;
       case "concluida":
       case "concluída":
-        return <IconCheckCircle className="w-4 h-4" />;
+        return <IconCheck className="w-4 h-4" />;
       case "cancelada":
-        return <IconXCircle className="w-4 h-4" />;
+        return <IconX className="w-4 h-4" />;
       default:
         return <IconClock className="w-4 h-4" />;
     }

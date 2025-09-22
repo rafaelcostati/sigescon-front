@@ -316,7 +316,7 @@ export class PermissionHelper {
    * Verifica se o usuário pode alternar para um perfil específico
    */
   static canSwitchToProfile(
-    currentPerfil: PerfilNome,
+    _currentPerfil: PerfilNome,
     targetPerfil: PerfilNome,
     availableProfiles: PerfilNome[]
   ): boolean {
@@ -354,10 +354,6 @@ export class PermissionHelper {
       '/analisar-relatorios'
     ];
 
-    const gestorRoutes = [
-      '/gestor/',
-      '/contratos/' // Com restrições baseadas em contexto
-    ];
 
     const fiscalRoutes = [
       '/fiscal/',

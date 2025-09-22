@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconUserCheck, IconChevronRight } from "@tabler/icons-react";
@@ -70,7 +69,7 @@ export function ProfileSelectionModal({ open, onProfileSelected }: ProfileSelect
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-2xl" hideClose>
+      <DialogContent className="sm:max-w-2xl" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Seleção de Perfil</DialogTitle>
           <DialogDescription className="text-center">

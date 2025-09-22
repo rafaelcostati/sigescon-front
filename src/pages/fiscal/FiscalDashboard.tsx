@@ -14,12 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getDashboardFiscalCompleto,
-  type DashboardFiscalCompletoResponse
-} from "@/lib/api";
+  type DashboardFiscalPendenciasCompletoResponse
+} from "@/services/api";
 
 export function FiscalDashboard() {
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState<DashboardFiscalCompletoResponse | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardFiscalPendenciasCompletoResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Carregar dados do dashboard

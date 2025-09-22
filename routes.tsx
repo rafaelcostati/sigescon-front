@@ -20,7 +20,6 @@ import { FiscalContratos } from '@/pages/fiscal/FiscalContratos';
 import { GestorDashboard } from '@/pages/gestor/GestorDashboard';
 import EnviarRelatorio from '@/pages/fiscal/EnviarRelatorio';
 import Relatorios from '@/pages/relatorios/Relatorios';
-import GestaoRelatorios from '@/pages/relatorios/GestaoRelatorios';
 import { AnalisarRelatoriosNovo } from '@/pages/admin/AnalisarRelatoriosNovo';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
 import Pendencias from '@/pages/pendencias/Pendencias';

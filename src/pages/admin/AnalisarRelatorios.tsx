@@ -26,7 +26,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -43,7 +42,7 @@ import {
   analisarRelatorio,
   downloadArquivoContrato,
   type AnalisarRelatorioPayload
-} from "@/lib/api";
+} from "@/services/api";
 
 type RelatorioParaAnalise = {
   id: number;
@@ -83,7 +82,7 @@ export function AnalisarRelatorios() {
       const data = await getRelatoriosPendentesAnalise();
 
       // Converter dados da API para o formato esperado
-      const relatoriosFormatados: RelatorioParaAnalise[] = data.relatorios_pendentes.map(rel => ({
+      const relatoriosFormatados: RelatorioParaAnalise[] = data.map((rel: any) => ({
         id: rel.id,
         contrato_id: rel.contrato_id,
         contrato_numero: rel.contrato_numero,
@@ -125,8 +124,8 @@ export function AnalisarRelatorios() {
     setIsProcessing(true);
     try {
       const payload: AnalisarRelatorioPayload = {
-        aprovado,
-        observacoes: observacoesAnalise.trim() || undefined
+        status_id: aprovado ? 2 : 3, // 2 = aprovado, 3 = rejeitado
+        observacoes_analise: observacoesAnalise.trim() || undefined
       };
 
       console.log(`📋 ${aprovado ? 'Aprovando' : 'Rejeitando'} relatório:`, {
@@ -135,7 +134,7 @@ export function AnalisarRelatorios() {
         payload
       });
 
-      await analisarRelatorio(relatorio.contrato_id, relatorio.id, payload);
+      await analisarRelatorio(relatorio.id, payload);
 
       toast.success(`Relatório ${aprovado ? 'aprovado' : 'rejeitado'} com sucesso!`);
 

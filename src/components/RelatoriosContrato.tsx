@@ -21,8 +21,6 @@ import {
     FileText, 
     Download,
     CheckCircle, 
-    XCircle, 
-    Clock,
     AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
@@ -39,12 +37,6 @@ const statusColors = {
     'cancelado': 'bg-gray-100 text-gray-800',
 };
 
-const statusIcons = {
-    'pendente': Clock,
-    'aprovado': CheckCircle,
-    'rejeitado': XCircle,
-    'cancelado': AlertCircle,
-};
 
 interface RelatoriosContratoProps {
     contratoId: number;

@@ -53,13 +53,15 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-    getDashboardAdminCompleto,
     getRelatoriosPendentesAnalise,
     analisarRelatorio,
     downloadArquivoContrato,
-    type DashboardAdminCompletoResponse,
-    type AnalisarRelatorioPayload
-} from "@/lib/api";
+    getDashboardAdminCompleto,
+    getStatusRelatorios,
+    type AnalisarRelatorioPayload,
+    type RelatorioDetalhado,
+    type StatusRelatorio
+} from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const analisarSchema = z.object({
@@ -84,7 +86,7 @@ const statusIcons = {
 };
 
 export default function GestaoRelatorios() {
-    const { perfilAtivo, user } = useAuth();
+    const { perfilAtivo } = useAuth();
     const navigate = useNavigate();
     const isAdmin = perfilAtivo?.nome === "Administrador";
 
@@ -112,18 +114,28 @@ export default function GestaoRelatorios() {
             navigate('/contratos');
             return;
         }
-        loadRelatorios();
+        fetchRelatorios();
         fetchStatusRelatorios();
     }, [isAdmin, navigate]);
 
-    const loadRelatorios = async () => {
+    const fetchRelatorios = async () => {
         setIsLoading(true);
         setError(null);
         try {
             console.log('🔍 Carregando relatórios pendentes (usando nova API)...');
 
             // Usar a nova API que retorna relatórios individuais
-            const response = await getRelatoriosPendentesAnalise();
+            const relatoriosResponse = await getRelatoriosPendentesAnalise();
+            
+            // Buscar dados do dashboard admin
+            const dashboardResponse = await getDashboardAdminCompleto();
+            
+            // Se temos relatórios diretos da API, usar eles
+            if (relatoriosResponse && relatoriosResponse.length > 0) {
+                console.log('✅ Usando relatórios diretos da API:', relatoriosResponse);
+                setRelatorios(relatoriosResponse);
+                return;
+            }
 
             // Usar os contratos com relatórios pendentes da API principal
             // Verificar diferentes possíveis nomes da propriedade
@@ -177,14 +189,14 @@ export default function GestaoRelatorios() {
 
             if (contratosComRelatorios.length > 0) {
                 // Caso normal: temos contratos com dados reais
-                contratosComRelatorios.forEach((contrato, index) => {
+                contratosComRelatorios.forEach((contrato: any, index: number) => {
                     console.log(`🔍 PROCESSANDO CONTRATO ${index + 1}:`, contrato);
 
                     // Verificar se há uma lista de relatórios dentro do contrato
                     if (contrato.relatorios && Array.isArray(contrato.relatorios)) {
                         // Caso 1: Contrato tem lista de relatórios
                         console.log(`📋 Contrato ${contrato.nr_contrato} tem ${contrato.relatorios.length} relatórios`);
-                        contrato.relatorios.forEach(relatorio => {
+                        contrato.relatorios.forEach((relatorio: any) => {
                             relatóriosExpandidos.push({
                                 id: relatorio.id, // ID REAL do relatório
                                 contrato_id: contrato.id,
@@ -326,12 +338,11 @@ export default function GestaoRelatorios() {
 
         try {
             const payload: AnalisarRelatorioPayload = {
-                aprovador_usuario_id: user?.id || 0,
                 status_id: data.status_id,
-                observacoes_aprovador: data.observacoes_aprovador || undefined,
+                observacoes_analise: data.observacoes_aprovador || undefined,
             };
 
-            await analisarRelatorio(selectedRelatorio.contrato_id, selectedRelatorio.id, payload);
+            await analisarRelatorio(selectedRelatorio.id, payload);
 
             toast.success(`Avaliação realizada com sucesso! Status: ${statusSelecionado?.nome}`, {
                 id: toastId,
@@ -514,10 +525,10 @@ export default function GestaoRelatorios() {
                                                     {relatorio.fiscal_nome || relatorio.enviado_por}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {formatDate(relatorio.mes_competencia)}
+                                                    {relatorio.mes_competencia ? formatDate(relatorio.mes_competencia) : 'N/A'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {formatDateTime(relatorio.created_at)}
+                                                    {relatorio.created_at ? formatDate(relatorio.created_at) : 'N/A'}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge 
@@ -581,7 +592,7 @@ export default function GestaoRelatorios() {
                                 <div>
                                     <Label className="text-xs text-muted-foreground">Data de Competência</Label>
                                     <p className="font-medium">
-                                        {formatDate(selectedRelatorio.mes_competencia)}
+                                        {selectedRelatorio.mes_competencia ? formatDate(selectedRelatorio.mes_competencia) : 'N/A'}
                                     </p>
                                 </div>
                                 <div>
@@ -640,7 +651,7 @@ export default function GestaoRelatorios() {
                                             }`}>
                                                 {selectedRelatorio.is_mock || !selectedRelatorio.arquivo_id
                                                     ? 'Dados simulados • Arquivo não disponível para download'
-                                                    : `Enviado em ${formatDateTime(selectedRelatorio.created_at)} • Clique para baixar e analisar`
+                                                    : `Enviado em ${selectedRelatorio.created_at ? formatDateTime(selectedRelatorio.created_at) : 'N/A'} • Clique para baixar e analisar`
                                                 }
                                             </p>
                                         </div>

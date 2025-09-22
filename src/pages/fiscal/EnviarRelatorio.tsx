@@ -24,15 +24,14 @@ import {
     Upload,
     AlertCircle,
     Calendar,
-    User,
     Building
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDashboardFiscalCompleto, type PendenciaFiscalCompleta } from '@/lib/api';
+import { getDashboardFiscalCompleto, type PendenciaFiscalCompleta } from '@/services/api';
 import { RelatorioUploadModal } from '@/components/RelatorioUploadModal';
 
 export default function EnviarRelatorio() {
-    const { perfilAtivo, user } = useAuth();
+    const { perfilAtivo } = useAuth();
     const navigate = useNavigate();
     const isFiscal = perfilAtivo?.nome === 'Fiscal';
 

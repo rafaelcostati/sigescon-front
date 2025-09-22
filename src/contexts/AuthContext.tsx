@@ -253,14 +253,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await apiAlternarPerfil(payload);
       console.log('✅ Resposta da alternância recebida:', response);
       
+      // VALIDAÇÃO: Verificar se o perfil retornado é válido
+      if (!response.perfil_ativo_id || !response.perfil_ativo_nome) {
+        console.error('❌ Resposta inválida da API - perfil ativo ausente:', response);
+        throw new Error('Resposta inválida da API - dados do perfil ausentes');
+      }
+      
+      // Verificar se o usuário realmente tem esse perfil
+      const perfilValido = perfisDisponiveis.find(p => p.id === response.perfil_ativo_id);
+      if (!perfilValido) {
+        console.error('❌ Perfil retornado não está na lista de perfis disponíveis:', {
+          perfil_retornado: response.perfil_ativo_id,
+          perfis_disponiveis: perfisDisponiveis
+        });
+        throw new Error('Perfil inválido retornado pela API');
+      }
+      
       // A resposta é um ContextoSessao completo
       setContextoSessao(response);
       
-      // Cria novo perfil ativo baseado na resposta
+      // Cria novo perfil ativo baseado na resposta VALIDADA
       const novoPerfilAtivo = {
         id: response.perfil_ativo_id,
         nome: response.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"
       };
+      
+      // VALIDAÇÃO ADICIONAL: Verificar se o nome do perfil confere com o ID
+      if (novoPerfilAtivo.nome !== perfilValido.nome) {
+        console.warn('⚠️ Nome do perfil não confere:', {
+          nome_retornado: novoPerfilAtivo.nome,
+          nome_esperado: perfilValido.nome
+        });
+        // Usar o nome correto da lista de perfis disponíveis
+        novoPerfilAtivo.nome = perfilValido.nome;
+      }
       
       setPerfilAtivo(novoPerfilAtivo);
       
