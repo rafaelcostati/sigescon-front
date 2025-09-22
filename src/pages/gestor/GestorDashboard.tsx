@@ -8,29 +8,35 @@ import {
   IconReportAnalytics,
   IconPlus,
   IconRefresh,
+  IconClock,
+  IconCheck,
+  IconX,
+  IconUser,
+  IconCalendar,
 } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  getDashboardContadores,
-  type DashboardContadores
+  getDashboardGestorCompleto,
+  type DashboardGestorCompletoResponse,
+  type PendenciaGestor
 } from "@/lib/api";
 
 export function GestorDashboard() {
   const navigate = useNavigate();
-  const [contadores, setContadores] = useState<DashboardContadores | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardGestorCompletoResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Carregar dados do dashboard
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      console.log("🔍 Carregando contadores do dashboard gestor...");
-      const data = await getDashboardContadores();
-      setContadores(data);
-      console.log("✅ Contadores carregados:", data);
+      console.log("🔍 Carregando dashboard completo do gestor...");
+      const data = await getDashboardGestorCompleto();
+      setDashboardData(data);
+      console.log("✅ Dashboard carregado:", data);
     } catch (error) {
-      console.error("❌ Erro ao carregar contadores:", error);
+      console.error("❌ Erro ao carregar dashboard:", error);
       toast.error("Erro ao carregar dados do dashboard");
     } finally {
       setIsLoading(false);
@@ -56,7 +62,7 @@ export function GestorDashboard() {
     );
   }
 
-  if (!contadores) {
+  if (!dashboardData) {
     return (
       <div className="p-6 space-y-6">
         <div className="text-center py-12">
@@ -104,7 +110,7 @@ export function GestorDashboard() {
             <IconFileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">{contadores.contratos_ativos}</div>
+            <div className="text-2xl font-bold text-blue-800">{dashboardData.contadores.contratos_sob_gestao}</div>
             <p className="text-xs text-blue-600">
               Contratos gerenciados
             </p>
@@ -117,7 +123,7 @@ export function GestorDashboard() {
             <IconReportAnalytics className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-800">{contadores.relatorios_para_analise}</div>
+            <div className="text-2xl font-bold text-orange-800">{dashboardData.contadores.relatorios_equipe_aguardando}</div>
             <p className="text-xs text-orange-600">
               Pendentes de revisão
             </p>
@@ -130,9 +136,9 @@ export function GestorDashboard() {
             <IconAlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-800">{contadores.contratos_com_pendencias}</div>
+            <div className="text-2xl font-bold text-red-800">{dashboardData.contadores.equipe_pendencias_atraso}</div>
             <p className="text-xs text-red-600">
-              Requerem atenção
+              Pendências em atraso
             </p>
           </CardContent>
         </Card>
@@ -197,12 +203,12 @@ export function GestorDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {contadores.relatorios_para_analise > 0 && (
+            {dashboardData.contadores.relatorios_equipe_aguardando > 0 && (
               <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <IconReportAnalytics className="h-5 w-5 text-orange-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-orange-800">
-                    {contadores.relatorios_para_analise} relatórios da equipe pendentes
+                    {dashboardData.contadores.relatorios_equipe_aguardando} relatórios da equipe pendentes
                   </p>
                   <p className="text-xs text-orange-600">
                     Aguardando sua revisão e aprovação
@@ -219,12 +225,12 @@ export function GestorDashboard() {
               </div>
             )}
             
-            {contadores.contratos_ativos > 0 && (
+            {dashboardData.contadores.contratos_sob_gestao > 0 && (
               <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <IconFileText className="h-5 w-5 text-blue-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-800">
-                    {contadores.contratos_ativos} contratos sob sua gestão
+                    {dashboardData.contadores.contratos_sob_gestao} contratos sob sua gestão
                   </p>
                   <p className="text-xs text-blue-600">
                     Acompanhe o andamento e prazos
@@ -241,12 +247,34 @@ export function GestorDashboard() {
               </div>
             )}
             
-            {contadores.contratos_vencendo > 0 && (
+            {dashboardData.contadores.equipe_pendencias_atraso > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <IconAlertTriangle className="h-5 w-5 text-red-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-800">
+                    {dashboardData.contadores.equipe_pendencias_atraso} pendências em atraso
+                  </p>
+                  <p className="text-xs text-red-600">
+                    Requerem ação urgente da equipe
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/pendencias")}
+                  className="border-red-200 text-red-700 hover:bg-red-50"
+                >
+                  Ver Pendências
+                </Button>
+              </div>
+            )}
+
+            {dashboardData.contadores.contratos_proximos_vencimento > 0 && (
               <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <IconAlertTriangle className="h-5 w-5 text-yellow-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-yellow-800">
-                    {contadores.contratos_vencendo} contratos vencendo em breve
+                    {dashboardData.contadores.contratos_proximos_vencimento} contratos vencendo em breve
                   </p>
                   <p className="text-xs text-yellow-600">
                     Requerem renovação ou encerramento
@@ -265,6 +293,129 @@ export function GestorDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Seção de Pendências por Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pendências Vencidas */}
+        <Card className="border-red-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-800">
+              <IconAlertTriangle className="w-5 h-5" />
+              Pendências Vencidas
+              <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                {dashboardData.pendencias.estatisticas.vencidas}
+              </span>
+            </CardTitle>
+            <CardDescription>
+              Pendências em atraso que requerem ação urgente
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!dashboardData.pendencias.pendencias_vencidas || dashboardData.pendencias.pendencias_vencidas.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <IconCheck className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                <p className="text-sm">Nenhuma pendência vencida</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {(dashboardData.pendencias.pendencias_vencidas || []).slice(0, 5).map((pendencia) => (
+                  <div key={pendencia.pendencia_id} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-sm text-red-900">{pendencia.contrato_numero}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        pendencia.urgencia === 'CRÍTICA' ? 'bg-red-600 text-white' :
+                        pendencia.urgencia === 'ALTA' ? 'bg-orange-500 text-white' :
+                        'bg-yellow-500 text-white'
+                      }`}>
+                        {pendencia.urgencia}
+                      </span>
+                    </div>
+                    <p className="text-xs text-red-700 mb-2">{pendencia.pendencia_titulo}</p>
+                    <div className="flex items-center justify-between text-xs text-red-600">
+                      <div className="flex items-center gap-1">
+                        <IconUser className="w-3 h-3" />
+                        {pendencia.fiscal_nome}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <IconClock className="w-3 h-3" />
+                        {Math.abs(pendencia.dias_restantes)} dias em atraso
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(dashboardData.pendencias.pendencias_vencidas || []).length > 5 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate("/pendencias")}
+                    className="w-full border-red-200 text-red-700 hover:bg-red-50"
+                  >
+                    Ver todas ({(dashboardData.pendencias.pendencias_vencidas || []).length})
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pendências Pendentes */}
+        <Card className="border-yellow-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <IconClock className="w-5 h-5" />
+              Pendências Ativas
+              <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                {dashboardData.pendencias.estatisticas.pendentes}
+              </span>
+            </CardTitle>
+            <CardDescription>
+              Pendências aguardando envio de relatório
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!dashboardData.pendencias.pendencias_pendentes || dashboardData.pendencias.pendencias_pendentes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <IconCheck className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                <p className="text-sm">Nenhuma pendência ativa</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {(dashboardData.pendencias.pendencias_pendentes || []).slice(0, 5).map((pendencia) => (
+                  <div key={pendencia.pendencia_id} className="border border-yellow-200 rounded-lg p-3 bg-yellow-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-sm text-yellow-900">{pendencia.contrato_numero}</h4>
+                      <span className="text-xs text-yellow-700 bg-yellow-200 px-2 py-1 rounded-full">
+                        {pendencia.dias_restantes > 0 ? `${pendencia.dias_restantes} dias restantes` : 'Vence hoje'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-yellow-700 mb-2">{pendencia.pendencia_titulo}</p>
+                    <div className="flex items-center justify-between text-xs text-yellow-600">
+                      <div className="flex items-center gap-1">
+                        <IconUser className="w-3 h-3" />
+                        {pendencia.fiscal_nome}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <IconCalendar className="w-3 h-3" />
+                        Prazo: {new Date(pendencia.prazo_entrega).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(dashboardData.pendencias.pendencias_pendentes || []).length > 5 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate("/pendencias")}
+                    className="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                  >
+                    Ver todas ({(dashboardData.pendencias.pendencias_pendentes || []).length})
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

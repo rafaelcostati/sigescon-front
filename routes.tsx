@@ -135,6 +135,11 @@ export const router = createBrowserRouter([
         path: '/configuracoes',
         element: <ProtectedRoute requiredProfiles={['Administrador']}><div>Página de Configurações</div></ProtectedRoute>,
       },
+      // Rota catch-all para debug
+      {
+        path: '*',
+        element: <NotFound />,
+      },
     ],
   },
 ]);

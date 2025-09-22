@@ -101,15 +101,14 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
       console.log("🔍 Carregando relatórios aprovados do contrato:", contratoId);
       const response = await getRelatoriosAprovadosByContratoId(contratoId);
 
-      // Por enquanto, mostrar todos os relatórios (a filtragem será feita no backend futuramente)
-      // TODO: Implementar filtragem por status no backend
+      // Mapear relatórios aprovados para o formato esperado
       const relatoriosFormatados = response.data.map((relatorio: any) => ({
-        id: relatorio.id,
-        nome: `Relatório_${relatorio.id}.pdf`,
-        tipo: 'pdf',
+        id: relatorio.arquivo_id || relatorio.id, // Usar arquivo_id para download
+        nome: relatorio.nome_arquivo || `Relatório_${relatorio.id}.pdf`,
+        tipo: getFileExtension(relatorio.nome_arquivo || 'pdf'),
         tamanho: 0, // Tamanho não disponível na resposta atual
-        data_upload: relatorio.data_envio,
-        uploadado_por_nome: 'Fiscal',
+        data_upload: relatorio.created_at,
+        uploadado_por_nome: relatorio.enviado_por || 'Fiscal',
         categoria: 'relatorio' as const
       }));
 
@@ -191,7 +190,13 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
   // Função para download de arquivo
   const handleDownload = async (arquivo: ArquivoContrato) => {
     try {
-      console.log("📥 Fazendo download do arquivo:", arquivo.nome);
+      console.log("📥 Fazendo download do arquivo:", {
+        nome: arquivo.nome,
+        id: arquivo.id,
+        categoria: arquivo.categoria,
+        contratoId
+      });
+      
       toast.loading("Preparando download...", { id: `download-${arquivo.id}` });
 
       const blob = await downloadArquivoContrato(contratoId, arquivo.id);

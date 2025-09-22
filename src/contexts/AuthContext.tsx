@@ -210,6 +210,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setPerfisDisponiveis(userData.perfis_disponiveis);
         
         console.log('✅ Estados do AuthContext atualizados com sucesso');
+        console.log('🔍 Perfil ativo definido:', userData.perfil_ativo);
+        console.log('🔍 Perfis disponíveis:', userData.perfis_disponiveis);
       } else {
         console.error('❌ Resposta de login não contém contexto_sessao');
         throw new Error("Formato de resposta de login inválido - contexto_sessao ausente");

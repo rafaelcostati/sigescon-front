@@ -517,20 +517,29 @@ export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: R
 // Função para buscar apenas relatórios aprovados de um contrato
 export async function getRelatoriosAprovadosByContratoId(contratoId: number): Promise<{ data: any[] }> {
   try {
-    // Por enquanto, usar o endpoint existente e filtrar no frontend
-    // TODO: Implementar endpoint específico no backend para relatórios aprovados
-    const response = await api<{ data: any[] }>(`/contratos/${contratoId}/relatorios/`);
+    console.log("🔍 Buscando relatórios aprovados para contrato:", contratoId);
     
-    // Filtrar apenas relatórios com status aprovado/concluído
-    const relatoriosAprovados = response.data.filter(() => {
-      // Assumindo que existe um campo de status ou similar
-      // Esta lógica será ajustada quando o backend fornecer os dados corretos
-      return true; // Por enquanto, retornar todos
+    // Usar o endpoint existente que já retorna todos os relatórios com status
+    const response = await api<any[]>(`/contratos/${contratoId}/relatorios/`);
+    
+    console.log("📄 Relatórios retornados do backend:", response);
+    
+    // Filtrar apenas relatórios com status "Aprovado"
+    const relatoriosAprovados = response.filter((relatorio: any) => {
+      console.log("🔍 Verificando relatório:", {
+        id: relatorio.id,
+        status_relatorio: relatorio.status_relatorio,
+        nome_arquivo: relatorio.nome_arquivo
+      });
+      
+      return relatorio.status_relatorio === 'Aprovado';
     });
+    
+    console.log("✅ Relatórios aprovados filtrados:", relatoriosAprovados);
     
     return { data: relatoriosAprovados };
   } catch (error) {
-    console.error("Erro ao buscar relatórios aprovados:", error);
+    console.error("❌ Erro ao buscar relatórios aprovados:", error);
     return { data: [] };
   }
 }
@@ -1419,6 +1428,140 @@ export async function getDashboardFiscalCompleto(): Promise<DashboardFiscalCompl
         return response;
     } catch (error) {
         console.error("❌ Erro ao buscar dashboard completo do fiscal:", error);
+        throw error;
+    }
+}
+
+/**
+ * Dashboard do Gestor - Endpoints
+ */
+
+// Tipos para o dashboard do gestor
+export type PendenciaGestor = {
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    pendencia_id: number;
+    pendencia_titulo: string;
+    pendencia_descricao: string;
+    data_criacao: string;
+    prazo_entrega: string;
+    dias_restantes: number;
+    em_atraso: boolean;
+    fiscal_nome: string;
+    gestor_nome: string;
+    urgencia: "CRÍTICA" | "ALTA" | "MÉDIA";
+};
+
+export type DashboardGestorPendenciasResponse = {
+    pendencias_vencidas: PendenciaGestor[];
+    pendencias_pendentes: PendenciaGestor[];
+    pendencias_concluidas: PendenciaGestor[];
+    pendencias_canceladas: PendenciaGestor[];
+    total_pendencias: number;
+    estatisticas: {
+        vencidas: number;
+        pendentes: number;
+        concluidas: number;
+        canceladas: number;
+    };
+};
+
+export type ContadoresGestor = {
+    contratos_sob_gestao: number;
+    equipe_pendencias_atraso: number;
+    relatorios_equipe_aguardando: number;
+    contratos_proximos_vencimento: number;
+};
+
+export type DashboardGestorCompletoResponse = {
+    contadores: ContadoresGestor;
+    pendencias: DashboardGestorPendenciasResponse;
+};
+
+// Buscar pendências dos contratos sob gestão do gestor
+export async function getDashboardGestorPendencias(): Promise<DashboardGestorPendenciasResponse> {
+    console.log("🔍 Buscando pendências do gestor...");
+    
+    try {
+        const response = await api<DashboardGestorPendenciasResponse>('/dashboard/gestor/pendencias');
+        
+        console.log("✅ Pendências do gestor carregadas:", {
+            total_pendencias: response.total_pendencias,
+            vencidas: response.estatisticas.vencidas,
+            pendentes: response.estatisticas.pendentes
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências do gestor:", error);
+        throw error;
+    }
+}
+
+// Buscar dashboard completo do gestor
+export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompletoResponse> {
+    console.log("🔍 Buscando dashboard completo do gestor...");
+    
+    try {
+        // Buscar contadores e pendências em paralelo
+        const [contadoresResponse, pendenciasResponse] = await Promise.allSettled([
+            api<any>('/dashboard/gestor/completo'),
+            api<DashboardGestorPendenciasResponse>('/dashboard/gestor/pendencias')
+        ]);
+        
+        console.log("📄 Resposta contadores:", contadoresResponse);
+        console.log("📄 Resposta pendências:", pendenciasResponse);
+        
+        // Processar contadores
+        let contadores = {
+            contratos_sob_gestao: 0,
+            equipe_pendencias_atraso: 0,
+            relatorios_equipe_aguardando: 0,
+            contratos_proximos_vencimento: 0
+        };
+        
+        if (contadoresResponse.status === 'fulfilled') {
+            const response = contadoresResponse.value;
+            contadores = {
+                contratos_sob_gestao: response.contadores?.contratos_ativos || 0,
+                equipe_pendencias_atraso: response.contadores?.contratos_com_pendencias || 0,
+                relatorios_equipe_aguardando: response.contadores?.relatorios_para_analise || 0,
+                contratos_proximos_vencimento: response.contadores?.contratos_vencendo || 0
+            };
+        }
+        
+        // Processar pendências
+        let pendencias: DashboardGestorPendenciasResponse = {
+            pendencias_vencidas: [],
+            pendencias_pendentes: [],
+            pendencias_concluidas: [],
+            pendencias_canceladas: [],
+            total_pendencias: 0,
+            estatisticas: {
+                vencidas: 0,
+                pendentes: 0,
+                concluidas: 0,
+                canceladas: 0
+            }
+        };
+        
+        if (pendenciasResponse.status === 'fulfilled') {
+            pendencias = pendenciasResponse.value;
+        } else {
+            console.warn("⚠️ Não foi possível carregar pendências do gestor:", pendenciasResponse.reason);
+        }
+        
+        const adaptedResponse: DashboardGestorCompletoResponse = {
+            contadores,
+            pendencias
+        };
+        
+        console.log("✅ Dashboard completo montado:", adaptedResponse);
+        
+        return adaptedResponse;
+    } catch (error) {
+        console.error("❌ Erro ao buscar dashboard completo do gestor:", error);
         throw error;
     }
 }
