@@ -517,7 +517,7 @@ export function getRelatoriosByContratoId(contratoId: number): Promise<{ data: R
 // Tipos para envio de relatórios
 export type SubmitRelatorioPayload = {
     observacoes_fiscal: string;
-    mes_competencia: string; // formato: "YYYY-MM"
+    mes_competencia: string; // formato: "YYYY-MM-DD"
     pendencia_id: number;
     arquivo: File;
 };

@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -86,10 +85,19 @@ export function RelatorioUploadModal({
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     if (file) {
-      const fakeEvent = {
-        target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(fakeEvent);
+      // Simular evento de seleção de arquivo
+      if (file.size > maxFileSize) {
+        toast.error("Arquivo muito grande. Tamanho máximo: 10MB");
+        return;
+      }
+
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!acceptedFileTypes.includes(fileExtension)) {
+        toast.error("Tipo de arquivo não suportado. Use: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG, JPEG");
+        return;
+      }
+
+      setSelectedFile(file);
     }
   };
 
@@ -118,6 +126,11 @@ export function RelatorioUploadModal({
       return;
     }
 
+    if (!pendenciaId) {
+      toast.error("Erro: ID da pendência não encontrado");
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -133,18 +146,24 @@ export function RelatorioUploadModal({
         });
       }, 200);
 
+      // Gerar mês de competência atual (formato YYYY-MM-DD)
+      const now = new Date();
+      const mesCompetencia = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
       const payload: SubmitRelatorioPayload = {
         arquivo: selectedFile,
-        observacoes: observacoes.trim() || undefined,
-        pendencia_id: pendenciaId
+        observacoes_fiscal: observacoes.trim() || "",
+        mes_competencia: mesCompetencia,
+        pendencia_id: pendenciaId!
       };
 
       console.log("📤 Enviando relatório:", {
         contratoId,
         filename: selectedFile.name,
         size: selectedFile.size,
-        observacoes,
-        pendenciaId
+        observacoes_fiscal: payload.observacoes_fiscal,
+        mes_competencia: payload.mes_competencia,
+        pendencia_id: payload.pendencia_id
       });
 
       const response = await submitRelatorio(contratoId, payload);

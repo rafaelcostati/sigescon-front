@@ -59,9 +59,9 @@ export default function EnviarRelatorio() {
             console.log('🔍 Carregando pendências do fiscal...');
 
             const dashboardResponse = await getDashboardFiscalCompleto();
-            setPendencias(dashboardResponse.pendencias_ativas || []);
+            setPendencias(dashboardResponse.minhas_pendencias || []);
 
-            console.log(`✅ ${dashboardResponse.pendencias_ativas?.length || 0} pendências carregadas`);
+            console.log(`✅ ${dashboardResponse.minhas_pendencias?.length || 0} pendências carregadas`);
 
         } catch (error) {
             console.error('❌ Erro ao carregar pendências:', error);
@@ -188,7 +188,7 @@ export default function EnviarRelatorio() {
                                             <TableCell>
                                                 <div className="flex items-center gap-1 text-sm">
                                                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                    {formatDate(pendencia.prazo_final)}
+                                                    {formatDate(pendencia.prazo_entrega)}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -221,15 +221,16 @@ export default function EnviarRelatorio() {
             {/* Modal de Upload */}
             {selectedPendencia && (
                 <RelatorioUploadModal
-                    isOpen={isUploadModalOpen}
-                    onClose={() => {
-                        setIsUploadModalOpen(false);
-                        setSelectedPendencia(null);
+                    open={isUploadModalOpen}
+                    onOpenChange={(open) => {
+                        setIsUploadModalOpen(open);
+                        if (!open) {
+                            setSelectedPendencia(null);
+                        }
                     }}
                     onSuccess={handleUploadSuccess}
                     contratoId={selectedPendencia.contrato_id}
                     pendenciaId={selectedPendencia.pendencia_id}
-                    contratoNumero={selectedPendencia.contrato_numero}
                     pendenciaTitulo={selectedPendencia.pendencia_titulo}
                 />
             )}
