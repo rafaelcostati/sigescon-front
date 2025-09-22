@@ -495,7 +495,7 @@ export const relatorioSchema = z.object({ id: z.number(), descricao: z.string(),
 export type Relatorio = z.infer<typeof relatorioSchema>;
 export const pendenciaSchema = z.object({ id: z.number(), contrato_id: z.number(), descricao: z.string(), data_prazo: z.string(), status_pendencia_id: z.number(), criado_por_usuario_id: z.number(), status_nome: z.string().optional(), criado_por_nome: z.string().optional() });
 
-export type Contrato = { id: number; nr_contrato: string; objeto: string; valor_anual: number | null; valor_global: number | null; data_inicio: string; data_fim: string; contratado_id: number; modalidade_id: number; status_id: number; gestor_id: number; fiscal_id: number; fiscal_substituto_id: number | null; pae: string | null; doe: string | null; data_doe: string | null; modalidade_nome?: string; contratado_nome?: string; status_nome?: string; };
+export type Contrato = { id: number; nr_contrato: string; objeto: string; valor_anual: number | null; valor_global: number | null; data_inicio: string; data_fim: string; contratado_id: number; modalidade_id: number; status_id: number; gestor_id: number; fiscal_id: number; fiscal_substituto_id: number | null; pae: string | null; doe: string | null; data_doe: string | null; modalidade_nome?: string; contratado_nome?: string; status_nome?: string; gestor_nome?: string; fiscal_nome?: string; fiscal_substituto_nome?: string; };
 export type ContratoDetalhado = Contrato & { arquivos?: Arquivo[]; relatorios?: Relatorio[]; pendencias?: Pendencia[]; contratado?: { nome: string; cnpj: string; cpf: string; }; };
 export type ContratosApiResponse = { data: Contrato[]; total_items: number; total_pages: number; current_page: number; per_page: number; };
 
@@ -1471,16 +1471,48 @@ export async function getDashboardAdminPendenciasVencidasCompleto(): Promise<Das
  */
 export async function cancelarPendencia(pendenciaId: number): Promise<{ message: string }> {
     console.log("🚫 Cancelando pendência:", pendenciaId);
-    
+
     try {
         const response = await api<{ message: string }>(`/dashboard/admin/cancelar-pendencia/${pendenciaId}`, {
             method: 'PATCH'
         });
-        
+
         console.log("✅ Pendência cancelada:", response);
         return response;
     } catch (error) {
         console.error("❌ Erro ao cancelar pendência:", error);
+        throw error;
+    }
+}
+
+/**
+ * Busca dashboard fiscal melhorado com as métricas específicas
+ * GET /api/v1/dashboard/fiscal/melhorado
+ */
+export async function getDashboardFiscalMelhorado(): Promise<{
+    minhas_pendencias: number;
+    pendencias_em_atraso: number;
+    relatorios_enviados: number;
+    contratos_ativos: number;
+    pendencias_proximas_vencimento: number;
+    relatorios_rejeitados: number;
+}> {
+    console.log("🔍 Buscando dashboard fiscal melhorado...");
+
+    try {
+        const response = await api<{
+            minhas_pendencias: number;
+            pendencias_em_atraso: number;
+            relatorios_enviados: number;
+            contratos_ativos: number;
+            pendencias_proximas_vencimento: number;
+            relatorios_rejeitados: number;
+        }>('/dashboard/fiscal/melhorado');
+
+        console.log("✅ Dashboard fiscal melhorado carregado:", response);
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar dashboard fiscal melhorado:", error);
         throw error;
     }
 }

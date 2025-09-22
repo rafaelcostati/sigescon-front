@@ -571,14 +571,18 @@ function CriarPendenciaDialog({
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>{children}</DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+                className="sm:max-w-md"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
                 <DialogHeader>
                     <DialogTitle>Criar Nova Pendência</DialogTitle>
                     <DialogDescription>
                         Para o contrato: <strong>{contratoNumero}</strong>
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" onClick={(e) => e.stopPropagation()}>
                     <div className="space-y-2">
                         <Label htmlFor="descricao">Descrição da Pendência</Label>
                         <Textarea
@@ -586,6 +590,8 @@ function CriarPendenciaDialog({
                             placeholder="Ex: Relatório do 1º trimestre"
                             value={descricao}
                             onChange={(e) => setDescricao(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
                             required
                         />
                     </div>
@@ -597,16 +603,27 @@ function CriarPendenciaDialog({
                             className="mt-1 w-full"
                             value={dataPrazo}
                             onChange={(e) => setDataPrazo(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
                             required
                         />
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
-                            <Button type="button" variant="outline" disabled={isSubmitting}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isSubmitting}
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 Cancelar
                             </Button>
                         </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             {isSubmitting ? "Salvando..." : "Salvar Pendência"}
                         </Button>
                     </DialogFooter>
@@ -621,6 +638,9 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const navigate = useNavigate();
+    const { perfilAtivo } = useAuth();
+
+    const isAdmin = perfilAtivo?.nome === "Administrador";
 
     const fetchPendencias = React.useCallback(async () => {
         setIsLoading(true);
@@ -656,16 +676,18 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-foreground">Pendências do Contrato</h4>
-                <CriarPendenciaDialog
-                    contratoId={contratoId}
-                    contratoNumero={contratoNumero}
-                    onPendenciaCriada={fetchPendencias}
-                >
-                    <Button size="sm" className="gap-2">
-                        <IconPlus className="h-4 w-4" />
-                        Nova Pendência
-                    </Button>
-                </CriarPendenciaDialog>
+                {isAdmin && (
+                    <CriarPendenciaDialog
+                        contratoId={contratoId}
+                        contratoNumero={contratoNumero}
+                        onPendenciaCriada={fetchPendencias}
+                    >
+                        <Button size="sm" className="gap-2" onClick={(e) => e.stopPropagation()}>
+                            <IconPlus className="h-4 w-4" />
+                            Nova Pendência
+                        </Button>
+                    </CriarPendenciaDialog>
+                )}
             </div>
 
             {isLoading ? (
@@ -698,12 +720,13 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
                                     </p>
                                     <Badge variant="secondary" className="mt-1">{pendencia.status_nome}</Badge>
                                 </div>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
-                                            <IconX className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
+                                {isAdmin && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+                                                <IconX className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Confirmar exclusão?</AlertDialogTitle>
@@ -716,6 +739,7 @@ function PendenciasContrato({ contratoId, contratoNumero }: { contratoId: number
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
+                                )}
                             </div>
                         </Card>
                     ))}
@@ -737,6 +761,7 @@ function DraggableContratoCard({
     isFiscal: boolean;
 }) {
     const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
+    const [relatorios, setRelatorios] = React.useState<any[]>([]);
 
     // Carregar pendências quando for fiscal
     React.useEffect(() => {
@@ -752,6 +777,28 @@ function DraggableContratoCard({
             fetchPendencias();
         }
     }, [isFiscal, contrato.id]);
+
+    // Carregar relatórios para verificar se há relatório pendente/concluído
+    React.useEffect(() => {
+        if (isFiscal) {
+            const fetchRelatorios = async () => {
+                try {
+                    const { getRelatoriosByContratoId } = await import('@/lib/api');
+                    const response = await getRelatoriosByContratoId(contrato.id);
+                    setRelatorios(response.data || []);
+                } catch (error) {
+                    console.error('Erro ao carregar relatórios:', error);
+                }
+            };
+            fetchRelatorios();
+        }
+    }, [isFiscal, contrato.id]);
+
+    // Verificar se há relatório pendente de análise ou aprovado
+    const temRelatorioResolvido = relatorios.some(rel =>
+        rel.status_relatorio === 'Aguardando Análise' ||
+        rel.status_relatorio === 'Aprovado'
+    );
 
     const { transform, transition, setNodeRef, isDragging } = useSortable({
         id: contrato.id as UniqueIdentifier,
@@ -812,7 +859,8 @@ function DraggableContratoCard({
             ref={setNodeRef}
             style={{ transform: CSS.Transform.toString(transform), transition }}
             data-dragging={isDragging}
-            className="group relative z-0 overflow-hidden bg-white border border-gray-200/60 shadow-lg hover:shadow-2xl hover:border-gray-300/80 transition-all duration-500 ease-out data-[dragging=true]:z-10 data-[dragging=true]:shadow-2xl data-[dragging=true]:scale-105 data-[dragging=true]:rotate-2"
+            className="group relative z-0 overflow-hidden bg-white border border-gray-200/60 shadow-lg hover:shadow-2xl hover:border-gray-300/80 transition-all duration-500 ease-out data-[dragging=true]:z-10 data-[dragging=true]:shadow-2xl data-[dragging=true]:scale-105 data-[dragging=true]:rotate-2 cursor-pointer"
+            onClick={() => navigate(`/contratos/${contrato.id}`)}
         >
             {/* Header com gradiente */}
             <div className={`h-1 bg-gradient-to-r ${getStatusColor(contrato.status_nome)} relative overflow-hidden`}>
@@ -827,7 +875,7 @@ function DraggableContratoCard({
                                 {getStatusIcon(contrato.status_nome)}
                                 <span className="ml-0.5">{contrato.status_nome || "Pendente"}</span>
                             </Badge>
-                            {pendencias.length > 0 && (
+                            {pendencias.length > 0 && !temRelatorioResolvido && (
                                 <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 text-xs px-1 py-0.5">
                                     <IconExclamationCircle className="w-3 h-3 mr-0.5" />
                                     {pendencias.length}
@@ -848,6 +896,7 @@ function DraggableContratoCard({
                                 <Button
                                     variant="ghost"
                                     className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     <IconDotsVertical className="h-3 w-3" />
                                 </Button>
@@ -869,7 +918,7 @@ function DraggableContratoCard({
                                         <span>Editar</span>
                                     </DropdownMenuItem>
                                 )}
-                                {canManageContratos && (
+                                {canManageContratos && !isFiscal && (
                                     <CriarPendenciaDialog
                                         contratoId={contrato.id}
                                         contratoNumero={contrato.nr_contrato}
@@ -877,6 +926,7 @@ function DraggableContratoCard({
                                     >
                                         <DropdownMenuItem
                                             onSelect={(e) => e.preventDefault()}
+                                            onClick={(e) => e.stopPropagation()}
                                             className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-orange-50 text-xs"
                                         >
                                             <IconPlus className="h-3 w-3 text-orange-600" />

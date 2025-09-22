@@ -93,11 +93,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           icon: IconFileText,
           isReadOnly: true, // Apenas visualização
         },
-        {
-          title: "Enviar Relatório",
-          url: "/enviar-relatorio",
-          icon: IconClipboardList,
-        },
       ];
 
     default:

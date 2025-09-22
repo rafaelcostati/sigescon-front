@@ -246,17 +246,26 @@ export default function DetalhesContrato() {
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-500" />
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Gestor ID:</span>
-                    <p className="font-medium">{contrato.gestor_id || "Não informado"}</p>
+                    <span className="text-sm font-medium text-gray-600">Gestor:</span>
+                    <p className="font-medium">{contrato.gestor_nome || "Não informado"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-500" />
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Fiscal ID:</span>
-                    <p className="font-medium">{contrato.fiscal_id || "Não informado"}</p>
+                    <span className="text-sm font-medium text-gray-600">Fiscal:</span>
+                    <p className="font-medium">{contrato.fiscal_nome || "Não informado"}</p>
                   </div>
                 </div>
+                {contrato.fiscal_substituto_nome && (
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Fiscal Substituto:</span>
+                      <p className="font-medium">{contrato.fiscal_substituto_nome}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

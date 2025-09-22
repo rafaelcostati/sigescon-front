@@ -332,17 +332,6 @@ export function FiscalContratos() {
                           Ver Contrato
                         </Button>
 
-                        <Button
-                          onClick={() => {
-                            setSelectedPendencia(pendencia);
-                            setRelatorioModalOpen(true);
-                          }}
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <IconUpload className="w-4 h-4 mr-1" />
-                          Enviar Relatório
-                        </Button>
                       </div>
                     </div>
                   </CardContent>

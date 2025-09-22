@@ -104,9 +104,9 @@ export function FiscalDashboard() {
                 <span className="text-sm text-gray-600">Pendências Ativas:</span>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold text-blue-800">{contadores.minhas_pendencias || 0}</span>
-                  <Button 
-                    size="sm" 
-                    onClick={() => navigate("/fiscal/contratos")}
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/enviar-relatorio")}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <IconUpload className="w-4 h-4 mr-1" />
