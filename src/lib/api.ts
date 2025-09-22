@@ -1523,12 +1523,22 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
         
         if (contadoresResponse.status === 'fulfilled') {
             const response = contadoresResponse.value;
+            console.log("🔍 Dados dos contadores recebidos:", response.contadores);
+            
+            // Tentar diferentes campos baseado nos logs
+            const contadoresData = response.contadores || response;
             contadores = {
-                contratos_sob_gestao: response.contadores?.contratos_ativos || 0,
-                equipe_pendencias_atraso: response.contadores?.contratos_com_pendencias || 0,
-                relatorios_equipe_aguardando: response.contadores?.relatorios_para_analise || 0,
-                contratos_proximos_vencimento: response.contadores?.contratos_vencendo || 0
+                contratos_sob_gestao: contadoresData?.contratos_ativos || 
+                                     contadoresData?.total_contratacoes || 
+                                     contadoresData?.contratos_sob_gestao || 0,
+                equipe_pendencias_atraso: contadoresData?.contratos_com_pendencias || 
+                                         contadoresData?.pendencias_vencidas || 0,
+                relatorios_equipe_aguardando: contadoresData?.relatorios_para_analise || 0,
+                contratos_proximos_vencimento: contadoresData?.contratos_vencendo || 
+                                              contadoresData?.contratos_proximos_vencimento || 0
             };
+            
+            console.log("✅ Contadores mapeados:", contadores);
         }
         
         // Processar pendências
@@ -1547,7 +1557,27 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
         };
         
         if (pendenciasResponse.status === 'fulfilled') {
-            pendencias = pendenciasResponse.value;
+            const pendenciasData = pendenciasResponse.value as any;
+            console.log("🔍 Dados das pendências recebidos:", pendenciasData);
+            
+            pendencias = {
+                pendencias_vencidas: pendenciasData.pendencias?.vencidas || [],
+                pendencias_pendentes: pendenciasData.pendencias?.pendentes || [],
+                pendencias_concluidas: pendenciasData.pendencias?.concluidas || [],
+                pendencias_canceladas: pendenciasData.pendencias?.canceladas || [],
+                total_pendencias: (pendenciasData.pendencias?.vencidas?.length || 0) + 
+                                 (pendenciasData.pendencias?.pendentes?.length || 0) + 
+                                 (pendenciasData.pendencias?.concluidas?.length || 0) + 
+                                 (pendenciasData.pendencias?.canceladas?.length || 0),
+                estatisticas: {
+                    vencidas: pendenciasData.pendencias?.vencidas?.length || 0,
+                    pendentes: pendenciasData.pendencias?.pendentes?.length || 0,
+                    concluidas: pendenciasData.pendencias?.concluidas?.length || 0,
+                    canceladas: pendenciasData.pendencias?.canceladas?.length || 0
+                }
+            };
+            
+            console.log("✅ Pendências processadas:", pendencias);
         } else {
             console.warn("⚠️ Não foi possível carregar pendências do gestor:", pendenciasResponse.reason);
         }

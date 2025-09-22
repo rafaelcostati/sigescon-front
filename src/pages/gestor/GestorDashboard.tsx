@@ -3,14 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   IconFileText,
-  IconBuilding,
   IconAlertTriangle,
   IconReportAnalytics,
   IconPlus,
   IconRefresh,
   IconClock,
   IconCheck,
-  IconX,
   IconUser,
   IconCalendar,
 } from "@tabler/icons-react";
@@ -18,8 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   getDashboardGestorCompleto,
-  type DashboardGestorCompletoResponse,
-  type PendenciaGestor
+  type DashboardGestorCompletoResponse
 } from "@/lib/api";
 
 export function GestorDashboard() {
@@ -92,13 +89,6 @@ export function GestorDashboard() {
             <IconRefresh className="mr-2 h-4 w-4" />
             Atualizar
           </Button>
-          <Button 
-            onClick={() => navigate("/novocontrato")}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <IconPlus className="mr-2 h-4 w-4" />
-            Novo Contrato
-          </Button>
         </div>
       </div>
 
@@ -144,155 +134,7 @@ export function GestorDashboard() {
         </Card>
       </div>
 
-      {/* Ações Rápidas */}
-      <Card className="border-blue-200 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-blue-800">Ações Rápidas</CardTitle>
-          <CardDescription>
-            Acesso rápido às principais funcionalidades de gestão
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Button
-              variant="outline"
-              className="h-20 flex flex-col gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-              onClick={() => navigate("/contratos")}
-            >
-              <IconFileText className="h-6 w-6" />
-              <span>Contratos</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-20 flex flex-col gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-              onClick={() => navigate("/contratado")}
-            >
-              <IconBuilding className="h-6 w-6" />
-              <span>Contratados</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-20 flex flex-col gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-              onClick={() => navigate("/pendencias")}
-            >
-              <IconAlertTriangle className="h-6 w-6" />
-              <span>Pendências</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-20 flex flex-col gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-              onClick={() => navigate("/relatorios")}
-            >
-              <IconReportAnalytics className="h-6 w-6" />
-              <span>Relatórios</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Alertas Baseados nos Dados Reais */}
-      <Card className="border-blue-200 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-blue-800">Alertas e Notificações</CardTitle>
-          <CardDescription>
-            Itens que requerem sua atenção baseados nos dados atuais
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {dashboardData.contadores.relatorios_equipe_aguardando > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <IconReportAnalytics className="h-5 w-5 text-orange-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-orange-800">
-                    {dashboardData.contadores.relatorios_equipe_aguardando} relatórios da equipe pendentes
-                  </p>
-                  <p className="text-xs text-orange-600">
-                    Aguardando sua revisão e aprovação
-                  </p>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => navigate("/relatorios")}
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                >
-                  Revisar
-                </Button>
-              </div>
-            )}
-            
-            {dashboardData.contadores.contratos_sob_gestao > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <IconFileText className="h-5 w-5 text-blue-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-800">
-                    {dashboardData.contadores.contratos_sob_gestao} contratos sob sua gestão
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Acompanhe o andamento e prazos
-                  </p>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => navigate("/contratos")}
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                >
-                  Ver Contratos
-                </Button>
-              </div>
-            )}
-            
-            {dashboardData.contadores.equipe_pendencias_atraso > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <IconAlertTriangle className="h-5 w-5 text-red-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-red-800">
-                    {dashboardData.contadores.equipe_pendencias_atraso} pendências em atraso
-                  </p>
-                  <p className="text-xs text-red-600">
-                    Requerem ação urgente da equipe
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate("/pendencias")}
-                  className="border-red-200 text-red-700 hover:bg-red-50"
-                >
-                  Ver Pendências
-                </Button>
-              </div>
-            )}
-
-            {dashboardData.contadores.contratos_proximos_vencimento > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <IconAlertTriangle className="h-5 w-5 text-yellow-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-yellow-800">
-                    {dashboardData.contadores.contratos_proximos_vencimento} contratos vencendo em breve
-                  </p>
-                  <p className="text-xs text-yellow-600">
-                    Requerem renovação ou encerramento
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate("/contratos")}
-                  className="border-yellow-200 text-yellow-700 hover:bg-yellow-50"
-                >
-                  Ver Contratos
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Seção de Pendências por Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -338,7 +180,10 @@ export function GestorDashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <IconClock className="w-3 h-3" />
-                        {Math.abs(pendencia.dias_restantes)} dias em atraso
+                        {pendencia.dias_restantes && !isNaN(pendencia.dias_restantes) 
+                          ? `${Math.abs(pendencia.dias_restantes)} dias em atraso`
+                          : 'Em atraso'
+                        }
                       </div>
                     </div>
                   </div>
@@ -396,7 +241,10 @@ export function GestorDashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <IconCalendar className="w-3 h-3" />
-                        Prazo: {new Date(pendencia.prazo_entrega).toLocaleDateString('pt-BR')}
+                        Prazo: {pendencia.prazo_entrega && pendencia.prazo_entrega !== 'Invalid Date'
+                          ? new Date(pendencia.prazo_entrega).toLocaleDateString('pt-BR')
+                          : 'Data inválida'
+                        }
                       </div>
                     </div>
                   </div>
