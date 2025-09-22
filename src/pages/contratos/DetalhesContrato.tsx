@@ -166,152 +166,192 @@ export default function DetalhesContrato() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Informações Principais */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações Gerais</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Contratado:</span>
-                    <p className="font-medium">{contrato.contratado_nome || "Não informado"}</p>
-                  </div>
+      {/* Informações Principais */}
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações Gerais</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Contratado:</span>
+                  <p className="font-medium">{contrato.contratado_nome || "Não informado"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Modalidade:</span>
-                    <p className="font-medium">{contrato.modalidade_nome || "Não informado"}</p>
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Modalidade:</span>
+                  <p className="font-medium">{contrato.modalidade_nome || "Não informado"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Data de Início:</span>
-                    <p className="font-medium">{formatDate(contrato.data_inicio)}</p>
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Data de Início:</span>
+                  <p className="font-medium">{formatDate(contrato.data_inicio)}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Data de Fim:</span>
-                    <p className="font-medium">{formatDate(contrato.data_fim)}</p>
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Data de Fim:</span>
+                  <p className="font-medium">{formatDate(contrato.data_fim)}</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Gestor:</span>
+                  <p className="font-medium">{contrato.gestor_nome || "Não informado"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Fiscal:</span>
+                  <p className="font-medium">{contrato.fiscal_nome || "Não informado"}</p>
+                </div>
+              </div>
+              {contrato.fiscal_substituto_nome && (
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-500" />
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Gestor:</span>
-                    <p className="font-medium">{contrato.gestor_nome || "Não informado"}</p>
+                    <span className="text-sm font-medium text-gray-600">Fiscal Substituto:</span>
+                    <p className="font-medium">{contrato.fiscal_substituto_nome}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Fiscal:</span>
-                    <p className="font-medium">{contrato.fiscal_nome || "Não informado"}</p>
-                  </div>
-                </div>
-                {contrato.fiscal_substituto_nome && (
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-500" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-600">Fiscal Substituto:</span>
-                      <p className="font-medium">{contrato.fiscal_substituto_nome}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Valores</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Valor Anual:</span>
-                    <p className="font-medium text-green-600">{formatCurrency(contrato.valor_anual)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Valor Global:</span>
-                    <p className="font-medium text-green-600">{formatCurrency(contrato.valor_global)}</p>
-                  </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações Legais e Documentais</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-start gap-2">
+                <FileText className="w-4 h-4 text-gray-500 mt-1" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-600">Base Legal:</span>
+                  <p className="font-medium text-sm">{(contrato as any).base_legal || "Não informado"}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-start gap-2">
+                <FileText className="w-4 h-4 text-gray-500 mt-1" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-600">Termos Contratuais:</span>
+                  <p className="font-medium text-sm">{(contrato as any).termos_contratuais || "Não informado"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">PAE:</span>
+                  <p className="font-medium">{(contrato as any).pae || "Não informado"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">DOE:</span>
+                  <p className="font-medium">{(contrato as any).doe || "Não informado"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Data DOE:</span>
+                  <p className="font-medium">{(contrato as any).data_doe ? formatDate((contrato as any).data_doe) : "Não informado"}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Valores</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Valor Anual:</span>
+                  <p className="font-medium text-green-600">{formatCurrency(contrato.valor_anual)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Valor Global:</span>
+                  <p className="font-medium text-green-600">{formatCurrency(contrato.valor_global)}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Gerenciamento de Arquivos e Relatórios */}
-        <div className="space-y-6">
-          <Tabs defaultValue="arquivos" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="arquivos">📁 Arquivos</TabsTrigger>
-              <TabsTrigger value="pendencias">⚠️ Pendências</TabsTrigger>
-            </TabsList>
+        {/* Gerenciamento de Arquivos e Pendências */}
+        <Tabs defaultValue="arquivos" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="arquivos">📁 Arquivos</TabsTrigger>
+            <TabsTrigger value="pendencias">⚠️ Pendências</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="arquivos" className="space-y-4">
-              <ContratoArquivos contratoId={parseInt(id!)} />
-            </TabsContent>
+          <TabsContent value="arquivos" className="space-y-4">
+            <ContratoArquivos contratoId={parseInt(id!)} />
+          </TabsContent>
 
-            <TabsContent value="pendencias" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Pendências ({pendencias.length})</CardTitle>
-                  <CardDescription>Pendências relacionadas ao contrato</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {pendencias.length > 0 ? (
-                    <div className="space-y-3">
-                      {pendencias.map((pendencia) => (
-                        <div key={pendencia.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold">{pendencia.titulo}</h4>
-                            <div className="flex gap-1">
-                              <Badge className={`${pendencia.em_atraso ? 'bg-red-500' : 'bg-green-500'} text-white`}>
-                                {pendencia.status_nome}
+          <TabsContent value="pendencias" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Pendências ({pendencias.length})</CardTitle>
+                <CardDescription>Pendências relacionadas ao contrato</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendencias.length > 0 ? (
+                  <div className="space-y-3">
+                    {pendencias.map((pendencia) => (
+                      <div key={pendencia.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold">{pendencia.titulo}</h4>
+                          <div className="flex gap-1">
+                            <Badge className={`${pendencia.em_atraso ? 'bg-red-500' : 'bg-green-500'} text-white`}>
+                              {pendencia.status_nome}
+                            </Badge>
+                            {pendencia.em_atraso && pendencia.dias_em_atraso && (
+                              <Badge className="bg-red-600 text-white">
+                                {pendencia.dias_em_atraso} dias atraso
                               </Badge>
-                              {pendencia.em_atraso && pendencia.dias_em_atraso && (
-                                <Badge className="bg-red-600 text-white">
-                                  {pendencia.dias_em_atraso} dias atraso
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>Criada em: {formatDate(pendencia.data_criacao)}</span>
-                            <span>Prazo: {formatDate(pendencia.prazo_entrega)}</span>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <CheckCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Nenhuma pendência encontrada</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                        <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Criada em: {formatDate(pendencia.data_criacao)}</span>
+                          <span>Prazo: {formatDate(pendencia.prazo_entrega)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">Nenhuma pendência encontrada</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          </Tabs>
-        </div>
+        </Tabs>
       </div>
     </div>
   );
