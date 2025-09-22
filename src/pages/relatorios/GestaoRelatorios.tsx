@@ -54,12 +54,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
     getDashboardAdminCompleto,
+    getRelatoriosPendentesAnalise,
     analisarRelatorio,
-    getStatusRelatorios,
     downloadArquivoContrato,
-    type RelatorioDetalhado,
-    type AnalisarRelatorioPayload,
-    type StatusRelatorio
+    type DashboardAdminCompletoResponse,
+    type AnalisarRelatorioPayload
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -113,18 +112,18 @@ export default function GestaoRelatorios() {
             navigate('/contratos');
             return;
         }
-        fetchRelatorios();
+        loadRelatorios();
         fetchStatusRelatorios();
     }, [isAdmin, navigate]);
 
-    const fetchRelatorios = async () => {
+    const loadRelatorios = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            console.log('🔍 Carregando relatórios pendentes (usando API do dashboard)...');
+            console.log('🔍 Carregando relatórios pendentes (usando nova API)...');
 
-            // Usar a mesma API que o dashboard para garantir consistência
-            const dashboardResponse = await getDashboardAdminCompleto();
+            // Usar a nova API que retorna relatórios individuais
+            const response = await getRelatoriosPendentesAnalise();
 
             // Usar os contratos com relatórios pendentes da API principal
             // Verificar diferentes possíveis nomes da propriedade

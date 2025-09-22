@@ -16,10 +16,12 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
 import Modalidades from '@/pages/modalidades/Modalidade';
 import { FiscalDashboard } from '@/pages/fiscal/FiscalDashboard';
+import { FiscalContratos } from '@/pages/fiscal/FiscalContratos';
 import { GestorDashboard } from '@/pages/gestor/GestorDashboard';
 import EnviarRelatorio from '@/pages/fiscal/EnviarRelatorio';
 import Relatorios from '@/pages/relatorios/Relatorios';
 import GestaoRelatorios from '@/pages/relatorios/GestaoRelatorios';
+import { AnalisarRelatoriosNovo } from '@/pages/admin/AnalisarRelatoriosNovo';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
 import Pendencias from '@/pages/pendencias/Pendencias';
 import GestaoPendenciasVencidas from '@/pages/pendencias/GestaoPendenciasVencidas';
@@ -68,6 +70,10 @@ export const router = createBrowserRouter([
       {
         path: '/dashboard/fiscal',
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><FiscalDashboard /></ProtectedRoute>,
+      },
+      {
+        path: '/fiscal/contratos',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><FiscalContratos /></ProtectedRoute>,
       },
       {
         path: '/contratos',
@@ -123,7 +129,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/gestao-relatorios',
-        element: <ProtectedRoute requiredProfiles={['Administrador']}><GestaoRelatorios /></ProtectedRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><AnalisarRelatoriosNovo /></ProtectedRoute>,
       },
       {
         path: '/configuracoes',

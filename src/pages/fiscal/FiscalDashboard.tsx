@@ -4,11 +4,12 @@ import { toast } from "sonner";
 import {
   IconClipboardList,
   IconFileText,
-  IconAlertTriangle,
   IconUpload,
   IconRefresh,
+  IconEye,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +72,7 @@ export function FiscalDashboard() {
     );
   }
 
-  const { contadores, minhas_pendencias } = dashboardData;
+  const { contadores } = dashboardData;
 
   return (
     <div className="p-6 space-y-6">
@@ -90,57 +91,64 @@ export function FiscalDashboard() {
       </div>
 
       {/* Cards Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card: Dashboard Principal */}
+        <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-medium text-blue-700">Resumo das Atividades</CardTitle>
+            <IconClipboardList className="h-6 w-6 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Pendências Ativas:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-blue-800">{contadores.minhas_pendencias || 0}</span>
+                  <Button 
+                    size="sm" 
+                    onClick={() => navigate("/fiscal/contratos")}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <IconUpload className="w-4 h-4 mr-1" />
+                    Enviar Relatório
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Em Atraso:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-red-800">{contadores.pendencias_em_atraso || 0}</span>
+                  {(contadores.pendencias_em_atraso || 0) > 0 && (
+                    <Badge className="bg-red-100 text-red-800 text-xs">URGENTE</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Contratos Ativos:</span>
+                <span className="text-2xl font-bold text-green-800">{contadores.contratos_ativos || 0}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Card: Meus Contratos */}
         <Card className="border-green-200 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-              onClick={() => navigate("/contratos")}>
+              onClick={() => navigate("/fiscal/contratos")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-lg font-medium text-green-700">Meus Contratos</CardTitle>
             <IconFileText className="h-6 w-6 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-800">{contadores.contratos_ativos || 0}</div>
-            <p className="text-sm text-green-600 mt-2">
-              Contratos sob fiscalização
+            <div className="text-3xl font-bold text-green-800 mb-4">{contadores.contratos_ativos || 0}</div>
+            <p className="text-sm text-green-600 mb-4">
+              Contratos sob fiscalização onde posso responder pendências individualmente
             </p>
-            <Button className="w-full mt-4 bg-green-600 hover:bg-green-700">
-              Ver Contratos
+            <Button className="w-full bg-green-600 hover:bg-green-700">
+              <IconEye className="w-4 h-4 mr-2" />
+              Ver Contratos e Pendências
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* Card: Enviar Relatório */}
-        <Card className="border-blue-200 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-              onClick={() => navigate("/enviar-relatorio")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-lg font-medium text-blue-700">Enviar Relatórios</CardTitle>
-            <IconUpload className="h-6 w-6 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-800">{contadores.minhas_pendencias || 0}</div>
-            <p className="text-sm text-blue-600 mt-2">
-              Pendências aguardando relatório
-            </p>
-            <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700">
-              Enviar Relatório
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Card: Pendências em Atraso */}
-        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-lg font-medium text-red-700">Pendências em Atraso</CardTitle>
-            <IconAlertTriangle className="h-6 w-6 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-800">{contadores.pendencias_em_atraso || 0}</div>
-            <p className="text-sm text-red-600 mt-2">
-              Requerem ação urgente
-            </p>
-            {(contadores.pendencias_em_atraso || 0) > 0 && (
-              <Badge className="mt-2 bg-red-100 text-red-800 text-xs">AÇÃO NECESSÁRIA</Badge>
-            )}
           </CardContent>
         </Card>
       </div>

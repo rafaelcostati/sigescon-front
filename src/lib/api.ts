@@ -1292,6 +1292,27 @@ export async function getDashboardAdminRelatoriosPendentes(): Promise<DashboardA
 }
 
 /**
+ * Busca todos os relatórios individuais pendentes de análise (Admin)
+ * GET /api/v1/dashboard/admin/relatorios-pendentes-analise
+ */
+export async function getRelatoriosPendentesAnalise(): Promise<{ relatorios_pendentes: any[], total_relatorios_pendentes: number }> {
+    console.log("🔍 Buscando relatórios individuais pendentes de análise...");
+    
+    try {
+        const response = await api<{ relatorios_pendentes: any[], total_relatorios_pendentes: number }>('/dashboard/admin/relatorios-pendentes-analise');
+        
+        console.log("✅ Relatórios pendentes de análise carregados:", {
+            total_relatorios: response.total_relatorios_pendentes
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar relatórios pendentes de análise:", error);
+        throw error;
+    }
+}
+
+/**
  * Busca contratos com pendências (Admin)
  * GET /api/v1/dashboard/admin/contratos-com-pendencias
  */
@@ -1440,6 +1461,26 @@ export async function getDashboardAdminPendenciasVencidasCompleto(): Promise<Das
         return response;
     } catch (error) {
         console.error("❌ Erro ao buscar pendências vencidas completas:", error);
+        throw error;
+    }
+}
+
+/**
+ * Cancela uma pendência (Admin)
+ * PATCH /api/v1/dashboard/admin/cancelar-pendencia/{pendencia_id}
+ */
+export async function cancelarPendencia(pendenciaId: number): Promise<{ message: string }> {
+    console.log("🚫 Cancelando pendência:", pendenciaId);
+    
+    try {
+        const response = await api<{ message: string }>(`/dashboard/admin/cancelar-pendencia/${pendenciaId}`, {
+            method: 'PATCH'
+        });
+        
+        console.log("✅ Pendência cancelada:", response);
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao cancelar pendência:", error);
         throw error;
     }
 }

@@ -3,21 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   IconFileText,
+  IconClock,
+  IconSearch,
+  IconRefresh,
+  IconDownload,
   IconCheck,
   IconX,
   IconEye,
-  IconDownload,
-  IconClock,
-  IconUser,
-  IconCalendar,
-  IconRefresh,
-  IconSearch,
 } from "@tabler/icons-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -26,7 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -44,6 +40,7 @@ import {
   downloadArquivoContrato,
   type AnalisarRelatorioPayload
 } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type RelatorioParaAnalise = {
   id: number;
@@ -52,21 +49,23 @@ type RelatorioParaAnalise = {
   contrato_objeto: string;
   contratado_nome: string;
   fiscal_nome: string;
-  pendencia_titulo?: string;
+  gestor_nome: string;
+  pendencia_titulo: string;
   data_envio: string;
   arquivo_nome: string;
   arquivo_id: number;
-  observacoes?: string;
+  observacoes: string;
   status: string;
 };
 
-export function AnalisarRelatorios() {
+export function AnalisarRelatoriosNovo() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [relatorios, setRelatorios] = useState<RelatorioParaAnalise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRelatorio, setSelectedRelatorio] = useState<RelatorioParaAnalise | null>(null);
-  const [analiseModalOpen, setAnaliseModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: 'aprovar' | 'rejeitar';
@@ -90,11 +89,12 @@ export function AnalisarRelatorios() {
         contrato_objeto: rel.contrato_objeto,
         contratado_nome: rel.contratado_nome,
         fiscal_nome: rel.fiscal_nome,
+        gestor_nome: rel.gestor_nome,
         pendencia_titulo: rel.pendencia_titulo,
         data_envio: rel.data_envio,
         arquivo_nome: rel.arquivo_nome || "relatorio.pdf",
         arquivo_id: rel.arquivo_id || 0,
-        observacoes: rel.observacoes,
+        observacoes: rel.observacoes || "",
         status: "aguardando_analise"
       }));
 
@@ -120,51 +120,16 @@ export function AnalisarRelatorios() {
     relatorio.fiscal_nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Função para analisar relatório
-  const handleAnaliseRelatorio = async (relatorio: RelatorioParaAnalise, aprovado: boolean) => {
-    setIsProcessing(true);
-    try {
-      const payload: AnalisarRelatorioPayload = {
-        aprovado,
-        observacoes: observacoesAnalise.trim() || undefined
-      };
-
-      console.log(`📋 ${aprovado ? 'Aprovando' : 'Rejeitando'} relatório:`, {
-        contratoId: relatorio.contrato_id,
-        relatorioId: relatorio.id,
-        payload
-      });
-
-      await analisarRelatorio(relatorio.contrato_id, relatorio.id, payload);
-
-      toast.success(`Relatório ${aprovado ? 'aprovado' : 'rejeitado'} com sucesso!`);
-
-      // Remover relatório da lista
-      setRelatorios(prev => prev.filter(r => r.id !== relatorio.id));
-
-      // Fechar modais
-      setConfirmDialog({ open: false, type: 'aprovar', relatorio: null });
-      setAnaliseModalOpen(false);
-      setObservacoesAnalise("");
-      setSelectedRelatorio(null);
-
-    } catch (error: any) {
-      console.error("❌ Erro ao analisar relatório:", error);
-      toast.error(error.message || "Erro ao analisar relatório");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Função para download do arquivo
+  // Função para download de arquivo
   const handleDownload = async (relatorio: RelatorioParaAnalise) => {
     try {
-      console.log("📥 Fazendo download do arquivo:", relatorio.arquivo_nome);
-
       if (!relatorio.arquivo_id) {
-        toast.error("ID do arquivo não encontrado");
+        toast.error("Arquivo não encontrado para este relatório");
         return;
       }
+
+      console.log("📥 Fazendo download do relatório:", relatorio.id);
+      toast.loading("Preparando download...", { id: `download-${relatorio.id}` });
 
       const blob = await downloadArquivoContrato(relatorio.contrato_id, relatorio.arquivo_id);
 
@@ -178,10 +143,41 @@ export function AnalisarRelatorios() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success("Download iniciado!");
+      toast.success("Download realizado com sucesso!", { id: `download-${relatorio.id}` });
     } catch (error: any) {
       console.error("❌ Erro no download:", error);
-      toast.error("Erro ao fazer download do arquivo");
+      toast.error("Erro ao fazer download do relatório", { id: `download-${relatorio.id}` });
+    }
+  };
+
+  // Função para analisar relatório
+  const handleAnaliseRelatorio = async (tipo: 'aprovar' | 'rejeitar') => {
+    if (!confirmDialog.relatorio) return;
+
+    setIsProcessing(true);
+    try {
+      const payload: AnalisarRelatorioPayload = {
+        status_id: tipo === 'aprovar' ? 2 : 3, // 2 = Aprovado, 3 = Rejeitado
+        observacoes_aprovador: observacoesAnalise,
+        aprovador_usuario_id: user?.id || 1
+      };
+
+      await analisarRelatorio(confirmDialog.relatorio.contrato_id, confirmDialog.relatorio.id, payload);
+
+      toast.success(`Relatório ${tipo === 'aprovar' ? 'aprovado' : 'rejeitado'} com sucesso!`);
+      
+      // Fechar modais e limpar
+      setConfirmDialog({ open: false, type: 'aprovar', relatorio: null });
+      setModalOpen(false);
+      setObservacoesAnalise("");
+      
+      // Recarregar relatórios
+      loadRelatorios();
+    } catch (error: any) {
+      console.error("❌ Erro ao analisar relatório:", error);
+      toast.error(error.message || "Erro ao analisar relatório");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -294,98 +290,69 @@ export function AnalisarRelatorios() {
       <Card>
         <CardHeader>
           <CardTitle>Relatórios para Análise</CardTitle>
-          <CardDescription>
-            {relatoriosFiltrados.length} relatório{relatoriosFiltrados.length !== 1 ? 's' : ''} encontrado{relatoriosFiltrados.length !== 1 ? 's' : ''}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {relatoriosFiltrados.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <IconFileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p>{relatorios.length === 0 ? 'Nenhum relatório aguardando análise' : 'Nenhum relatório encontrado com os filtros aplicados'}</p>
+              <IconCheck className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>Nenhum relatório encontrado</p>
             </div>
           ) : (
             <div className="space-y-4">
               {relatoriosFiltrados.map((relatorio) => (
                 <Card key={relatorio.id} className="border-amber-100 hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="font-semibold text-lg">{relatorio.contrato_numero}</h4>
-                          <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-                            <IconClock className="w-3 h-3 mr-1" />
+                          <Badge className="bg-amber-100 text-amber-800">
                             Aguardando Análise
                           </Badge>
                         </div>
-                        <p className="text-gray-600 mb-3" title={relatorio.contrato_objeto}>
-                          {relatorio.contrato_objeto}
-                        </p>
+                        
+                        <p className="text-gray-600 mb-3">{relatorio.contrato_objeto}</p>
+                        
+                        <div className="bg-blue-50 p-3 rounded-lg mb-3">
+                          <h5 className="font-medium text-blue-800 mb-1">{relatorio.pendencia_titulo}</h5>
+                          {relatorio.observacoes && (
+                            <p className="text-sm text-blue-700">{relatorio.observacoes}</p>
+                          )}
+                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <IconUser className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium">Contratado:</span>
-                              <span>{relatorio.contratado_nome}</span>
-                            </div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <IconUser className="w-4 h-4 text-green-600" />
-                              <span className="font-medium">Fiscal:</span>
-                              <span>{relatorio.fiscal_nome}</span>
-                            </div>
+                            <p><strong>Contratado:</strong> {relatorio.contratado_nome}</p>
+                            <p><strong>Fiscal:</strong> {relatorio.fiscal_nome}</p>
                           </div>
-
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <IconCalendar className="w-4 h-4 text-purple-600" />
-                              <span className="font-medium">Enviado em:</span>
-                              <span>{formatDate(relatorio.data_envio)}</span>
-                            </div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <IconFileText className="w-4 h-4 text-orange-600" />
-                              <span className="font-medium">Arquivo:</span>
-                              <span>{relatorio.arquivo_nome}</span>
-                            </div>
+                            <p><strong>Gestor:</strong> {relatorio.gestor_nome}</p>
+                            <p><strong>Enviado em:</strong> {formatDate(relatorio.data_envio)}</p>
                           </div>
                         </div>
-
-                        {relatorio.observacoes && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <span className="font-medium text-sm">Observações do fiscal:</span>
-                            <p className="text-sm text-gray-600 mt-1">{relatorio.observacoes}</p>
-                          </div>
-                        )}
                       </div>
 
                       <div className="flex flex-col gap-2 ml-4">
                         <Button
-                          onClick={() => navigate(`/contratos/${relatorio.contrato_id}`)}
+                          onClick={() => {
+                            setSelectedRelatorio(relatorio);
+                            setModalOpen(true);
+                          }}
                           size="sm"
                           variant="outline"
                         >
                           <IconEye className="w-4 h-4 mr-1" />
-                          Ver Contrato
+                          Analisar
                         </Button>
 
                         <Button
                           onClick={() => handleDownload(relatorio)}
                           size="sm"
                           variant="outline"
+                          disabled={!relatorio.arquivo_id}
                         >
                           <IconDownload className="w-4 h-4 mr-1" />
                           Download
-                        </Button>
-
-                        <Button
-                          onClick={() => {
-                            setSelectedRelatorio(relatorio);
-                            setAnaliseModalOpen(true);
-                          }}
-                          size="sm"
-                          className="bg-amber-600 hover:bg-amber-700"
-                        >
-                          📋 Analisar
                         </Button>
                       </div>
                     </div>
@@ -398,39 +365,60 @@ export function AnalisarRelatorios() {
       </Card>
 
       {/* Modal de Análise */}
-      <Dialog open={analiseModalOpen} onOpenChange={setAnaliseModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Analisar Relatório</DialogTitle>
             <DialogDescription>
-              {selectedRelatorio && (
-                <>Contrato: {selectedRelatorio.contrato_numero} - {selectedRelatorio.contratado_nome}</>
-              )}
+              Revise o relatório e tome uma decisão sobre sua aprovação.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="observacoes-analise">Observações da Análise</Label>
-              <Textarea
-                id="observacoes-analise"
-                placeholder="Adicione observações sobre a análise do relatório..."
-                value={observacoesAnalise}
-                onChange={(e) => setObservacoesAnalise(e.target.value)}
-                rows={4}
-                className="resize-none"
-              />
-              <p className="text-xs text-gray-500">
-                Obrigatório em caso de rejeição. Opcional para aprovação.
-              </p>
+          {selectedRelatorio && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><strong>Contrato:</strong> {selectedRelatorio.contrato_numero}</p>
+                  <p><strong>Fiscal:</strong> {selectedRelatorio.fiscal_nome}</p>
+                  <p><strong>Enviado em:</strong> {formatDate(selectedRelatorio.data_envio)}</p>
+                </div>
+                <div>
+                  <p><strong>Contratado:</strong> {selectedRelatorio.contratado_nome}</p>
+                  <p><strong>Gestor:</strong> {selectedRelatorio.gestor_nome}</p>
+                  <p><strong>Arquivo:</strong> {selectedRelatorio.arquivo_nome}</p>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <h5 className="font-medium text-blue-800 mb-1">Pendência:</h5>
+                <p className="text-sm text-blue-700">{selectedRelatorio.pendencia_titulo}</p>
+                {selectedRelatorio.observacoes && (
+                  <>
+                    <h5 className="font-medium text-blue-800 mb-1 mt-2">Observações do Fiscal:</h5>
+                    <p className="text-sm text-blue-700">{selectedRelatorio.observacoes}</p>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Observações da Análise (opcional):
+                </label>
+                <Textarea
+                  placeholder="Adicione observações sobre sua análise..."
+                  value={observacoesAnalise}
+                  onChange={(e) => setObservacoesAnalise(e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => {
-                setAnaliseModalOpen(false);
+                setModalOpen(false);
                 setObservacoesAnalise("");
               }}
             >
@@ -439,10 +427,6 @@ export function AnalisarRelatorios() {
             <Button
               variant="destructive"
               onClick={() => {
-                if (!observacoesAnalise.trim()) {
-                  toast.error("Observações são obrigatórias para rejeição");
-                  return;
-                }
                 setConfirmDialog({ open: true, type: 'rejeitar', relatorio: selectedRelatorio });
               }}
             >
@@ -463,35 +447,25 @@ export function AnalisarRelatorios() {
       </Dialog>
 
       {/* Dialog de Confirmação */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: 'aprovar', relatorio: null })}>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => 
+        setConfirmDialog({ ...confirmDialog, open })
+      }>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.type === 'aprovar' ? 'Aprovar Relatório?' : 'Rejeitar Relatório?'}
+              {confirmDialog.type === 'aprovar' ? 'Aprovar Relatório' : 'Rejeitar Relatório'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.type === 'aprovar'
-                ? 'Esta ação aprovará o relatório e marcará a pendência como concluída.'
-                : 'Esta ação rejeitará o relatório e enviará feedback para o fiscal corrigir.'
+              {confirmDialog.type === 'aprovar' 
+                ? 'Tem certeza que deseja aprovar este relatório? Esta ação irá concluir a pendência.'
+                : 'Tem certeza que deseja rejeitar este relatório? O fiscal poderá enviar um novo relatório.'
               }
-              {confirmDialog.relatorio && (
-                <>
-                  <br /><br />
-                  <strong>Contrato:</strong> {confirmDialog.relatorio.contrato_numero}
-                  <br />
-                  <strong>Fiscal:</strong> {confirmDialog.relatorio.fiscal_nome}
-                </>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (confirmDialog.relatorio) {
-                  handleAnaliseRelatorio(confirmDialog.relatorio, confirmDialog.type === 'aprovar');
-                }
-              }}
+              onClick={() => handleAnaliseRelatorio(confirmDialog.type)}
               disabled={isProcessing}
               className={confirmDialog.type === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
             >
@@ -501,19 +475,7 @@ export function AnalisarRelatorios() {
                   Processando...
                 </>
               ) : (
-                <>
-                  {confirmDialog.type === 'aprovar' ? (
-                    <>
-                      <IconCheck className="w-4 h-4 mr-2" />
-                      Confirmar Aprovação
-                    </>
-                  ) : (
-                    <>
-                      <IconX className="w-4 h-4 mr-2" />
-                      Confirmar Rejeição
-                    </>
-                  )}
-                </>
+                confirmDialog.type === 'aprovar' ? 'Aprovar' : 'Rejeitar'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -523,4 +485,4 @@ export function AnalisarRelatorios() {
   );
 }
 
-export default AnalisarRelatorios;
+export default AnalisarRelatoriosNovo;
