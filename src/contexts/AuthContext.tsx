@@ -72,8 +72,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Função para limpar todos os estados de autenticação
+  const clearAuthState = () => {
+    console.log('🧹 Limpando estados de autenticação...');
+    setUser(null);
+    setContextoSessao(null);
+    setPerfilAtivo(null);
+    setPerfisDisponiveis([]);
+    console.log('✅ Estados de autenticação limpos');
+  };
+
   // Efeito para inicializar a autenticação ao carregar a aplicação
   useEffect(() => {
+    let isMounted = true; // Flag para evitar atualizações se o componente foi desmontado
+    
     const initializeAuth = async () => {
       console.log('🚀 Inicializando autenticação...');
       
@@ -82,7 +94,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const token = localStorage.getItem('authToken');
         if (!token) {
           console.info("⚠️ Nenhum token encontrado. Usuário não autenticado.");
-          clearAuthState();
+          if (isMounted) {
+            clearAuthState();
+          }
           return;
         }
 
@@ -116,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: contexto.perfil_ativo_id,
             nome: contexto.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"
           },
-          perfis_disponiveis: (contexto.perfis_disponiveis || []).map(p => ({
+          perfis_disponiveis: (contexto.perfis_disponiveis || []).map((p: any) => ({
             id: p.id,
             nome: p.nome as "Administrador" | "Gestor" | "Fiscal"
           }))
@@ -124,36 +138,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         console.log('👤 Dados do usuário criados:', userData);
         
-        setUser(userData);
-        setPerfilAtivo(userData.perfil_ativo);
-        setPerfisDisponiveis(userData.perfis_disponiveis);
+        if (isMounted) {
+          setUser(userData);
+          setPerfilAtivo(userData.perfil_ativo);
+          setPerfisDisponiveis(userData.perfis_disponiveis);
+        }
         
         console.log('✅ Autenticação inicializada com sucesso');
       } catch (error) {
         // Se a busca pelo contexto falhar, significa que não há sessão válida.
         console.error("❌ Erro ao inicializar autenticação:", error);
-        clearAuthState();
-        // Remove token inválido
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('authTokenType');
+        if (isMounted) {
+          clearAuthState();
+          // Remove token inválido
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authTokenType');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
         console.log('🏁 Inicialização da autenticação finalizada');
       }
     };
 
     initializeAuth();
+    
+    // Cleanup function para evitar memory leaks
+    return () => {
+      isMounted = false;
+    };
   }, []);
-
-  // Função para limpar todos os estados de autenticação
-  const clearAuthState = () => {
-    console.log('🧹 Limpando estados de autenticação...');
-    setUser(null);
-    setContextoSessao(null);
-    setPerfilAtivo(null);
-    setPerfisDisponiveis([]);
-    console.log('✅ Estados de autenticação limpos');
-  };
 
   // Função de login que utiliza a apiLogin de api.ts
   const login = async (username: string, password: string) => {
@@ -196,7 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: loginResponse.contexto_sessao.perfil_ativo_id,
             nome: loginResponse.contexto_sessao.perfil_ativo_nome as "Administrador" | "Gestor" | "Fiscal"
           },
-          perfis_disponiveis: (loginResponse.contexto_sessao.perfis_disponiveis || []).map(p => ({
+          perfis_disponiveis: (loginResponse.contexto_sessao.perfis_disponiveis || []).map((p: any) => ({
             id: p.id,
             nome: p.nome as "Administrador" | "Gestor" | "Fiscal"
           }))

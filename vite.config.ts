@@ -3,51 +3,49 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
-
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react({
+      // Configurações específicas para React 19
+      jsxRuntime: 'automatic',
+      jsxImportSource: 'react'
+    }), 
+    tailwindcss()
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
   build: {
-    // Increase chunk size warning limit to suppress warnings
+    // Configurações mais conservadoras para produção
+    target: 'es2020',
+    minify: 'esbuild',
+    sourcemap: false,
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Split vendor libraries into separate chunks
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@radix-ui')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('@dnd-kit')) {
-              return 'dnd-vendor';
-            }
-            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-              return 'form-vendor';
-            }
-            if (id.includes('date-fns')) {
-              return 'date-vendor';
-            }
-            return 'vendor';
-          }
-          // Split our own modules
-          if (id.includes('/src/lib/api')) {
-            return 'api';
-          }
-          if (id.includes('/src/components/ui/')) {
-            return 'ui-components';
-          }
-          if (id.includes('/src/pages/')) {
-            return 'pages';
-          }
-        }
+        // Configuração simplificada para evitar problemas de hoisting
+        manualChunks: undefined,
+        // Força a criação de chunks menores
+        experimentalMinChunkSize: 1000,
+        format: 'es'
       }
     }
+  },
+  // Otimizações de dependências
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom'
+    ],
+    force: true
+  },
+  // Configurações específicas para evitar problemas de hoisting
+  esbuild: {
+    // Configurações para manter a compatibilidade
+    keepNames: true,
+    legalComments: 'none'
   }
 })
