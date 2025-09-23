@@ -1207,6 +1207,12 @@ export type DashboardContadores = {
     total_fiscalizacoes: number;
     contratados_com_pendencias_vencidas: number;
     total_contratacoes: number;
+    // Campos específicos do fiscal
+    minhas_pendencias?: number;
+    pendencias_em_atraso?: number;
+    relatorios_enviados_mes?: number;
+    contratos_sob_gestao?: number;
+    relatorios_equipe_pendentes?: number;
 };
 
 export type DashboardAdminCompletoResponse = {
