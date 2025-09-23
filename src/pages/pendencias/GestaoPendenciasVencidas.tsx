@@ -12,7 +12,6 @@ import {
   FileText, 
   Clock, 
   Search,
-  Eye,
   Users,
   Filter,
   RefreshCw
