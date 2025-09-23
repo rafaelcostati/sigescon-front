@@ -219,7 +219,7 @@ export function AnalisarRelatoriosNovo() {
             <IconRefresh className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          <Button onClick={() => navigate('/admin/dashboard')} variant="outline">
+          <Button onClick={() => navigate('/dashboard')} variant="outline">
             Voltar ao Dashboard
           </Button>
         </div>

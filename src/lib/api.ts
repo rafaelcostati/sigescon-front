@@ -1713,6 +1713,52 @@ export async function cancelarPendencia(pendenciaId: number): Promise<{ message:
 }
 
 /**
+ * Busca pendências pendentes (não vencidas) do administrador
+ * GET /api/v1/dashboard/admin/pendencias-pendentes
+ */
+export async function getDashboardAdminPendenciasPendentes(): Promise<{
+    pendencias_pendentes: Array<{
+        pendencia_id: number;
+        descricao: string;
+        created_at: string;
+        data_prazo: string | null;
+        dias_restantes: number | null;
+        contrato_id: number;
+        contrato_numero: string;
+        contrato_objeto: string;
+        fiscal_nome: string;
+        gestor_nome: string;
+    }>;
+    total_pendencias_pendentes: number;
+}> {
+    console.log("🔍 Buscando pendências pendentes do administrador...");
+
+    try {
+        const response = await api<{
+            pendencias_pendentes: Array<{
+                pendencia_id: number;
+                descricao: string;
+                created_at: string;
+                data_prazo: string | null;
+                dias_restantes: number | null;
+                contrato_id: number;
+                contrato_numero: string;
+                contrato_objeto: string;
+                fiscal_nome: string;
+                gestor_nome: string;
+            }>;
+            total_pendencias_pendentes: number;
+        }>('/dashboard/admin/pendencias-pendentes');
+
+        console.log("✅ Pendências pendentes carregadas:", response);
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar pendências pendentes:", error);
+        throw error;
+    }
+}
+
+/**
  * Busca dashboard fiscal melhorado com as métricas específicas
  * GET /api/v1/dashboard/fiscal/melhorado
  */

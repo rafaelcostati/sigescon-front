@@ -128,15 +128,24 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Contratados com Pendências Vencidas */}
+        {/* Contratados com Pendências */}
         <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-red-700">Contratados c/ Pendências</CardTitle>
             <Building className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-800">{contadores.contratados_com_pendencias_vencidas || 0}</div>
-            <p className="text-xs text-red-600 mt-1">Com pendências vencidas</p>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-red-600">Vencidas:</span>
+                <span className="text-lg font-bold text-red-800">{contadores.contratados_com_pendencias_vencidas || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-orange-600">Pendentes:</span>
+                <span className="text-lg font-bold text-orange-800">{contadores.contratos_com_pendencias || 0}</span>
+              </div>
+            </div>
+            <p className="text-xs text-red-600 mt-2">Total de situações</p>
           </CardContent>
         </Card>
 

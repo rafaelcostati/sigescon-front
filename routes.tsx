@@ -115,6 +115,10 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><GestaoPendenciasVencidas /></ProtectedRoute>,
       },
       {
+        path: '/gestao-de-pendencias',
+        element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><GestaoPendenciasVencidas /></ProtectedRoute>,
+      },
+      {
         path: '/fiscalizacao',
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Fiscal']}><Fiscalizacao /></ProtectedRoute>,
       },
