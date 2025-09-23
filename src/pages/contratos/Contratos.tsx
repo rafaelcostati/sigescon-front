@@ -59,6 +59,7 @@ import {
     downloadArquivoContrato,
     deleteArquivoContrato,
     getArquivosByContratoId,
+    getRelatoriosByContratoId,
     getContratados,
     getStatus,
     getUsers,
@@ -783,7 +784,6 @@ function DraggableContratoCard({
         if (isFiscal) {
             const fetchRelatorios = async () => {
                 try {
-                    const { getRelatoriosByContratoId } = await import('@/lib/api');
                     const response = await getRelatoriosByContratoId(contrato.id);
                     setRelatorios(response.data || []);
                 } catch (error) {
