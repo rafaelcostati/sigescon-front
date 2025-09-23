@@ -79,6 +79,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setContextoSessao(null);
     setPerfilAtivo(null);
     setPerfisDisponiveis([]);
+    // Limpar também o localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenType');
+    localStorage.removeItem('userProfile');
     console.log('✅ Estados de autenticação limpos');
   };
 
@@ -142,6 +146,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(userData);
           setPerfilAtivo(userData.perfil_ativo);
           setPerfisDisponiveis(userData.perfis_disponiveis);
+          
+          // Salvar perfil no localStorage para persistência
+          localStorage.setItem('userProfile', JSON.stringify({
+            perfil_ativo: userData.perfil_ativo,
+            perfis_disponiveis: userData.perfis_disponiveis
+          }));
         }
         
         console.log('✅ Autenticação inicializada com sucesso');
@@ -223,6 +233,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setContextoSessao(loginResponse.contexto_sessao);
         setPerfilAtivo(userData.perfil_ativo);
         setPerfisDisponiveis(userData.perfis_disponiveis);
+        
+        // Salvar perfil no localStorage para persistência
+        localStorage.setItem('userProfile', JSON.stringify({
+          perfil_ativo: userData.perfil_ativo,
+          perfis_disponiveis: userData.perfis_disponiveis
+        }));
         
         console.log('✅ Estados do AuthContext atualizados com sucesso');
         console.log('🔍 Perfil ativo definido:', userData.perfil_ativo);
