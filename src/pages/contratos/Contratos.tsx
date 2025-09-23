@@ -41,7 +41,7 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import { jwtDecode } from "jwt-decode";
-import { Pencil, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -763,6 +763,7 @@ function DraggableContratoCard({
 }) {
     const [pendencias, setPendencias] = React.useState<Pendencia[]>([]);
     const [relatorios, setRelatorios] = React.useState<any[]>([]);
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
 
     // Carregar pendências quando for fiscal
     React.useEffect(() => {
@@ -805,7 +806,22 @@ function DraggableContratoCard({
     });
     const navigate = useNavigate();
 
-    const handleEditClick = () => navigate(`/contratos/editar/${contrato.id}`);
+    const handlePendenciaCriada = () => {
+        // Fechar o dropdown após criar a pendência
+        setIsDropdownOpen(false);
+        // Recarregar pendências se for fiscal
+        if (isFiscal) {
+            const fetchPendencias = async () => {
+                try {
+                    const response = await getPendenciasByContratoId(contrato.id);
+                    setPendencias(response || []);
+                } catch (error) {
+                    console.error('Erro ao carregar pendências:', error);
+                }
+            };
+            fetchPendencias();
+        }
+    };
 
     const handleDeleteContrato = async () => {
         const toastId = toast.loading("Excluindo contrato...");
@@ -890,84 +906,72 @@ function DraggableContratoCard({
                         </p>
                     </div>
 
-                    <AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full"
-                                    onClick={(e) => e.stopPropagation()}
+                    <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-full"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <IconDotsVertical className="h-3 w-3" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 p-0.5">
+                            {canManageContratos && !isFiscal && (
+                                <CriarPendenciaDialog
+                                    contratoId={contrato.id}
+                                    contratoNumero={contrato.nr_contrato}
+                                    onPendenciaCriada={handlePendenciaCriada}
                                 >
-                                    <IconDotsVertical className="h-3 w-3" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40 p-0.5">
-                                <DropdownMenuItem
-                                    onClick={() => navigate(`/contratos/${contrato.id}`)}
-                                    className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-blue-50 text-xs"
-                                >
-                                    <IconSearch className="h-3 w-3 text-blue-600" />
-                                    <span>Ver Detalhes</span>
-                                </DropdownMenuItem>
-                                {canManageContratos && (
                                     <DropdownMenuItem
-                                        onClick={handleEditClick}
-                                        className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-green-50 text-xs"
+                                        onSelect={(e) => e.preventDefault()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-orange-50 text-xs"
                                     >
-                                        <Pencil className="h-3 w-3 text-green-600" />
-                                        <span>Editar</span>
+                                        <IconPlus className="h-3 w-3 text-orange-600" />
+                                        <span>Criar Pendência</span>
                                     </DropdownMenuItem>
-                                )}
-                                {canManageContratos && !isFiscal && (
-                                    <CriarPendenciaDialog
-                                        contratoId={contrato.id}
-                                        contratoNumero={contrato.nr_contrato}
-                                        onPendenciaCriada={() => { }}
-                                    >
-                                        <DropdownMenuItem
-                                            onSelect={(e) => e.preventDefault()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm hover:bg-orange-50 text-xs"
-                                        >
-                                            <IconPlus className="h-3 w-3 text-orange-600" />
-                                            <span>Criar Pendência</span>
-                                        </DropdownMenuItem>
-                                    </CriarPendenciaDialog>
-                                )}
-                                {canManageContratos && (
-                                    <>
-                                        <DropdownMenuSeparator className="my-0.5" />
+                                </CriarPendenciaDialog>
+                            )}
+                            {canManageContratos && (
+                                <>
+                                    {!isFiscal && <DropdownMenuSeparator className="my-0.5" />}
+                                    <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <DropdownMenuItem
                                                 className="flex cursor-pointer items-center gap-1.5 py-1 px-2 rounded-sm text-red-600 hover:bg-red-50 focus:text-red-600 text-xs"
                                                 onSelect={(e) => e.preventDefault()}
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 <IconX className="h-3 w-3" />
                                                 <span>Excluir</span>
                                             </DropdownMenuItem>
                                         </AlertDialogTrigger>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta ação excluirá permanentemente o contrato "{contrato.nr_contrato}".
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        onClick={handleDeleteContrato}
-                                        className="bg-red-600 hover:bg-red-700"
-                                    >
-                                        Sim, excluir
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </DropdownMenu>
-                    </AlertDialog>
+                                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Esta ação excluirá permanentemente o contrato "{contrato.nr_contrato}".
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteContrato();
+                                                    }}
+                                                    className="bg-red-600 hover:bg-red-700"
+                                                >
+                                                    Sim, excluir
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </CardHeader>
 
