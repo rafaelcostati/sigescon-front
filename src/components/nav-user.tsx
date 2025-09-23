@@ -119,7 +119,7 @@ export function NavUser() {
   // Função para fazer logout
   const handleLogout = async () => {
     try {
-      await authLogout();
+      authLogout();
       toast.success("Logout realizado com sucesso!");
       navigate("/login");
     } catch (error) {
