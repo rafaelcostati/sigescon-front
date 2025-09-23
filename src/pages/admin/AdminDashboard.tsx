@@ -46,6 +46,7 @@ export default function AdminDashboard() {
         const pendenciasData = await getDashboardAdminPendenciasVencidasCompleto();
         setPendenciasVencidasData(pendenciasData);
         console.log("✅ Pendências vencidas carregadas:", pendenciasData);
+        console.log("📊 DASHBOARD - Vencidas:", pendenciasData.total_pendencias_vencidas, "Pendentes:", pendenciasData.total_pendencias_pendentes);
       } catch (pendenciasError) {
         console.warn("⚠️ Erro ao carregar pendências vencidas:", pendenciasError);
         // Não falha o carregamento completo se as pendências não carregarem
@@ -129,7 +130,8 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Contratados com Pendências */}
-        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="border-red-200 shadow-lg hover:shadow-xl transition-shadow cursor-pointer hover:scale-105"
+              onClick={() => navigate('/gestao-de-pendencias')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-red-700">Contratados c/ Pendências</CardTitle>
             <Building className="h-4 w-4 text-red-600" />
@@ -138,11 +140,11 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-red-600">Vencidas:</span>
-                <span className="text-lg font-bold text-red-800">{contadores.contratados_com_pendencias_vencidas || 0}</span>
+                <span className="text-lg font-bold text-red-800">{pendenciasVencidasData?.total_pendencias_vencidas || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-orange-600">Pendentes:</span>
-                <span className="text-lg font-bold text-orange-800">{contadores.contratos_com_pendencias || 0}</span>
+                <span className="text-lg font-bold text-orange-800">{pendenciasVencidasData?.total_pendencias_pendentes || 0}</span>
               </div>
             </div>
             <p className="text-xs text-red-600 mt-2">Total de situações</p>

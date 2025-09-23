@@ -71,6 +71,8 @@ export default function GestaoPendencias() {
         const responsePendentes = await getDashboardAdminPendenciasPendentes();
         setPendenciasPendentes(responsePendentes.pendencias_pendentes);
         
+        console.log("📊 GESTÃO PENDÊNCIAS - Vencidas:", responseVencidas.pendencias_vencidas.length, "Pendentes:", responsePendentes.pendencias_pendentes.length);
+        
       } else if (isFiscal || isGestor) {
         console.log(`🔍 Carregando pendências para ${perfilAtivo.nome.toLowerCase()}...`);
         const response = await getDashboardFiscalPendencias();

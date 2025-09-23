@@ -1297,6 +1297,7 @@ export type PendenciaVencidaCompleta = {
 export type DashboardAdminPendenciasVencidasResponse = {
     pendencias_vencidas: PendenciaVencidaCompleta[];
     total_pendencias_vencidas: number;
+    total_pendencias_pendentes: number;
     contratos_afetados: number;
     pendencias_criticas: number;
     pendencias_altas: number;
@@ -1675,10 +1676,34 @@ export async function getDashboardAdminPendenciasVencidasCompleto(): Promise<Das
     console.log("🔍 Buscando pendências vencidas completas do administrador...");
     
     try {
-        const response = await api<DashboardAdminPendenciasVencidasResponse>('/dashboard/admin/pendencias-vencidas');
+        // Fazer as duas chamadas em paralelo para melhor performance
+        const [responseVencidas, responsePendentes] = await Promise.allSettled([
+            api<Omit<DashboardAdminPendenciasVencidasResponse, 'total_pendencias_pendentes'>>('/dashboard/admin/pendencias-vencidas'),
+            api<{total_pendencias_pendentes: number}>('/dashboard/admin/pendencias-pendentes')
+        ]);
         
-        console.log("✅ Pendências vencidas completas carregadas:", {
+        // Processar resultado das pendências vencidas
+        if (responseVencidas.status === 'rejected') {
+            console.error("❌ Erro ao buscar pendências vencidas:", responseVencidas.reason);
+            throw responseVencidas.reason;
+        }
+        
+        // Processar resultado das pendências pendentes
+        let totalPendenciasPendentes = 0;
+        if (responsePendentes.status === 'fulfilled') {
+            totalPendenciasPendentes = responsePendentes.value.total_pendencias_pendentes;
+        } else {
+            console.warn("⚠️ Erro ao buscar pendências pendentes, usando 0:", responsePendentes.reason);
+        }
+        
+        const response: DashboardAdminPendenciasVencidasResponse = {
+            ...responseVencidas.value,
+            total_pendencias_pendentes: totalPendenciasPendentes
+        };
+        
+        console.log("✅ Pendências completas carregadas:", {
             total_pendencias_vencidas: response.total_pendencias_vencidas,
+            total_pendencias_pendentes: response.total_pendencias_pendentes,
             contratos_afetados: response.contratos_afetados,
             pendencias_criticas: response.pendencias_criticas,
             pendencias_altas: response.pendencias_altas,
