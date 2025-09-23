@@ -362,13 +362,17 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setIsChangePasswordOpen(true);
+                }}
+              >
+                <IconKey className="mr-2 h-4 w-4" />
+                Alterar Senha
+              </DropdownMenuItem>
+
               <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <IconKey className="mr-2 h-4 w-4" />
-                    Alterar Senha
-                  </DropdownMenuItem>
-                </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Alterar Senha</DialogTitle>
