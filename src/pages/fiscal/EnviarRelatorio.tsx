@@ -27,7 +27,7 @@ import {
     Building
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDashboardFiscalCompleto, type PendenciaFiscalCompleta } from '@/services/api';
+import { getDashboardFiscalCompleto, type PendenciaFiscalCompleta } from '@/lib/api';
 import { RelatorioUploadModal } from '@/components/RelatorioUploadModal';
 
 export default function EnviarRelatorio() {
