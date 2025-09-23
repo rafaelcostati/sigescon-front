@@ -236,7 +236,22 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
       setDeleteDialog({ open: false, arquivo: null });
     } catch (error: any) {
       console.error("❌ Erro ao excluir arquivo:", error);
-      toast.error("Erro ao excluir arquivo");
+
+      // Tratamento específico para diferentes tipos de erro
+      if (error.message?.includes("Arquivos de relatórios fiscais não podem ser excluídos")) {
+        toast.error(
+          "Arquivos de relatórios fiscais não podem ser excluídos pois estão vinculados a pendências.",
+          { duration: 6000 }
+        );
+      } else if (error.message?.includes("vinculado a") && error.message?.includes("relatório")) {
+        toast.error(
+          "Este arquivo contratual não pode ser excluído porque está sendo usado por relatórios fiscais. " +
+          "Remova ou substitua os relatórios primeiro.",
+          { duration: 6000 }
+        );
+      } else {
+        toast.error("Erro ao excluir arquivo");
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -342,12 +357,13 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                           >
                             <IconDownload className="w-4 h-4" />
                           </Button>
-                          {canDelete && (
+                          {canDelete && arquivo.categoria === 'contratual' && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setDeleteDialog({ open: true, arquivo })}
                               className="text-red-600 hover:text-red-700"
+                              title="Excluir arquivo contratual"
                             >
                               <IconTrash className="w-4 h-4" />
                             </Button>
@@ -433,12 +449,13 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                           >
                             <IconDownload className="w-4 h-4" />
                           </Button>
-                          {canDelete && (
+                          {canDelete && arquivo.categoria === 'contratual' && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setDeleteDialog({ open: true, arquivo })}
                               className="text-red-600 hover:text-red-700"
+                              title="Excluir arquivo contratual"
                             >
                               <IconTrash className="w-4 h-4" />
                             </Button>
