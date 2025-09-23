@@ -167,14 +167,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
     }
   };
 
-  // Função para formatar tamanho do arquivo
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   // Função para formatar data
   const formatDate = (dateString: string): string => {
@@ -311,8 +303,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                 <TableHeader>
                   <TableRow>
                     <TableHead>Arquivo</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Tamanho</TableHead>
                     <TableHead>Data Upload</TableHead>
                     <TableHead>Enviado por</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -332,10 +322,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{arquivo.tipo.toUpperCase()}</Badge>
-                      </TableCell>
-                      <TableCell>{formatFileSize(arquivo.tamanho)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm">
                           <IconCalendar className="w-3 h-3" />
@@ -403,8 +389,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                 <TableHeader>
                   <TableRow>
                     <TableHead>Relatório</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Tamanho</TableHead>
                     <TableHead>Data Envio</TableHead>
                     <TableHead>Fiscal</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -424,10 +408,6 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{arquivo.tipo.toUpperCase()}</Badge>
-                      </TableCell>
-                      <TableCell>{formatFileSize(arquivo.tamanho)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm">
                           <IconCalendar className="w-3 h-3" />
