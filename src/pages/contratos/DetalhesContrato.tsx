@@ -136,28 +136,7 @@ export default function DetalhesContrato() {
     }
   };
 
-  const formatDateTime = (dateString: string | null | undefined) => {
-    if (!dateString) return "Data não informada";
-
-    try {
-      const date = new Date(dateString);
-
-      if (isNaN(date.getTime())) {
-        console.warn('Data/hora inválida recebida:', dateString);
-        return "Data inválida";
-      }
-
-      return date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.warn('Erro ao formatar data/hora:', dateString, error);
-      return "Data inválida";
-    }
-  };
-
-
+  
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'ativo': return 'bg-green-500';
