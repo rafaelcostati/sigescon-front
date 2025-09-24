@@ -5,11 +5,11 @@ export const newContractSchema = z.object({
   objeto: z.string().min(10, { message: "O objeto do contrato deve ter pelo menos 10 caracteres." }),
   valor_anual: z.preprocess(
     (a) => (a !== "" && a !== null && a !== undefined ? Number(a) : undefined),
-    z.number().positive({ message: "O valor anual deve ser positivo." })
+    z.number().nonnegative({ message: "O valor anual não pode ser negativo." })
   ),
   valor_global: z.preprocess(
     (a) => (a !== "" && a !== null && a !== undefined ? Number(a) : undefined),
-    z.number().positive({ message: "O valor global deve ser positivo." })
+    z.number().nonnegative({ message: "O valor global não pode ser negativo." })
   ),
   base_legal: z.string().min(1, { message: "A base legal é obrigatória." }),
 

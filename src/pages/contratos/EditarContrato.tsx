@@ -46,8 +46,14 @@ const contractSchema = z.object({
     gestor_id: z.string().min(1, "Gestor é obrigatório"),
     fiscal_id: z.string().min(1, "Fiscal é obrigatório"),
     fiscal_substituto_id: z.string().optional(),
-    valor_anual: z.string().optional(),
-    valor_global: z.string().optional(),
+    valor_anual: z.string().optional().refine(
+        (val) => !val || val === "" || parseFloat(val) >= 0,
+        "Valor anual não pode ser negativo"
+    ),
+    valor_global: z.string().optional().refine(
+        (val) => !val || val === "" || parseFloat(val) >= 0,
+        "Valor global não pode ser negativo"
+    ),
     base_legal: z.string().optional(),
     termos_contratuais: z.string().optional(),
     pae: z.string().optional(),
@@ -476,11 +482,11 @@ export function EditarContrato() {
                 </div>
                 <div>
                     <label className="font-medium">Valor Anual</label>
-                    <input type="number" step="0.01" {...register("valor_anual")} className="mt-1 border rounded-lg p-2 w-full" />
+                    <input type="number" step="0.01" min="0" {...register("valor_anual")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
                 <div>
                     <label className="font-medium">Valor Global</label>
-                    <input type="number" step="0.01" {...register("valor_global")} className="mt-1 border rounded-lg p-2 w-full" />
+                    <input type="number" step="0.01" min="0" {...register("valor_global")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Base Legal</label>
