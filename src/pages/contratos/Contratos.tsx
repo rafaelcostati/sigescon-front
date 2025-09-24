@@ -332,6 +332,8 @@ function ContratosFilters({
         vencimento_30_dias: false,
         vencimento_60_dias: false,
         vencimento_90_dias: false,
+        tem_garantia: false,
+        garantia_prazo_dias: "",
     });
 
     React.useEffect(() => {
@@ -395,6 +397,8 @@ function ContratosFilters({
             vencimento_30_dias: false,
             vencimento_60_dias: false,
             vencimento_90_dias: false,
+            tem_garantia: false,
+            garantia_prazo_dias: "",
         });
         table.resetColumnFilters();
     };
@@ -571,7 +575,55 @@ function ContratosFilters({
                             Filtros cumulativos: 60 dias inclui contratos de 30 dias, 90 dias inclui ambos
                         </p>
                     </div>
-                    
+
+                    {/* Filtros de Garantia */}
+                    <div className="space-y-3 md:col-span-2 lg:col-span-4">
+                        <Label className="text-sm font-medium text-blue-700">🛡️ Filtrar por Garantia</Label>
+                        <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="tem_garantia"
+                                    checked={filters.tem_garantia}
+                                    onCheckedChange={(checked) => {
+                                        setFilters(prev => ({ ...prev, tem_garantia: checked as boolean }));
+                                        table.getColumn("tem_garantia")?.setFilterValue(checked || undefined);
+                                    }}
+                                />
+                                <label
+                                    htmlFor="tem_garantia"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-blue-700"
+                                >
+                                    🔵 Contratos com Garantia
+                                </label>
+                            </div>
+                            {filters.tem_garantia && (
+                                <div className="flex items-center space-x-2">
+                                    <Label className="text-sm">Vencimento da garantia:</Label>
+                                    <Select
+                                        value={filters.garantia_prazo_dias}
+                                        onValueChange={(value) => {
+                                            setFilters(prev => ({ ...prev, garantia_prazo_dias: value }));
+                                            table.getColumn("garantia_prazo_dias")?.setFilterValue(value === "all" ? undefined : value || undefined);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue placeholder="Selecione o prazo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todos os prazos</SelectItem>
+                                            <SelectItem value="30">🔴 30 dias ou menos</SelectItem>
+                                            <SelectItem value="60">🟠 60 dias ou menos</SelectItem>
+                                            <SelectItem value="90">🟡 90 dias ou menos</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            O filtro de garantia pode ser usado independentemente ou combinado com outros filtros
+                        </p>
+                    </div>
+
                     <div className="flex flex-col gap-2 self-end md:flex-row">
                         <Button type="submit" className="w-full md:w-auto">
                             <IconSearch className="mr-2 h-4 w-4" /> Pesquisar
@@ -1277,7 +1329,21 @@ export function ContratosDataTable() {
                 } else {
                     console.log('🔍 Nenhum filtro de vencimento ativo');
                 }
-                
+
+                // Aplicar filtros de garantia
+                if (columnFilters.find(f => f.id === 'tem_garantia')?.value) {
+                    filters.tem_garantia = true;
+                    console.log('🔍 Filtro tem_garantia aplicado: true');
+
+                    const garantiaPrazoDias = columnFilters.find(f => f.id === 'garantia_prazo_dias')?.value;
+                    if (garantiaPrazoDias && garantiaPrazoDias !== 'all') {
+                        filters.garantia_prazo_dias = garantiaPrazoDias;
+                        console.log('🔍 Filtro garantia_prazo_dias aplicado:', garantiaPrazoDias);
+                    }
+                } else {
+                    console.log('🔍 Nenhum filtro de garantia ativo');
+                }
+
                 console.log('📡 Filtros enviados para API:', filters);
 
                 // Aplicar ordenação
