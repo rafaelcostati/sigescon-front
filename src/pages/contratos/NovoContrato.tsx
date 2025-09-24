@@ -33,6 +33,7 @@ const contractSchema = z.object({
     pae: z.string().optional(),
     doe: z.string().optional(),
     data_doe: z.string().optional(),
+    garantia: z.string().optional(),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -427,10 +428,20 @@ export function NovoContrato() {
                 {/* Data do DOE */}
                 <div className="col-span-1">
                     <label className="font-medium">Data DOE</label>
-                    <input 
-                        type="date" 
-                        {...register("data_doe")} 
-                        className="mt-1 border rounded-lg p-2 w-full" 
+                    <input
+                        type="date"
+                        {...register("data_doe")}
+                        className="mt-1 border rounded-lg p-2 w-full"
+                    />
+                </div>
+
+                {/* Garantia */}
+                <div className="col-span-1">
+                    <label className="font-medium">Garantia</label>
+                    <input
+                        type="date"
+                        {...register("garantia")}
+                        className="mt-1 border rounded-lg p-2 w-full"
                     />
                 </div>
 

@@ -59,6 +59,7 @@ const contractSchema = z.object({
     pae: z.string().optional(),
     doe: z.string().optional(),
     data_doe: z.string().optional(),
+    garantia: z.string().optional(),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -134,6 +135,7 @@ export function EditarContrato() {
                     pae: contractData.pae ?? undefined,
                     doe: contractData.doe ?? undefined,
                     data_doe: contractData.data_doe ? new Date(contractData.data_doe).toISOString().split('T')[0] : undefined,
+                    garantia: (contractData as any)?.garantia ? new Date((contractData as any).garantia).toISOString().split('T')[0] : undefined,
                 };
 
                 reset(formattedData as Partial<ContractFormData>);
@@ -236,6 +238,7 @@ export function EditarContrato() {
                     pae: refreshed.pae ?? undefined,
                     doe: refreshed.doe ?? undefined,
                     data_doe: refreshed.data_doe ? new Date(refreshed.data_doe).toISOString().split('T')[0] : undefined,
+                    garantia: (refreshed as any)?.garantia ? new Date((refreshed as any).garantia).toISOString().split('T')[0] : undefined,
                 };
                 reset(refreshedFormatted);
                 const updatedFilesResponse = await getArquivosByContratoId(Number(id));
@@ -410,6 +413,10 @@ export function EditarContrato() {
                 <div className="col-span-1">
                     <label className="font-medium">Data DOE</label>
                     <input type="date" {...register("data_doe")} className="mt-1 border rounded-lg p-2 w-full" />
+                </div>
+                <div className="col-span-1">
+                    <label className="font-medium">Garantia</label>
+                    <input type="date" {...register("garantia")} className="mt-1 border rounded-lg p-2 w-full" />
                 </div>
                 <div className="col-span-1 md:col-span-2 lg:col-span-4">
                     <label className="font-medium">Objeto</label>

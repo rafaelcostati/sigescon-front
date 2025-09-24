@@ -317,6 +317,13 @@ export default function DetalhesContrato() {
                   <p className="font-medium">{(contrato as any).data_doe ? formatDate((contrato as any).data_doe) : "Não informado"}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Garantia:</span>
+                  <p className="font-medium">{(contrato as any).garantia ? formatDate((contrato as any).garantia) : "Não informado"}</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
