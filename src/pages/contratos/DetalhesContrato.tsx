@@ -27,12 +27,14 @@ import { ContratoArquivos } from "@/components/ContratoArquivos";
 
 type Pendencia = {
   id: number;
-  titulo: string;
+  titulo?: string;
   descricao: string;
   status_id: number;
   status_nome: string;
-  data_criacao: string;
-  prazo_entrega: string;
+  data_criacao: string | null;
+  prazo_entrega: string | null;
+  created_at?: string; // Campo alternativo da API
+  data_prazo?: string; // Campo alternativo da API
   em_atraso: boolean;
   dias_em_atraso?: number;
   urgencia?: string;
@@ -47,7 +49,7 @@ export default function DetalhesContrato() {
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const podeEditar = perfilAtivo?.nome === "Administrador" || perfilAtivo?.nome === "Gestor";
+  const podeEditar = perfilAtivo?.nome === "Administrador";
 
   useEffect(() => {
     const fetchDetalhes = async () => {
@@ -63,13 +65,26 @@ export default function DetalhesContrato() {
         // Carregar pendências
         try {
           const pendenciasResponse = await getPendenciasByContratoId(parseInt(id));
+          console.log('📋 Pendências recebidas:', pendenciasResponse);
+
           if (Array.isArray(pendenciasResponse)) {
+            // Log para debug das datas
+            pendenciasResponse.forEach((p: any, idx: number) => {
+              console.log(`📅 Pendência ${idx + 1}:`, {
+                id: p.id,
+                data_criacao: p.data_criacao,
+                prazo_entrega: p.prazo_entrega,
+                created_at: p.created_at,
+                data_prazo: p.data_prazo
+              });
+            });
+
             setPendencias(pendenciasResponse as unknown as Pendencia[]);
           } else {
             setPendencias([]);
           }
         } catch (error) {
-          console.log("Nenhuma pendência encontrada");
+          console.log("Nenhuma pendência encontrada", error);
           setPendencias([]);
         }
 
@@ -93,8 +108,53 @@ export default function DetalhesContrato() {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Data não informada";
+
+    try {
+      // Tenta diferentes formatos de data
+      let date: Date;
+
+      // Se já é uma string ISO ou formato padrão
+      if (dateString.includes('T') || dateString.includes('-')) {
+        date = new Date(dateString);
+      } else {
+        // Se é um timestamp ou outro formato
+        date = new Date(dateString);
+      }
+
+      // Verifica se a data é válida
+      if (isNaN(date.getTime())) {
+        console.warn('Data inválida recebida:', dateString);
+        return "Data inválida";
+      }
+
+      return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.warn('Erro ao formatar data:', dateString, error);
+      return "Data inválida";
+    }
+  };
+
+  const formatDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return "Data não informada";
+
+    try {
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        console.warn('Data/hora inválida recebida:', dateString);
+        return "Data inválida";
+      }
+
+      return date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.warn('Erro ao formatar data/hora:', dateString, error);
+      return "Data inválida";
+    }
   };
 
 
@@ -128,12 +188,15 @@ export default function DetalhesContrato() {
   if (!contrato) {
     return (
       <div className="p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Contrato não encontrado</h2>
-          <Button onClick={() => navigate('/contratos')}>
+        <div className="space-y-4">
+          <Button variant="outline" onClick={() => navigate('/contratos')} className="mb-2">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Contratos
+            Voltar
           </Button>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Contrato não encontrado</h2>
+            <p className="text-gray-600">O contrato solicitado não foi encontrado ou você não tem permissão para visualizá-lo.</p>
+          </div>
         </div>
       </div>
     );
@@ -142,27 +205,32 @@ export default function DetalhesContrato() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/contratos')}>
+      <div className="space-y-4">
+        {/* Botão Voltar */}
+        <div className="flex justify-start">
+          <Button variant="outline" onClick={() => navigate('/contratos')} className="mb-2">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
+        </div>
+
+        {/* Título e Status */}
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Contrato {contrato.nr_contrato}</h1>
             <p className="text-gray-600 mt-1">{contrato.objeto}</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge className={`${getStatusColor(contrato.status_nome || '')} text-white`}>
-            {contrato.status_nome}
-          </Badge>
-          {podeEditar && (
-            <Button onClick={() => navigate(`/contratos/editar/${contrato.id}`)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Badge className={`${getStatusColor(contrato.status_nome || '')} text-white`}>
+              {contrato.status_nome}
+            </Badge>
+            {podeEditar && (
+              <Button onClick={() => navigate(`/contratos/editar/${contrato.id}`)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -321,10 +389,10 @@ export default function DetalhesContrato() {
                     {pendencias.map((pendencia) => (
                       <div key={pendencia.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-semibold">{pendencia.titulo}</h4>
+                          <h4 className="font-semibold">{pendencia.titulo || `Pendência #${pendencia.id}`}</h4>
                           <div className="flex gap-1">
                             <Badge className={`${pendencia.em_atraso ? 'bg-red-500' : 'bg-green-500'} text-white`}>
-                              {pendencia.status_nome}
+                              {pendencia.status_nome || 'Pendente'}
                             </Badge>
                             {pendencia.em_atraso && pendencia.dias_em_atraso && (
                               <Badge className="bg-red-600 text-white">
@@ -335,8 +403,8 @@ export default function DetalhesContrato() {
                         </div>
                         <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>Criada em: {formatDate(pendencia.data_criacao)}</span>
-                          <span>Prazo: {formatDate(pendencia.prazo_entrega)}</span>
+                          <span>Criada em: {formatDateTime(pendencia.data_criacao || pendencia.created_at)}</span>
+                          <span>Prazo: {formatDate(pendencia.prazo_entrega || pendencia.data_prazo)}</span>
                         </div>
                       </div>
                     ))}
