@@ -12,18 +12,39 @@ if (!API_URL || !AUTH_API_URL) {
 // --- GERENCIADOR DE TOKEN ---
 const tokenManager = {
     getToken: (): string | null => localStorage.getItem('authToken'),
+    getRefreshToken: (): string | null => localStorage.getItem('refreshToken'),
     getTokenData: (): { token: string | null; type: string | null } => ({
         token: localStorage.getItem('authToken'),
         type: localStorage.getItem('authTokenType') || 'Bearer',
     }),
-    saveToken: (token: string, type: string = 'Bearer'): void => {
+    saveToken: (token: string, type: string = 'Bearer', refreshToken?: string): void => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('authTokenType', type);
+        if (refreshToken) {
+            localStorage.setItem('refreshToken', refreshToken);
+        }
     },
     removeToken: (): void => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('authTokenType');
+        localStorage.removeItem('refreshToken');
     },
+    isTokenExpiringSoon: (): boolean => {
+        const token = tokenManager.getToken();
+        if (!token) return false;
+
+        try {
+            const decoded: any = jwtDecode(token);
+            const expTime = decoded.exp * 1000;
+            const now = Date.now();
+            const thirtyMinutes = 30 * 60 * 1000;
+
+            return (expTime - now) < thirtyMinutes;
+        } catch (error) {
+            console.warn('Token inválido:', error);
+            return true;
+        }
+    }
 };
 
 // --- SCHEMAS E TIPOS ---
@@ -211,11 +232,41 @@ async function handleResponse<T>(response: Response): Promise<T> {
     }
 }
 
+// Função para renovar token automaticamente
+async function refreshTokenIfNeeded(): Promise<void> {
+    if (tokenManager.isTokenExpiringSoon()) {
+        const refreshToken = tokenManager.getRefreshToken();
+
+        if (refreshToken) {
+            try {
+                console.log('🔄 Token expirando em breve, renovando automaticamente...');
+                const response = await refreshTokenAPI({ refresh_token: refreshToken });
+
+                tokenManager.saveToken(
+                    response.access_token,
+                    response.token_type,
+                    response.refresh_token
+                );
+
+                console.log('✅ Token renovado automaticamente');
+            } catch (error) {
+                console.error('❌ Erro ao renovar token automaticamente:', error);
+                console.log('🚪 Fazendo logout devido à falha na renovação');
+                tokenManager.removeToken();
+                window.location.href = '/login';
+            }
+        }
+    }
+}
+
 async function api<T>(endpoint: string, options?: RequestInit, useAuthUrl: boolean = false): Promise<T> {
+    // Verifica se o token precisa ser renovado antes da requisição
+    await refreshTokenIfNeeded();
+
     const baseUrl = useAuthUrl ? AUTH_API_URL : API_URL;
     const { token, type } = tokenManager.getTokenData();
     const headers = new Headers(options?.headers);
-    
+
     headers.set('Accept', 'application/json');
     if (token) {
         headers.set('Authorization', `${type} ${token}`);
@@ -312,8 +363,8 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
         });
         
         if (data.access_token) {
-            tokenManager.saveToken(data.access_token, data.token_type);
-            console.log('💾 Token salvo no localStorage');
+            tokenManager.saveToken(data.access_token, data.token_type, data.refresh_token);
+            console.log('💾 Token e refresh token salvos no localStorage');
         }
         
         return data;
@@ -323,14 +374,55 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
     }
 }
 
-export async function logout(): Promise<void> {
+export async function logout(): Promise<{ success: boolean; message: string }> {
     try {
-        // A rota de logout está em /auth/logout na URL de autenticação
-        await api('/auth/logout', { method: 'POST' }, true);
-    } catch (error) {
-        console.warn("A chamada para o endpoint de logout falhou, mas o logout local prosseguirá.", error);
+        console.log('🚪 Iniciando logout...');
+
+        // Primeiro, tenta o logout principal
+        try {
+            const response = await api<{ success: boolean; message: string; sessoes_encerradas: number }>('/auth/logout', { method: 'POST' }, true);
+            console.log('✅ Logout realizado no servidor:', response);
+
+            return {
+                success: true,
+                message: response.message || "Logout realizado com sucesso"
+            };
+        } catch (mainLogoutError) {
+            console.warn("⚠️ Logout principal falhou, tentando logout anônimo...", mainLogoutError);
+
+            // Se o logout principal falhar, tenta o logout anônimo (sem autenticação)
+            try {
+                const response = await fetch(`${AUTH_API_URL}/auth/logout-anon`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Logout anônimo realizado:', data);
+
+                    return {
+                        success: true,
+                        message: data.message || "Logout realizado com sucesso"
+                    };
+                }
+            } catch (anonLogoutError) {
+                console.warn("⚠️ Logout anônimo também falhou:", anonLogoutError);
+            }
+
+            // Se ambos falharem, ainda retorna sucesso (logout local)
+            return {
+                success: true,
+                message: "Logout realizado com sucesso (apenas local)"
+            };
+        }
     } finally {
+        // Sempre limpa os tokens locais, independentemente do resultado do servidor
         tokenManager.removeToken();
+        console.log('🧹 Tokens locais removidos');
     }
 }
 
@@ -368,16 +460,46 @@ export async function getCurrentUserInfo(): Promise<{ id: number; nome: string; 
  * Alterna o perfil ativo do usuário sem fazer logout
  * POST /auth/alternar-perfil
  */
+/**
+ * Renova o token de acesso usando o refresh token
+ * POST /auth/refresh
+ */
+async function refreshTokenAPI(payload: { refresh_token: string }): Promise<{
+    access_token: string;
+    token_type: string;
+    refresh_token?: string;
+}> {
+    try {
+        const response = await fetch(`${AUTH_API_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('❌ Erro ao renovar token:', error);
+        throw error;
+    }
+}
+
 export async function alternarPerfil(payload: AlternarPerfilPayload): Promise<AlternarPerfilResponse> {
     console.log('🔄 Alternando perfil para ID:', payload.novo_perfil_id);
     console.log('📡 Payload:', payload);
-    
+
     try {
         const response = await api<AlternarPerfilResponse>('/auth/alternar-perfil', {
             method: 'POST',
             body: JSON.stringify(payload),
         }, true);
-        
+
         console.log('✅ Perfil alternado com sucesso:', response);
         return response;
     } catch (error) {
