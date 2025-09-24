@@ -11,22 +11,55 @@ import {
   BarChart3,
   RefreshCw,
   Building,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   getDashboardAdminCompleto,
   getDashboardAdminPendenciasVencidasCompleto,
+  getDashboardAdminContratosProximosVencimento,
   type DashboardAdminCompletoResponse,
   type DashboardAdminPendenciasVencidasResponse
 } from "@/lib/api";
+
+// Tipo para contratos próximos ao vencimento
+type ContratosProximosVencimentoData = {
+  contratos_proximos_vencimento: Array<{
+    contrato_id: number;
+    contrato_numero: string;
+    contrato_objeto: string;
+    data_inicio: string;
+    data_fim: string;
+    dias_para_vencer: number;
+    contratado_nome: string;
+    contratado_cnpj: string;
+    fiscal_nome: string;
+    fiscal_email: string;
+    gestor_nome: string;
+    gestor_email: string;
+    status_nome: string;
+    nivel_urgencia: 'CRÍTICO' | 'ALTO' | 'MÉDIO' | 'BAIXO';
+    valor_global: number | null;
+    valor_anual: number | null;
+  }>;
+  estatisticas: {
+    total_proximos_vencimento: number;
+    criticos_30_dias: number;
+    altos_60_dias: number;
+    medios_90_dias: number;
+  };
+  total_contratos: number;
+  dias_antecedencia_configurados: number;
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardAdminCompletoResponse | null>(null);
   const [pendenciasVencidasData, setPendenciasVencidasData] = useState<DashboardAdminPendenciasVencidasResponse | null>(null);
+  const [contratosVencimentoData, setContratosVencimentoData] = useState<ContratosProximosVencimentoData | null>(null);
 
   // Carregar dados do dashboard
   const loadDashboardData = async () => {
@@ -50,6 +83,18 @@ export default function AdminDashboard() {
       } catch (pendenciasError) {
         console.warn("⚠️ Erro ao carregar pendências vencidas:", pendenciasError);
         // Não falha o carregamento completo se as pendências não carregarem
+      }
+
+      // Carregar dados de contratos próximos ao vencimento
+      try {
+        console.log("🔍 Carregando contratos próximos ao vencimento...");
+        const contratosVencimentoData = await getDashboardAdminContratosProximosVencimento(90);
+        setContratosVencimentoData(contratosVencimentoData);
+        console.log("✅ Contratos próximos ao vencimento carregados:", contratosVencimentoData);
+        console.log("📊 DASHBOARD - Contratos próximos ao vencimento:", contratosVencimentoData.estatisticas);
+      } catch (contratosVencimentoError) {
+        console.warn("⚠️ Erro ao carregar contratos próximos ao vencimento:", contratosVencimentoError);
+        // Não falha o carregamento completo se os contratos não carregarem
       }
     } catch (error) {
       console.error("❌ Erro ao carregar dashboard:", error);
@@ -200,7 +245,124 @@ export default function AdminDashboard() {
             <p className="text-xs text-orange-600 mt-1">Todas as contratações</p>
           </CardContent>
         </Card>
+
       </div>
+
+      {/* Contratos Próximos ao Vencimento */}
+      <Card className="border-purple-200 shadow-lg">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-purple-800 flex items-center gap-2">
+                ⏰ Contratos Próximos ao Vencimento
+                {(contratosVencimentoData?.estatisticas?.criticos_30_dias || 0) > 0 && (
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                )}
+              </CardTitle>
+              <CardDescription>Contratos que vencem nos próximos 90 dias</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Badge className="bg-red-100 text-red-800">
+                {contratosVencimentoData?.estatisticas?.criticos_30_dias || 0} Críticos
+              </Badge>
+              <Badge className="bg-orange-100 text-orange-800">
+                {contratosVencimentoData?.estatisticas?.altos_60_dias || 0} Altos
+              </Badge>
+              <Badge className="bg-yellow-100 text-yellow-800">
+                {contratosVencimentoData?.estatisticas?.medios_90_dias || 0} Médios
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {contratosVencimentoData?.contratos_proximos_vencimento && contratosVencimentoData.contratos_proximos_vencimento.length > 0 ? (
+            contratosVencimentoData.contratos_proximos_vencimento.slice(0, 5).map((contrato) => (
+              <div key={contrato.contrato_id} className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors ${
+                contrato.nivel_urgencia === 'CRÍTICO' ? 'border-red-200 bg-red-50' :
+                contrato.nivel_urgencia === 'ALTO' ? 'border-orange-200 bg-orange-50' :
+                'border-yellow-200 bg-yellow-50'
+              }`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-semibold text-gray-800">{contrato.contrato_numero}</h4>
+                    <p className="text-sm text-gray-600 truncate max-w-[300px]" title={contrato.contrato_objeto}>
+                      {contrato.contrato_objeto}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Badge className={`${
+                      contrato.nivel_urgencia === 'CRÍTICO' ? 'bg-red-500 text-white' :
+                      contrato.nivel_urgencia === 'ALTO' ? 'bg-orange-500 text-white' :
+                      'bg-yellow-500 text-white'
+                    }`}>
+                      {contrato.dias_para_vencer} dias
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {contrato.nivel_urgencia}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Contratado:</span>
+                    <p className="font-medium truncate" title={contrato.contratado_nome}>
+                      {contrato.contratado_nome}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Data de Vencimento:</span>
+                    <p className="font-medium">
+                      {new Date(contrato.data_fim).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Gestor:</span>
+                    <p className="font-medium truncate" title={contrato.gestor_nome}>
+                      {contrato.gestor_nome}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fiscal:</span>
+                    <p className="font-medium truncate" title={contrato.fiscal_nome}>
+                      {contrato.fiscal_nome}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end pt-2 mt-2 border-t border-gray-200">
+                  <Button
+                    onClick={() => navigate(`/contratos/${contrato.contrato_id}`)}
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Ver Detalhes
+                  </Button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Clock className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>Nenhum contrato próximo ao vencimento</p>
+              <p className="text-sm text-gray-400">Todos os contratos estão com prazos adequados</p>
+            </div>
+          )}
+          
+          {contratosVencimentoData?.contratos_proximos_vencimento && contratosVencimentoData.contratos_proximos_vencimento.length > 5 && (
+            <div className="text-center pt-4 border-t border-purple-200">
+              <Button
+                onClick={() => navigate('/contratos?vencimento_90_dias=true')}
+                variant="outline"
+                size="sm"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                Ver todos os {contratosVencimentoData.total_contratos} contratos próximos ao vencimento
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
         {/* Contratos com Relatórios Aguardando Análise */}
         <Card className="border-amber-200 shadow-lg">

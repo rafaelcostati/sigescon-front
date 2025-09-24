@@ -1938,3 +1938,80 @@ export async function getDashboardFiscalMelhorado(): Promise<{
         throw error;
     }
 }
+
+/**
+ * Busca contratos próximos ao vencimento para o dashboard do administrador
+ * GET /api/v1/dashboard/admin/contratos-proximos-vencimento
+ */
+export async function getDashboardAdminContratosProximosVencimento(diasAntecedencia: number = 90): Promise<{
+    contratos_proximos_vencimento: Array<{
+        contrato_id: number;
+        contrato_numero: string;
+        contrato_objeto: string;
+        data_inicio: string;
+        data_fim: string;
+        dias_para_vencer: number;
+        contratado_nome: string;
+        contratado_cnpj: string;
+        fiscal_nome: string;
+        fiscal_email: string;
+        gestor_nome: string;
+        gestor_email: string;
+        status_nome: string;
+        nivel_urgencia: 'CRÍTICO' | 'ALTO' | 'MÉDIO' | 'BAIXO';
+        valor_global: number | null;
+        valor_anual: number | null;
+    }>;
+    estatisticas: {
+        total_proximos_vencimento: number;
+        criticos_30_dias: number;
+        altos_60_dias: number;
+        medios_90_dias: number;
+    };
+    total_contratos: number;
+    dias_antecedencia_configurados: number;
+}> {
+    console.log(`🔍 Buscando contratos próximos ao vencimento (${diasAntecedencia} dias)...`);
+
+    try {
+        const response = await api<{
+            contratos_proximos_vencimento: Array<{
+                contrato_id: number;
+                contrato_numero: string;
+                contrato_objeto: string;
+                data_inicio: string;
+                data_fim: string;
+                dias_para_vencer: number;
+                contratado_nome: string;
+                contratado_cnpj: string;
+                fiscal_nome: string;
+                fiscal_email: string;
+                gestor_nome: string;
+                gestor_email: string;
+                status_nome: string;
+                nivel_urgencia: 'CRÍTICO' | 'ALTO' | 'MÉDIO' | 'BAIXO';
+                valor_global: number | null;
+                valor_anual: number | null;
+            }>;
+            estatisticas: {
+                total_proximos_vencimento: number;
+                criticos_30_dias: number;
+                altos_60_dias: number;
+                medios_90_dias: number;
+            };
+            total_contratos: number;
+            dias_antecedencia_configurados: number;
+        }>(`/dashboard/admin/contratos-proximos-vencimento?dias_antecedencia=${diasAntecedencia}`);
+
+        console.log("✅ Contratos próximos ao vencimento carregados:", {
+            total_contratos: response.total_contratos,
+            estatisticas: response.estatisticas,
+            dias_configurados: response.dias_antecedencia_configurados
+        });
+        
+        return response;
+    } catch (error) {
+        console.error("❌ Erro ao buscar contratos próximos ao vencimento:", error);
+        throw error;
+    }
+}

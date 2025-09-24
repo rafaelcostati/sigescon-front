@@ -42,7 +42,7 @@ import {
 } from "@tanstack/react-table";
 import { jwtDecode } from "jwt-decode";
 import { PlusCircle } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,6 +83,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Card,
     CardContent,
@@ -310,12 +311,14 @@ function ContratosFilters({
     usuarios,
     perfilAtivo,
     pageDescription,
+    searchParams,
 }: {
     table: Table<ContratoList>;
     statusList: Status[];
     usuarios: User[];
     perfilAtivo: Perfil | null;
     pageDescription: string;
+    searchParams: URLSearchParams;
 }) {
     const isAdmin = perfilAtivo?.nome === "Administrador";
     const [filters, setFilters] = React.useState({
@@ -326,6 +329,9 @@ function ContratosFilters({
         status_id: "",
         gestor_id: "",
         fiscal_id: "",
+        vencimento_30_dias: false,
+        vencimento_60_dias: false,
+        vencimento_90_dias: false,
     });
 
     React.useEffect(() => {
@@ -338,9 +344,28 @@ function ContratosFilters({
             status_id: (table.getColumn("status_id")?.getFilterValue() as string) ?? "",
             gestor_id: (table.getColumn("gestor_id")?.getFilterValue() as string) ?? "",
             fiscal_id: (table.getColumn("fiscal_id")?.getFilterValue() as string) ?? "",
+            vencimento_30_dias: (table.getColumn("vencimento_30_dias")?.getFilterValue() as boolean) ?? false,
+            vencimento_60_dias: (table.getColumn("vencimento_60_dias")?.getFilterValue() as boolean) ?? false,
+            vencimento_90_dias: (table.getColumn("vencimento_90_dias")?.getFilterValue() as boolean) ?? false,
         };
         setFilters(currentFilters);
     }, [table]);
+
+    // Aplicar filtros da URL automaticamente
+    React.useEffect(() => {
+        if (searchParams.get('vencimento_90_dias') === 'true') {
+            console.log('🔗 Aplicando filtro de vencimento 90 dias da URL no ContratosFilters');
+            
+            // Atualizar estado dos filtros
+            setFilters(prev => ({
+                ...prev,
+                vencimento_90_dias: true
+            }));
+            
+            // Aplicar na tabela
+            table.getColumn('vencimento_90_dias')?.setFilterValue(true);
+        }
+    }, [searchParams, table]);
 
     const handleApplyFilters = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -353,6 +378,9 @@ function ContratosFilters({
         table.getColumn("status_id")?.setFilterValue(filters.status_id === "all" ? undefined : filters.status_id || undefined);
         table.getColumn("gestor_id")?.setFilterValue(filters.gestor_id === "all" ? undefined : filters.gestor_id || undefined);
         table.getColumn("fiscal_id")?.setFilterValue(filters.fiscal_id === "all" ? undefined : filters.fiscal_id || undefined);
+        table.getColumn("vencimento_30_dias")?.setFilterValue(filters.vencimento_30_dias || undefined);
+        table.getColumn("vencimento_60_dias")?.setFilterValue(filters.vencimento_60_dias || undefined);
+        table.getColumn("vencimento_90_dias")?.setFilterValue(filters.vencimento_90_dias || undefined);
     };
 
     const handleClearFilters = () => {
@@ -364,12 +392,25 @@ function ContratosFilters({
             status_id: "",
             gestor_id: "",
             fiscal_id: "",
+            vencimento_30_dias: false,
+            vencimento_60_dias: false,
+            vencimento_90_dias: false,
         });
         table.resetColumnFilters();
     };
 
     const handleFilterChange = (key: keyof typeof filters, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleVencimentoFilterChange = (key: 'vencimento_30_dias' | 'vencimento_60_dias' | 'vencimento_90_dias', checked: boolean) => {
+        const newFilters = { ...filters, [key]: checked };
+        setFilters(newFilters);
+        
+        console.log(`🔍 Filtro ${key} ${checked ? 'ativado' : 'desativado'}`);
+        
+        // Aplicar filtro diretamente na tabela para disparar busca na API
+        table.getColumn(key)?.setFilterValue(checked || undefined);
     };
 
     return (
@@ -481,6 +522,56 @@ function ContratosFilters({
                             </div>
                         </>
                     )}
+                    
+                    {/* Filtros de Vencimento */}
+                    <div className="space-y-3 md:col-span-2 lg:col-span-4">
+                        <Label className="text-sm font-medium text-purple-700">⏰ Filtrar por Proximidade de Vencimento</Label>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="vencimento_30_dias"
+                                    checked={filters.vencimento_30_dias}
+                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_30_dias', checked as boolean)}
+                                />
+                                <label
+                                    htmlFor="vencimento_30_dias"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-red-700"
+                                >
+                                    🔴 30 dias ou menos para vencer
+                                </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="vencimento_60_dias"
+                                    checked={filters.vencimento_60_dias}
+                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_60_dias', checked as boolean)}
+                                />
+                                <label
+                                    htmlFor="vencimento_60_dias"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-orange-700"
+                                >
+                                    🟠 60 dias ou menos para vencer
+                                </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="vencimento_90_dias"
+                                    checked={filters.vencimento_90_dias}
+                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_90_dias', checked as boolean)}
+                                />
+                                <label
+                                    htmlFor="vencimento_90_dias"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-yellow-700"
+                                >
+                                    🟡 90 dias ou menos para vencer
+                                </label>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            Filtros cumulativos: 60 dias inclui contratos de 30 dias, 90 dias inclui ambos
+                        </p>
+                    </div>
+                    
                     <div className="flex flex-col gap-2 self-end md:flex-row">
                         <Button type="submit" className="w-full md:w-auto">
                             <IconSearch className="mr-2 h-4 w-4" /> Pesquisar
@@ -1027,10 +1118,15 @@ const columns: ColumnDef<ContratoList>[] = [
     { accessorKey: "gestor_id" },
     { accessorKey: "fiscal_id" },
     { accessorKey: "data_fim" },
+    // Colunas virtuais para filtros de vencimento
+    { accessorKey: "vencimento_30_dias" },
+    { accessorKey: "vencimento_60_dias" },
+    { accessorKey: "vencimento_90_dias" },
 ];
 
 export function ContratosDataTable() {
     const { user, perfilAtivo } = useAuth();
+    const [searchParams] = useSearchParams();
     const [contratos, setContratos] = React.useState<ContratoList[]>([]);
     const [contratados, setContratados] = React.useState<Contratado[]>([]);
     const [statusList, setStatusList] = React.useState<Status[]>([]);
@@ -1135,8 +1231,10 @@ export function ContratosDataTable() {
         fetchInitialData();
     }, [handleLogout, isAdmin]);
 
+
     React.useEffect(() => {
         const fetchContratos = async () => {
+            console.log('🔄 useEffect fetchContratos disparado - columnFilters:', columnFilters);
             setIsLoading(true);
             setError(null);
             try {
@@ -1161,6 +1259,26 @@ export function ContratosDataTable() {
                         filters[filter.id] = filter.value;
                     }
                 });
+
+                // Aplicar filtros de vencimento
+                const vencimentoFilters = [];
+                if (columnFilters.find(f => f.id === 'vencimento_30_dias')?.value) {
+                    vencimentoFilters.push('30');
+                }
+                if (columnFilters.find(f => f.id === 'vencimento_60_dias')?.value) {
+                    vencimentoFilters.push('60');
+                }
+                if (columnFilters.find(f => f.id === 'vencimento_90_dias')?.value) {
+                    vencimentoFilters.push('90');
+                }
+                if (vencimentoFilters.length > 0) {
+                    filters.vencimento_dias = vencimentoFilters.join(',');
+                    console.log('🔍 Filtro de vencimento aplicado:', filters.vencimento_dias);
+                } else {
+                    console.log('🔍 Nenhum filtro de vencimento ativo');
+                }
+                
+                console.log('📡 Filtros enviados para API:', filters);
 
                 // Aplicar ordenação
                 if (sorting.length > 0) {
@@ -1204,8 +1322,12 @@ export function ContratosDataTable() {
         // Para admins, também aguardar usuários; para outros perfis, não é necessário
         const dadosCompletos = isAdmin ? dadosBasicosCarregados && usuarios.length > 0 : dadosBasicosCarregados;
         
+        console.log('🔍 Verificação dados completos:', { dadosCompletos, dadosBasicosCarregados, isAdmin, usuariosLength: usuarios.length });
+        
         if (dadosCompletos) {
             fetchContratos();
+        } else {
+            console.log('⏳ Aguardando dados completos para buscar contratos');
         }
     }, [columnFilters, pagination, sorting, contratados, statusList, usuarios, handleLogout, perfilAtivo, user, isFiscal, isGestor, isAdmin]);
 
@@ -1259,6 +1381,7 @@ export function ContratosDataTable() {
                 usuarios={usuarios}
                 perfilAtivo={perfilAtivo}
                 pageDescription={getPageDescription()}
+                searchParams={searchParams}
             />
             <Tabs defaultValue="all" className="w-full">
                 <div className="flex items-center justify-between">
