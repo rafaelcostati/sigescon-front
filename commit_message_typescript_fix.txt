@@ -1,0 +1,15 @@
+fix(types): add refresh_token to LoginResponse interface
+
+- Add optional refresh_token field to LoginResponse type definition
+- Resolve TypeScript build error: Property 'refresh_token' does not exist on type 'LoginResponse'
+- Ensure type safety for refresh token functionality in authentication flow
+- Maintain backward compatibility with optional field
+
+Fixes build error when accessing refresh_token from login response:
+- login() function now properly types refresh_token access
+- tokenManager.saveToken() call validates correctly
+- Production build passes without TypeScript errors
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>

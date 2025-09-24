@@ -105,6 +105,7 @@ export type LoginResponse = {
     contexto_sessao: ContextoSessao;
     requer_selecao_perfil?: boolean;
     mensagem?: string | null;
+    refresh_token?: string;
 };
 
 export type AlternarPerfilRequest = {
