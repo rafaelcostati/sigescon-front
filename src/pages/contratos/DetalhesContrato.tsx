@@ -403,7 +403,7 @@ export default function DetalhesContrato() {
                         </div>
                         <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>Criada em: {formatDateTime(pendencia.data_criacao || pendencia.created_at)}</span>
+                          <span>Criada em: {formatDate(pendencia.data_criacao || pendencia.created_at)}</span>
                           <span>Prazo: {formatDate(pendencia.prazo_entrega || pendencia.data_prazo)}</span>
                         </div>
                       </div>
