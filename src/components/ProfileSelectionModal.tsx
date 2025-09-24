@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { redirectToProfileDashboard } from "@/utils/profileRedirect";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,17 +21,27 @@ interface ProfileSelectionModalProps {
 
 export function ProfileSelectionModal({ open, onProfileSelected }: ProfileSelectionModalProps) {
   const { perfisDisponiveis, alternarPerfil } = useAuth();
+  const navigate = useNavigate();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
 
   const handleProfileSelect = async (perfilId: number) => {
     if (isSelecting) return;
 
+    // Encontra o perfil selecionado
+    const perfilSelecionado = perfisDisponiveis.find(p => p.id === perfilId);
+    if (!perfilSelecionado) return;
+
     setSelectedProfileId(perfilId);
     setIsSelecting(true);
 
     try {
-      await alternarPerfil(perfilId);
+      // Função de redirecionamento baseada no perfil
+      const redirectToDashboard = () => {
+        redirectToProfileDashboard(perfilSelecionado.nome, navigate);
+      };
+
+      await alternarPerfil(perfilId, redirectToDashboard);
       toast.success("Perfil selecionado com sucesso!");
       onProfileSelected();
     } catch (error: any) {

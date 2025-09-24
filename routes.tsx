@@ -3,7 +3,7 @@ import AppLayout from '@/_layouts/app';
 import { AuthLayout } from '@/_layouts/auth';
 
 // Páginas
-import Page from '@/dashboard/page';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
 import { ContratosDataTable } from '@/pages/contratos/Contratos';
 import { NovoContrato } from '@/pages/contratos/NovoContrato';
 import { EditarContrato } from '@/pages/contratos/EditarContrato';
@@ -60,7 +60,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/dashboard/admin',
-        element: <ProtectedRoute requiredProfiles={['Administrador']}><Page /></ProtectedRoute>,
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><AdminDashboard /></ProtectedRoute>,
       },
       {
         path: '/dashboard/gestor',

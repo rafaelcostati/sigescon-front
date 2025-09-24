@@ -41,7 +41,7 @@ type AuthContextType = {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  alternarPerfil: (novoPerfilId: number) => Promise<void>;
+  alternarPerfil: (novoPerfilId: number, redirectCallback?: () => void) => Promise<void>;
   isAuthenticated: boolean;
 };
 
@@ -274,7 +274,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Função para alternar perfil sem logout
-  const alternarPerfil = async (novoPerfilId: number) => {
+  const alternarPerfil = async (novoPerfilId: number, redirectCallback?: () => void) => {
     console.log('🚀 Iniciando alternância de perfil para ID:', novoPerfilId);
     
     try {
@@ -333,6 +333,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       console.log('✅ Perfil alternado com sucesso para:', novoPerfilAtivo.nome);
       toast.success(`Perfil alterado para ${novoPerfilAtivo.nome}`);
+
+      // Executa o callback de redirecionamento se fornecido
+      if (redirectCallback) {
+        console.log('🔄 Executando redirecionamento após alternância de perfil');
+        redirectCallback();
+      }
     } catch (error: any) {
       console.error("❌ Erro ao alternar perfil:", error);
       toast.error("Erro ao alternar perfil. Tente novamente.");

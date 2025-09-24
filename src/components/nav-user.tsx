@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { redirectToProfileDashboard } from "@/utils/profileRedirect";
 import {
   IconDotsVertical,
   IconLogout,
@@ -129,16 +130,25 @@ export function NavUser() {
     }
   };
 
-  // Função para alternar perfil
+  // Função para alternar perfil com redirecionamento
   const handleProfileChange = async (novoPerfilId: string) => {
     if (isChangingProfile) return;
-    
+
     const perfilId = parseInt(novoPerfilId, 10);
     if (perfilId === perfilAtivo?.id) return;
 
+    // Encontra o perfil selecionado
+    const perfilSelecionado = perfisDisponiveis.find(p => p.id === perfilId);
+    if (!perfilSelecionado) return;
+
     setIsChangingProfile(true);
     try {
-      await alternarPerfil(perfilId);
+      // Função de redirecionamento baseada no perfil
+      const redirectToDashboard = () => {
+        redirectToProfileDashboard(perfilSelecionado.nome, navigate);
+      };
+
+      await alternarPerfil(perfilId, redirectToDashboard);
       // O toast já é mostrado no AuthContext
     } catch (error) {
       console.error("Erro ao alternar perfil:", error);
