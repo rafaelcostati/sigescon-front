@@ -47,7 +47,6 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { EnviarRelatorio } from "@/components/EnviarRelatorio";
 
 // Importar as funções da API
 import {
@@ -1013,27 +1012,7 @@ function DraggableContratoCard({
                 <div className="flex flex-col gap-1.5 w-full">
                     <ContratoDetailsViewer contrato={contrato} />
 
-                    {isFiscal && (
-                        <div className="w-full">
-                            <EnviarRelatorio
-                                contratoId={contrato.id}
-                                contratoNumero={contrato.nr_contrato}
-                                pendencias={pendencias}
-                                onRelatorioEnviado={() => {
-                                    // Recarregar pendências após envio
-                                    const fetchPendencias = async () => {
-                                        try {
-                                            const response = await getPendenciasByContratoId(contrato.id);
-                                            setPendencias(response || []);
-                                        } catch (error) {
-                                            console.error('Erro ao recarregar pendências:', error);
-                                        }
-                                    };
-                                    fetchPendencias();
-                                }}
-                            />
-                        </div>
-                    )}
+                    
                 </div>
             </CardFooter>
         </Card>
