@@ -349,6 +349,8 @@ function ContratosFilters({
             vencimento_30_dias: (table.getColumn("vencimento_30_dias")?.getFilterValue() as boolean) ?? false,
             vencimento_60_dias: (table.getColumn("vencimento_60_dias")?.getFilterValue() as boolean) ?? false,
             vencimento_90_dias: (table.getColumn("vencimento_90_dias")?.getFilterValue() as boolean) ?? false,
+            tem_garantia: (table.getColumn("tem_garantia")?.getFilterValue() as boolean) ?? false,
+            garantia_prazo_dias: (table.getColumn("garantia_prazo_dias")?.getFilterValue() as string) ?? "",
         };
         setFilters(currentFilters);
     }, [table]);
@@ -383,6 +385,8 @@ function ContratosFilters({
         table.getColumn("vencimento_30_dias")?.setFilterValue(filters.vencimento_30_dias || undefined);
         table.getColumn("vencimento_60_dias")?.setFilterValue(filters.vencimento_60_dias || undefined);
         table.getColumn("vencimento_90_dias")?.setFilterValue(filters.vencimento_90_dias || undefined);
+        table.getColumn("tem_garantia")?.setFilterValue(filters.tem_garantia || undefined);
+        table.getColumn("garantia_prazo_dias")?.setFilterValue(filters.garantia_prazo_dias === "all" ? undefined : filters.garantia_prazo_dias || undefined);
     };
 
     const handleClearFilters = () => {
@@ -1174,6 +1178,9 @@ const columns: ColumnDef<ContratoList>[] = [
     { accessorKey: "vencimento_30_dias" },
     { accessorKey: "vencimento_60_dias" },
     { accessorKey: "vencimento_90_dias" },
+    // Colunas virtuais para filtros de garantia
+    { accessorKey: "tem_garantia" },
+    { accessorKey: "garantia_prazo_dias" },
 ];
 
 export function ContratosDataTable() {
