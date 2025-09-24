@@ -99,9 +99,12 @@ export function GestorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-800">{dashboardData.contadores.contratos_sob_gestao}</div>
-            <p className="text-xs text-blue-600">
+            <p className="text-xs text-blue-600 mb-2">
               Contratos gerenciados
             </p>
+            <div className="text-sm text-blue-700">
+              <span className="font-medium">{dashboardData.contadores.contratos_ativos_sob_gestao}</span> ativos
+            </div>
           </CardContent>
         </Card>
 
@@ -112,7 +115,7 @@ export function GestorDashboard() {
             <IconAlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-800">{dashboardData.contadores.equipe_pendencias_atraso}</div>
+            <div className="text-2xl font-bold text-red-800">{(dashboardData.pendencias.estatisticas.vencidas + dashboardData.pendencias.estatisticas.pendentes)}</div>
             <p className="text-xs text-red-600">
               Pendências em atraso
             </p>

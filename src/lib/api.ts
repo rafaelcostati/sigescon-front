@@ -1599,6 +1599,7 @@ export type DashboardGestorPendenciasResponse = {
 
 export type ContadoresGestor = {
     contratos_sob_gestao: number;
+    contratos_ativos_sob_gestao: number;
     equipe_pendencias_atraso: number;
     relatorios_equipe_aguardando: number;
     contratos_proximos_vencimento: number;
@@ -1649,28 +1650,28 @@ export async function getDashboardGestorCompleto(): Promise<DashboardGestorCompl
         // Processar contadores
         let contadores = {
             contratos_sob_gestao: 0,
+            contratos_ativos_sob_gestao: 0,
             equipe_pendencias_atraso: 0,
             relatorios_equipe_aguardando: 0,
             contratos_proximos_vencimento: 0
         };
-        
-        // Remover a lógica de contratos por enquanto - será calculado das pendências
-        
+
         if (contadoresResponse.status === 'fulfilled') {
             const response = contadoresResponse.value;
             console.log("🔍 Dados dos contadores recebidos:", response.contadores);
-            
-            // Tentar diferentes campos baseado nos logs
+
+            // Mapear diretamente os campos dos contadores
             const contadoresData = response.contadores || response;
             contadores = {
-                ...contadores, // Manter o contratos_sob_gestao calculado acima
-                equipe_pendencias_atraso: contadoresData?.contratos_com_pendencias || 
+                contratos_sob_gestao: contadoresData?.contratos_sob_gestao || 0,
+                contratos_ativos_sob_gestao: contadoresData?.contratos_ativos_sob_gestao || 0,
+                equipe_pendencias_atraso: contadoresData?.contratos_com_pendencias ||
                                          contadoresData?.pendencias_vencidas || 0,
-                relatorios_equipe_aguardando: contadoresData?.relatorios_para_analise || 0,
-                contratos_proximos_vencimento: contadoresData?.contratos_vencendo || 
+                relatorios_equipe_aguardando: contadoresData?.relatorios_equipe_pendentes || 0,
+                contratos_proximos_vencimento: contadoresData?.contratos_vencendo ||
                                               contadoresData?.contratos_proximos_vencimento || 0
             };
-            
+
             console.log("✅ Contadores mapeados:", contadores);
         }
         
