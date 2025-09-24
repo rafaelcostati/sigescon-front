@@ -10,7 +10,7 @@ const Card = React.forwardRef<
     ref={ref}
     data-slot="card"
     className={cn(
-      "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+      "bg-card/90 backdrop-blur-sm text-card-foreground flex flex-col gap-6 rounded-2xl border border-white/20 py-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-fadeIn",
       className
     )}
     {...props}
@@ -92,5 +92,5 @@ export {
   CardTitle,
   CardAction,
   CardDescription,
-  CardContent,
+  CardContent,
 }

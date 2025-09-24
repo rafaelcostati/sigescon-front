@@ -43,115 +43,117 @@
 }
 
 /* =================================================
-  🎨 PALETA DE CORES "CORPORATE TRUST" - MODO CLARO
+  🎨 PALETA DE CORES "MODERN GRADIENT" - MODO CLARO
+  Baseada no tema azul → índigo → roxo do sistema de auth
 =================================================
 */
 :root {
   --radius: 0.625rem;
 
-  /* Cores Base */
-  --background: oklch(0.98 0.006 240); /* Cinza muito claro (quase branco) */
-  --foreground: oklch(0.25 0.04 265); /* Azul-escuro para texto */
+  /* Cores Base - Gradiente sutil de fundo */
+  --background: oklch(0.98 0.008 250); /* Azul muito claro */
+  --foreground: oklch(0.25 0.05 270); /* Índigo escuro para texto */
   
-  /* Componentes (Cards, Popovers) */
-  --card: oklch(1 0 0); /* Branco puro */
-  --card-foreground: oklch(0.25 0.04 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.04 265);
+  /* Componentes (Cards, Popovers) - Com glass morphism */
+  --card: oklch(1 0 0 / 0.9); /* Branco semi-transparente */
+  --card-foreground: oklch(0.25 0.05 270);
+  --popover: oklch(1 0 0 / 0.95);
+  --popover-foreground: oklch(0.25 0.05 270);
 
-  /* Cor Primária (Ações principais) */
-  --primary: oklch(0.45 0.16 264); /* Azul Atlassian */
+  /* Cor Primária - Gradiente azul para roxo */
+  --primary: oklch(0.55 0.18 260); /* Azul vibrante */
   --primary-foreground: oklch(1 0 0); /* Branco para texto sobre o azul */
 
-  /* Cores Secundárias e de Apoio */
-  --secondary: oklch(0.95 0.01 250); /* Cinza claro para fundos sutis */
-  --secondary-foreground: oklch(0.25 0.04 265);
-  --muted: oklch(0.95 0.01 250);
-  --muted-foreground: oklch(0.55 0.02 257); /* Cinza para texto secundário */
-  --accent: oklch(0.97 0.02 250);
-  --accent-foreground: oklch(0.45 0.16 264);
+  /* Cores Secundárias - Tons de índigo */
+  --secondary: oklch(0.96 0.015 250); /* Azul muito claro */
+  --secondary-foreground: oklch(0.25 0.05 270);
+  --muted: oklch(0.96 0.015 250);
+  --muted-foreground: oklch(0.55 0.03 265); /* Índigo médio para texto secundário */
+  --accent: oklch(0.97 0.02 260);
+  --accent-foreground: oklch(0.55 0.18 260);
 
   /* Cores Semânticas */
   --destructive: oklch(0.52 0.2 27); /* Vermelho para erros */
   --success: oklch(0.56 0.11 160); /* Verde para sucesso */
   --warning: oklch(0.77 0.15 85); /* Amarelo para alertas */
 
-  /* Bordas, Inputs e Anéis de Foco */
-  --border: oklch(0.92 0.01 255); /* Borda cinza sutil */
-  --input: oklch(0.92 0.01 255);
-  --ring: oklch(0.65 0.18 264 / 0.7); /* Azul primário mais claro para foco */
+  /* Bordas, Inputs e Anéis de Foco - Tom azul sutil */
+  --border: oklch(0.92 0.015 255); /* Borda azul sutil */
+  --input: oklch(0.94 0.01 250);
+  --ring: oklch(0.65 0.18 260 / 0.4); /* Azul primário para foco */
 
-  /* Cores para Gráficos */
-  --chart-1: oklch(0.45 0.16 264); /* Azul (Primário) */
-  --chart-2: oklch(0.65 0.12 185); /* Ciano */
+  /* Cores para Gráficos - Paleta azul-roxo */
+  --chart-1: oklch(0.55 0.18 260); /* Azul (Primário) */
+  --chart-2: oklch(0.6 0.15 240);  /* Índigo */
   --chart-3: oklch(0.6 0.15 290);  /* Roxo */
-  --chart-4: oklch(0.77 0.15 85);  /* Laranja (Warning) */
-  --chart-5: oklch(0.56 0.11 160); /* Verde (Success) */
+  --chart-4: oklch(0.65 0.12 220); /* Azul claro */
+  --chart-5: oklch(0.7 0.1 280);   /* Lavanda */
 
-  /* Cores da Sidebar (alinhadas com Card) */
-  --sidebar: oklch(1 0 0); /* Fundo branco, igual ao card */
-  --sidebar-foreground: oklch(0.25 0.04 265);
-  --sidebar-primary: oklch(0.45 0.16 264);
+  /* Cores da Sidebar - Glass morphism */
+  --sidebar: oklch(1 0 0 / 0.85); /* Fundo semi-transparente */
+  --sidebar-foreground: oklch(0.25 0.05 270);
+  --sidebar-primary: oklch(0.55 0.18 260);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.97 0.02 250);
-  --sidebar-accent-foreground: oklch(0.45 0.16 264);
-  --sidebar-border: oklch(0.92 0.01 255);
-  --sidebar-ring: oklch(0.65 0.18 264 / 0.7);
+  --sidebar-accent: oklch(0.97 0.02 260);
+  --sidebar-accent-foreground: oklch(0.55 0.18 260);
+  --sidebar-border: oklch(0.9 0.02 255 / 0.3);
+  --sidebar-ring: oklch(0.65 0.18 260 / 0.4);
 }
 
 /* =================================================
-  🎨 PALETA DE CORES "CORPORATE TRUST" - MODO ESCURO
+  🎨 PALETA DE CORES "MODERN GRADIENT" - MODO ESCURO
+  Baseada no tema azul → índigo → roxo do sistema de auth
 =================================================
 */
 .dark {
-  /* Cores Base */
-  --background: oklch(0.15 0.03 260); /* Azul-marinho muito escuro */
-  --foreground: oklch(0.9 0.01 250); /* Cinza claro para texto */
+  /* Cores Base - Fundo escuro com toque azul */
+  --background: oklch(0.12 0.04 270); /* Índigo muito escuro */
+  --foreground: oklch(0.92 0.01 250); /* Cinza claro para texto */
   
-  /* Componentes (Cards, Popovers) */
-  --card: oklch(0.2 0.035 262); /* Um tom mais claro que o fundo */
-  --card-foreground: oklch(0.9 0.01 250);
-  --popover: oklch(0.2 0.035 262);
-  --popover-foreground: oklch(0.9 0.01 250);
+  /* Componentes (Cards, Popovers) - Glass morphism escuro */
+  --card: oklch(0.18 0.04 265 / 0.9); /* Índigo escuro semi-transparente */
+  --card-foreground: oklch(0.92 0.01 250);
+  --popover: oklch(0.18 0.04 265 / 0.95);
+  --popover-foreground: oklch(0.92 0.01 250);
 
-  /* Cor Primária (Ações principais) */
-  --primary: oklch(0.65 0.18 264); /* Azul mais brilhante para contraste */
-  --primary-foreground: oklch(0.15 0.03 260); /* Texto escuro sobre o azul */
+  /* Cor Primária - Azul brilhante para contraste */
+  --primary: oklch(0.7 0.2 260); /* Azul vibrante para modo escuro */
+  --primary-foreground: oklch(0.12 0.04 270); /* Texto escuro sobre o azul */
 
-  /* Cores Secundárias e de Apoio */
-  --secondary: oklch(0.25 0.04 265);
-  --secondary-foreground: oklch(0.9 0.01 250);
-  --muted: oklch(0.25 0.04 265);
-  --muted-foreground: oklch(0.65 0.02 255); /* Cinza médio para texto secundário */
-  --accent: oklch(0.25 0.04 265);
-  --accent-foreground: oklch(0.65 0.18 264);
+  /* Cores Secundárias - Tons de índigo escuro */
+  --secondary: oklch(0.22 0.05 270);
+  --secondary-foreground: oklch(0.92 0.01 250);
+  --muted: oklch(0.22 0.05 270);
+  --muted-foreground: oklch(0.7 0.02 260); /* Índigo médio para texto secundário */
+  --accent: oklch(0.25 0.05 265);
+  --accent-foreground: oklch(0.7 0.2 260);
 
   /* Cores Semânticas */
   --destructive: oklch(0.65 0.2 27); /* Vermelho mais claro */
   --success: oklch(0.65 0.12 160); /* Verde mais claro */
   --warning: oklch(0.8 0.15 85); /* Amarelo mais claro */
 
-  /* Bordas, Inputs e Anéis de Foco */
-  --border: oklch(1 0 0 / 0.15); /* Branco com 15% de opacidade */
-  --input: oklch(1 0 0 / 0.1); /* Branco com 10% de opacidade */
-  --ring: oklch(0.65 0.18 264); /* Azul primário do modo escuro */
+  /* Bordas, Inputs e Anéis de Foco - Azul sutil */
+  --border: oklch(1 0 0 / 0.12); /* Branco com baixa opacidade */
+  --input: oklch(1 0 0 / 0.08); /* Branco com opacidade muito baixa */
+  --ring: oklch(0.7 0.2 260 / 0.6); /* Azul primário do modo escuro */
 
-  /* Cores para Gráficos (versões mais brilhantes) */
-  --chart-1: oklch(0.65 0.18 264); /* Azul (Primário) */
-  --chart-2: oklch(0.7 0.13 185); /* Ciano */
-  --chart-3: oklch(0.7 0.16 290);  /* Roxo */
-  --chart-4: oklch(0.8 0.15 85);  /* Laranja (Warning) */
-  --chart-5: oklch(0.65 0.12 160); /* Verde (Success) */
+  /* Cores para Gráficos - Paleta azul-roxo brilhante */
+  --chart-1: oklch(0.7 0.2 260); /* Azul (Primário) */
+  --chart-2: oklch(0.75 0.18 240);  /* Índigo */
+  --chart-3: oklch(0.75 0.18 290);  /* Roxo */
+  --chart-4: oklch(0.8 0.15 220); /* Azul claro */
+  --chart-5: oklch(0.8 0.12 280);   /* Lavanda */
 
-  /* Cores da Sidebar (alinhadas com Card) */
-  --sidebar: oklch(0.2 0.035 262); /* Fundo igual ao card */
-  --sidebar-foreground: oklch(0.9 0.01 250);
-  --sidebar-primary: oklch(0.65 0.18 264);
-  --sidebar-primary-foreground: oklch(0.15 0.03 260);
-  --sidebar-accent: oklch(0.25 0.04 265);
-  --sidebar-accent-foreground: oklch(0.65 0.18 264);
-  --sidebar-border: oklch(1 0 0 / 0.15);
-  --sidebar-ring: oklch(0.65 0.18 264);
+  /* Cores da Sidebar - Glass morphism escuro */
+  --sidebar: oklch(0.18 0.04 265 / 0.85); /* Fundo semi-transparente */
+  --sidebar-foreground: oklch(0.92 0.01 250);
+  --sidebar-primary: oklch(0.7 0.2 260);
+  --sidebar-primary-foreground: oklch(0.12 0.04 270);
+  --sidebar-accent: oklch(0.25 0.05 265);
+  --sidebar-accent-foreground: oklch(0.7 0.2 260);
+  --sidebar-border: oklch(1 0 0 / 0.12);
+  --sidebar-ring: oklch(0.7 0.2 260 / 0.6);
 }
 
 @layer base {
@@ -163,5 +165,98 @@
     /* Adiciona suavização de fonte para melhor legibilidade */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Gradiente sutil de fundo */
+    background: linear-gradient(135deg, 
+      oklch(0.98 0.008 250) 0%, 
+      oklch(0.985 0.01 260) 50%, 
+      oklch(0.98 0.012 270) 100%);
+    min-height: 100vh;
+  }
+  
+  /* Modo escuro com gradiente */
+  .dark body {
+    background: linear-gradient(135deg, 
+      oklch(0.12 0.04 270) 0%, 
+      oklch(0.115 0.045 260) 50%, 
+      oklch(0.12 0.05 250) 100%);
+  }
+}
+
+/* =================================================
+  🎨 ANIMAÇÕES E EFEITOS MODERNOS
+=================================================
+*/
+@layer utilities {
+  /* Animações de entrada */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  
+  @keyframes blob {
+    0% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  
+  /* Classes utilitárias */
+  .animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+  .animate-slideIn { animation: slideIn 0.3s ease-out; }
+  .animate-scaleIn { animation: scaleIn 0.4s ease-out; }
+  .animate-blob { animation: blob 7s infinite; }
+  .animation-delay-2000 { animation-delay: 2s; }
+  .animation-delay-4000 { animation-delay: 4s; }
+  
+  /* Glass morphism effect */
+  .glass {
+    backdrop-filter: blur(16px);
+    background: oklch(1 0 0 / 0.1);
+    border: 1px solid oklch(1 0 0 / 0.2);
+  }
+  
+  .dark .glass {
+    background: oklch(0 0 0 / 0.2);
+    border: 1px solid oklch(1 0 0 / 0.1);
+  }
+  
+  /* Gradientes modernos */
+  .gradient-primary {
+    background: linear-gradient(135deg, 
+      oklch(0.55 0.18 260) 0%, 
+      oklch(0.6 0.15 290) 100%);
+  }
+  
+  .gradient-secondary {
+    background: linear-gradient(135deg, 
+      oklch(0.6 0.15 240) 0%, 
+      oklch(0.65 0.12 220) 100%);
+  }
+  
+  /* Hover effects */
+  .hover-lift {
+    transition: all 0.3s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px oklch(0.55 0.18 260 / 0.15);
+  }
+  
+  /* Focus states modernos */
+  .focus-modern:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(0.65 0.18 260 / 0.4);
+    border-color: oklch(0.55 0.18 260);
   }
 }
