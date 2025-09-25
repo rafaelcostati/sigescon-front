@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, SquareX, Upload, Trash2, ChevronDown, Search, X } from "lucide-react";
+import { Save, SquareX, Upload, Trash2, ChevronDown, Search, X, UserPlus } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import React from 'react';
 import { toast } from 'sonner';
@@ -60,9 +60,11 @@ interface SearchableSelectProps {
     value: string;
     onValueChange: (value: string) => void;
     placeholder: string;
+    canCreateNew?: boolean;
+    onCreateNew?: () => void;
 }
 
-function SearchableSelect({ options, value, onValueChange, placeholder }: SearchableSelectProps) {
+function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredOptions, setFilteredOptions] = useState(options);
@@ -149,25 +151,55 @@ function SearchableSelect({ options, value, onValueChange, placeholder }: Search
                     {/* Options list - altura exata para 10 linhas (40px cada = 400px) */}
                     <div className="h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50">
                         {filteredOptions.length > 0 ? (
-                            filteredOptions.map((option) => (
-                                <button
-                                    key={option.id}
-                                    type="button"
-                                    onClick={() => handleSelect(option.id.toString())}
-                                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-blue-50 last:border-b-0 ${
-                                        value === option.id.toString()
-                                            ? 'bg-blue-100 text-blue-900 font-medium'
-                                            : 'text-gray-700 hover:text-blue-900'
-                                    }`}
-                                >
-                                    {option.nome}
-                                </button>
-                            ))
+                            <>
+                                {filteredOptions.map((option) => (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        onClick={() => handleSelect(option.id.toString())}
+                                        className={`w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-blue-50 ${
+                                            value === option.id.toString()
+                                                ? 'bg-blue-100 text-blue-900 font-medium'
+                                                : 'text-gray-700 hover:text-blue-900'
+                                        }`}
+                                    >
+                                        {option.nome}
+                                    </button>
+                                ))}
+                                {canCreateNew && onCreateNew && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            onCreateNew();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-green-50 transition-colors border-t-2 border-green-200 bg-green-50/50 text-green-700 hover:text-green-900 font-medium"
+                                    >
+                                        <UserPlus className="inline h-4 w-4 mr-2" />
+                                        Criar novo usuário
+                                    </button>
+                                )}
+                            </>
                         ) : (
-                            <div className="px-4 py-8 text-center text-sm text-gray-500">
-                                <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                                Nenhum item encontrado
-                            </div>
+                            <>
+                                <div className="px-4 py-8 text-center text-sm text-gray-500">
+                                    <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                    Nenhum item encontrado
+                                </div>
+                                {canCreateNew && onCreateNew && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            onCreateNew();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-green-50 transition-colors border-t-2 border-green-200 bg-green-50/50 text-green-700 hover:text-green-900 font-medium"
+                                    >
+                                        <UserPlus className="inline h-4 w-4 mr-2" />
+                                        Criar novo usuário
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -186,7 +218,21 @@ export function NovoContrato() {
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
     const [usuarios, setUsuarios] = useState<any[]>([]);
+    const [perfis, setPerfis] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    // Estados para o modal de criação de usuário
+    const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+    const [newUserData, setNewUserData] = useState({
+        nome: '',
+        email: '',
+        cpf: '',
+        matricula: '',
+        senha: '',
+        perfil_id: ''
+    });
+    const [selectedPerfis, setSelectedPerfis] = useState<number[]>([]);
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
 
     // Estados para controlar os valores dos selects customizados
     const [selectedContratado, setSelectedContratado] = useState("");
@@ -228,7 +274,7 @@ export function NovoContrato() {
 
                 console.log("Fazendo requisições com token:", token.substring(0, 20) + "...");
 
-                const [c, m, s, u] = await Promise.all([
+                const [c, m, s, u, p] = await Promise.all([
                     fetch(`${import.meta.env.VITE_API_URL}/contratados?page=1&per_page=100`, {
                         method: 'GET',
                         headers
@@ -242,6 +288,10 @@ export function NovoContrato() {
                         headers
                     }),
                     fetch(`${import.meta.env.VITE_API_URL}/usuarios?page=1&per_page=100`, {
+                        method: 'GET',
+                        headers
+                    }),
+                    fetch(`${import.meta.env.VITE_API_URL}/perfis/`, {
                         method: 'GET',
                         headers
                     }),
@@ -280,22 +330,33 @@ export function NovoContrato() {
                         return;
                     }
                 }
+                if (!p.ok) {
+                    console.error("Erro ao carregar perfis:", p.status, p.statusText);
+                    if (p.status === 401) {
+                        toast.error("Sessão expirada. Faça login novamente.");
+                        navigate("/login");
+                        return;
+                    }
+                }
 
                 const contratadosData = c.ok ? await c.json() : [];
                 const modalidadesData = m.ok ? await m.json() : [];
                 const statusData = s.ok ? await s.json() : [];
                 const usuariosData = u.ok ? await u.json() : [];
+                const perfisData = p.ok ? await p.json() : [];
 
                 // Filtrar apenas itens ativos (não excluídos)
                 const contratadosArray = Array.isArray(contratadosData) ? contratadosData : contratadosData.data || [];
                 const modalidadesArray = Array.isArray(modalidadesData) ? modalidadesData : modalidadesData.data || [];
                 const statusArray = Array.isArray(statusData) ? statusData : statusData.data || [];
                 const usuariosArray = Array.isArray(usuariosData) ? usuariosData : usuariosData.data || [];
+                const perfisArray = Array.isArray(perfisData) ? perfisData : perfisData.data || [];
 
                 setContratados(contratadosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
                 setModalidades(modalidadesArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
                 setStatusList(statusArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
                 setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+                setPerfis(perfisArray);
 
                 console.log("Dados carregados:", {
                     contratados: contratadosData,
@@ -311,6 +372,136 @@ export function NovoContrato() {
         }
         fetchData();
     }, [navigate]);
+
+    // Função para abrir o modal de criação de usuário
+    const handleCreateUser = () => {
+        setShowCreateUserModal(true);
+    };
+
+    // Função para limpar CPF (remover pontos, hífens e espaços)
+    const cleanCPF = (cpf: string) => {
+        return cpf.replace(/[.\-\s]/g, '');
+    };
+
+    // Função para criar novo usuário
+    const handleSubmitNewUser = async () => {
+        if (!newUserData.nome || !newUserData.email || !newUserData.cpf || !newUserData.senha) {
+            toast.error("Preencha todos os campos obrigatórios (Nome, E-mail, CPF e Senha)");
+            return;
+        }
+
+        if (selectedPerfis.length === 0) {
+            toast.error("Selecione pelo menos um perfil para o usuário");
+            return;
+        }
+
+        // Validar CPF limpo
+        const cpfLimpo = cleanCPF(newUserData.cpf);
+        if (cpfLimpo.length !== 11) {
+            toast.error("CPF deve ter exatamente 11 dígitos");
+            return;
+        }
+
+        // Validar matrícula se preenchida
+        if (newUserData.matricula && newUserData.matricula.length > 20) {
+            toast.error("Matrícula deve ter no máximo 20 caracteres");
+            return;
+        }
+
+        setIsCreatingUser(true);
+        const toastId = toast.loading("Criando usuário...");
+
+        try {
+            const token = localStorage.getItem("authToken") ||
+                         localStorage.getItem("token") ||
+                         localStorage.getItem("access_token") || "";
+
+            if (!token) {
+                throw new Error("Token de autenticação não encontrado");
+            }
+
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            };
+
+            // Criar usuário com o primeiro perfil como principal
+            const createUserResponse = await fetch(`${import.meta.env.VITE_API_URL}/usuarios`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    nome: newUserData.nome,
+                    email: newUserData.email,
+                    cpf: cpfLimpo, // Usar CPF sem formatação
+                    matricula: newUserData.matricula || undefined,
+                    senha: newUserData.senha,
+                    perfil_id: selectedPerfis[0] // Usar o primeiro perfil selecionado como perfil principal
+                })
+            });
+
+            if (!createUserResponse.ok) {
+                const errorData = await createUserResponse.json().catch(() => ({ message: "Erro desconhecido" }));
+                throw new Error(errorData.message || errorData.detail || `Erro ${createUserResponse.status}: ${createUserResponse.statusText}`);
+            }
+
+            const newUser = await createUserResponse.json();
+            console.log("Usuário criado:", newUser);
+            console.log("Perfis selecionados:", selectedPerfis);
+
+            // Conceder TODOS os perfis selecionados (incluindo o primeiro novamente para garantir)
+            if (selectedPerfis.length > 0) {
+                console.log("Concedendo todos os perfis selecionados...");
+                toast.loading("Concedendo perfis...", { id: toastId });
+
+                console.log("Perfis a conceder:", selectedPerfis);
+
+                const grantResponse = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/${newUser.id}/perfis/conceder`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        perfil_ids: selectedPerfis
+                    })
+                });
+
+                console.log("Resposta da concessão:", grantResponse.status);
+
+                if (!grantResponse.ok) {
+                    const errorData = await grantResponse.json().catch(() => ({ message: "Erro desconhecido" }));
+                    console.warn("Erro ao conceder perfis:", grantResponse.status, errorData);
+                    toast.error("Usuário criado, mas houve erro ao conceder alguns perfis", { id: toastId });
+                } else {
+                    const grantResult = await grantResponse.json();
+                    console.log("Perfis concedidos com sucesso:", grantResult);
+                }
+            }
+
+            // Atualizar a lista de usuários
+            setUsuarios(prev => [...prev, newUser]);
+
+            // Limpar o formulário
+            setNewUserData({
+                nome: '',
+                email: '',
+                cpf: '',
+                matricula: '',
+                senha: '',
+                perfil_id: ''
+            });
+            setSelectedPerfis([]);
+
+            // Fechar modal
+            setShowCreateUserModal(false);
+
+            toast.success("Usuário criado com sucesso!", { id: toastId });
+
+        } catch (err: any) {
+            console.error("Erro ao criar usuário:", err);
+            toast.error(err.message || "Erro ao criar usuário", { id: toastId });
+        } finally {
+            setIsCreatingUser(false);
+        }
+    };
 
     async function onSubmit(data: ContractFormData) {
         setIsSubmitting(true);
@@ -630,6 +821,8 @@ export function NovoContrato() {
                                 setValue("gestor_id", value);
                             }}
                             placeholder="Selecione um gestor"
+                            canCreateNew={true}
+                            onCreateNew={handleCreateUser}
                         />
                     </div>
                     {errors.gestor_id && <p className="text-red-500 text-sm">{errors.gestor_id.message}</p>}
@@ -647,6 +840,8 @@ export function NovoContrato() {
                                 setValue("fiscal_id", value);
                             }}
                             placeholder="Selecione um fiscal"
+                            canCreateNew={true}
+                            onCreateNew={handleCreateUser}
                         />
                     </div>
                     {errors.fiscal_id && <p className="text-red-500 text-sm">{errors.fiscal_id.message}</p>}
@@ -664,6 +859,8 @@ export function NovoContrato() {
                                 setValue("fiscal_substituto_id", value);
                             }}
                             placeholder="Selecione um fiscal substituto"
+                            canCreateNew={true}
+                            onCreateNew={handleCreateUser}
                         />
                     </div>
                 </div>
@@ -883,6 +1080,140 @@ export function NovoContrato() {
                     </Button>
                 </div>
             </form>
+
+            {/* Modal para criação de novo usuário */}
+            {showCreateUserModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <h2 className="text-xl font-bold mb-4 text-blue-900 flex items-center gap-2">
+                            <UserPlus className="h-5 w-5" />
+                            Criar Novo Usuário
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                <input
+                                    type="text"
+                                    value={newUserData.nome}
+                                    onChange={(e) => setNewUserData(prev => ({ ...prev, nome: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                                <input
+                                    type="email"
+                                    value={newUserData.email}
+                                    onChange={(e) => setNewUserData(prev => ({ ...prev, email: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="email@exemplo.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
+                                <input
+                                    type="text"
+                                    value={newUserData.cpf}
+                                    onChange={(e) => setNewUserData(prev => ({ ...prev, cpf: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="000.000.000-00 ou apenas números"
+                                    maxLength={14}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Pode usar com ou sem formatação (pontos e hífen)</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Matrícula</label>
+                                <input
+                                    type="text"
+                                    value={newUserData.matricula}
+                                    onChange={(e) => setNewUserData(prev => ({ ...prev, matricula: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="Matrícula (opcional)"
+                                    maxLength={20}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Máximo 20 caracteres</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
+                                <input
+                                    type="password"
+                                    value={newUserData.senha}
+                                    onChange={(e) => setNewUserData(prev => ({ ...prev, senha: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="Senha"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Perfis * (selecione um ou mais)</label>
+                                <div className="space-y-2 max-h-32 overflow-y-auto border border-blue-200 rounded-lg p-3 bg-blue-50/30">
+                                    {perfis.map((perfil) => (
+                                        <label key={perfil.id} className="flex items-center space-x-2 cursor-pointer hover:bg-blue-100/50 p-1 rounded">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedPerfis.includes(perfil.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedPerfis(prev => [...prev, perfil.id]);
+                                                    } else {
+                                                        setSelectedPerfis(prev => prev.filter(id => id !== perfil.id));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-blue-500 focus:ring-2"
+                                            />
+                                            <span className="text-sm text-gray-700 font-medium">{perfil.nome}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                {selectedPerfis.length > 0 && (
+                                    <div className="mt-2 text-xs text-blue-600">
+                                        {selectedPerfis.length} perfil(is) selecionado(s)
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 justify-end mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setShowCreateUserModal(false);
+                                    setNewUserData({
+                                        nome: '',
+                                        email: '',
+                                        cpf: '',
+                                        matricula: '',
+                                        senha: '',
+                                        perfil_id: ''
+                                    });
+                                    setSelectedPerfis([]);
+                                }}
+                                disabled={isCreatingUser}
+                                className="px-4 py-2"
+                            >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleSubmitNewUser}
+                                disabled={isCreatingUser}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
+                            >
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                {isCreatingUser ? "Criando..." : "Criar Usuário"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
