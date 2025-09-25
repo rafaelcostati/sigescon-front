@@ -923,6 +923,10 @@ export function getUsuarios(): Promise<Usuario[]> {
     return api<Usuario[]>('/usuarios');
 }
 
+export function getUsuariosPorPerfil(perfilNome: string): Promise<Usuario[]> {
+    return api<Usuario[]>(`/usuarios?perfil=${encodeURIComponent(perfilNome)}`);
+}
+
 // ============================================================================
 // Perfil do usuário logado
 // ============================================================================

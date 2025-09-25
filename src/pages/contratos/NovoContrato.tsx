@@ -62,9 +62,10 @@ interface SearchableSelectProps {
     placeholder: string;
     canCreateNew?: boolean;
     onCreateNew?: () => void;
+    createNewLabel?: string;
 }
 
-function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew }: SearchableSelectProps) {
+function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew, createNewLabel = "Criar novo usuário" }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredOptions, setFilteredOptions] = useState(options);
@@ -176,7 +177,7 @@ function SearchableSelect({ options, value, onValueChange, placeholder, canCreat
                                         className="w-full px-4 py-2.5 text-left text-sm hover:bg-green-50 transition-colors border-t-2 border-green-200 bg-green-50/50 text-green-700 hover:text-green-900 font-medium"
                                     >
                                         <UserPlus className="inline h-4 w-4 mr-2" />
-                                        Criar novo usuário
+{createNewLabel}
                                     </button>
                                 )}
                             </>
@@ -196,7 +197,7 @@ function SearchableSelect({ options, value, onValueChange, placeholder, canCreat
                                         className="w-full px-4 py-2.5 text-left text-sm hover:bg-green-50 transition-colors border-t-2 border-green-200 bg-green-50/50 text-green-700 hover:text-green-900 font-medium"
                                     >
                                         <UserPlus className="inline h-4 w-4 mr-2" />
-                                        Criar novo usuário
+{createNewLabel}
                                     </button>
                                 )}
                             </>
@@ -218,6 +219,8 @@ export function NovoContrato() {
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
     const [usuarios, setUsuarios] = useState<any[]>([]);
+    const [usuariosGestores, setUsuariosGestores] = useState<any[]>([]);
+    const [usuariosFiscais, setUsuariosFiscais] = useState<any[]>([]);
     const [perfis, setPerfis] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -233,6 +236,17 @@ export function NovoContrato() {
     });
     const [selectedPerfis, setSelectedPerfis] = useState<number[]>([]);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+    // Estados para o modal de criação de contratado
+    const [showCreateContratadoModal, setShowCreateContratadoModal] = useState(false);
+    const [newContratadoData, setNewContratadoData] = useState({
+        nome: '',
+        email: '',
+        cpf: '',
+        cnpj: '',
+        telefone: ''
+    });
+    const [isCreatingContratado, setIsCreatingContratado] = useState(false);
 
     // Estados para controlar os valores dos selects customizados
     const [selectedContratado, setSelectedContratado] = useState("");
@@ -255,115 +269,100 @@ export function NovoContrato() {
     useEffect(() => {
         async function fetchData() {
             try {
-                // Verificar diferentes possíveis chaves do token no localStorage
-                const token = localStorage.getItem("authToken") || 
-                             localStorage.getItem("token") || 
-                             localStorage.getItem("access_token") || "";
-                
-                if (!token) {
-                    toast.error("Token de autenticação não encontrado. Faça login novamente.");
-                    navigate("/login");
-                    return;
-                }
-
-                const headers = { 
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                };
-
-                console.log("Fazendo requisições com token:", token.substring(0, 20) + "...");
-
-                const [c, m, s, u, p] = await Promise.all([
+                const [contratadosResponse, modalidadesResponse, statusResponse, usuariosResponse, perfisResponse] = await Promise.all([
                     fetch(`${import.meta.env.VITE_API_URL}/contratados?page=1&per_page=100`, {
                         method: 'GET',
-                        headers
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
                     }),
                     fetch(`${import.meta.env.VITE_API_URL}/modalidades`, {
                         method: 'GET',
-                        headers
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
                     }),
                     fetch(`${import.meta.env.VITE_API_URL}/status`, {
                         method: 'GET',
-                        headers
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
                     }),
                     fetch(`${import.meta.env.VITE_API_URL}/usuarios?page=1&per_page=100`, {
                         method: 'GET',
-                        headers
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
                     }),
                     fetch(`${import.meta.env.VITE_API_URL}/perfis/`, {
                         method: 'GET',
-                        headers
-                    }),
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
                 ]);
 
-                // Verificar se alguma resposta falhou
-                if (!c.ok) {
-                    console.error("Erro ao carregar contratados:", c.status, c.statusText);
-                    if (c.status === 401) {
-                        toast.error("Sessão expirada. Faça login novamente.");
-                        navigate("/login");
-                        return;
-                    }
-                }
-                if (!m.ok) {
-                    console.error("Erro ao carregar modalidades:", m.status, m.statusText);
-                    if (m.status === 401) {
-                        toast.error("Sessão expirada. Faça login novamente.");
-                        navigate("/login");
-                        return;
-                    }
-                }
-                if (!s.ok) {
-                    console.error("Erro ao carregar status:", s.status, s.statusText);
-                    if (s.status === 401) {
-                        toast.error("Sessão expirada. Faça login novamente.");
-                        navigate("/login");
-                        return;
-                    }
-                }
-                if (!u.ok) {
-                    console.error("Erro ao carregar usuários:", u.status, u.statusText);
-                    if (u.status === 401) {
-                        toast.error("Sessão expirada. Faça login novamente.");
-                        navigate("/login");
-                        return;
-                    }
-                }
-                if (!p.ok) {
-                    console.error("Erro ao carregar perfis:", p.status, p.statusText);
-                    if (p.status === 401) {
-                        toast.error("Sessão expirada. Faça login novamente.");
-                        navigate("/login");
-                        return;
-                    }
-                }
+                const [contratadosData, modalidadesData, statusData, usuariosData, perfisData] = await Promise.all([
+                    contratadosResponse.json(),
+                    modalidadesResponse.json(),
+                    statusResponse.json(),
+                    usuariosResponse.json(),
+                    perfisResponse.json()
+                ]);
 
-                const contratadosData = c.ok ? await c.json() : [];
-                const modalidadesData = m.ok ? await m.json() : [];
-                const statusData = s.ok ? await s.json() : [];
-                const usuariosData = u.ok ? await u.json() : [];
-                const perfisData = p.ok ? await p.json() : [];
-
-                // Filtrar apenas itens ativos (não excluídos)
+                // Filtrar apenas itens ativos
                 const contratadosArray = Array.isArray(contratadosData) ? contratadosData : contratadosData.data || [];
                 const modalidadesArray = Array.isArray(modalidadesData) ? modalidadesData : modalidadesData.data || [];
                 const statusArray = Array.isArray(statusData) ? statusData : statusData.data || [];
                 const usuariosArray = Array.isArray(usuariosData) ? usuariosData : usuariosData.data || [];
                 const perfisArray = Array.isArray(perfisData) ? perfisData : perfisData.data || [];
 
-                setContratados(contratadosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
-                setModalidades(modalidadesArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
-                setStatusList(statusArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
-                setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+                setContratados(contratadosArray.filter((item: any) => item.ativo !== false));
+                setModalidades(modalidadesArray.filter((item: any) => item.ativo !== false));
+                setStatusList(statusArray.filter((item: any) => item.ativo !== false));
+                setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false));
                 setPerfis(perfisArray);
 
-                console.log("Dados carregados:", {
-                    contratados: contratadosData,
-                    modalidades: modalidadesData,
-                    status: statusData,
-                    usuarios: usuariosData
-                });
+                // Carregar usuários filtrados por perfil
+                const [usuariosGestoresResponse, usuariosFiscaisResponse] = await Promise.all([
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    }),
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                ]);
+
+                const [usuariosGestoresData, usuariosFiscaisData] = await Promise.all([
+                    usuariosGestoresResponse.json(),
+                    usuariosFiscaisResponse.json()
+                ]);
+
+                const gestoresArray = Array.isArray(usuariosGestoresData) ? usuariosGestoresData : usuariosGestoresData.data || [];
+                const fiscaisArray = Array.isArray(usuariosFiscaisData) ? usuariosFiscaisData : usuariosFiscaisData.data || [];
+
+                setUsuariosGestores(gestoresArray.filter((item: any) => item.ativo !== false));
+                setUsuariosFiscais(fiscaisArray.filter((item: any) => item.ativo !== false));
 
             } catch (err) {
                 console.error("Erro ao carregar opções:", err);
@@ -376,6 +375,11 @@ export function NovoContrato() {
     // Função para abrir o modal de criação de usuário
     const handleCreateUser = () => {
         setShowCreateUserModal(true);
+    };
+
+    // Função para abrir o modal de criação de contratado
+    const handleCreateContratado = () => {
+        setShowCreateContratadoModal(true);
     };
 
     // Função para limpar CPF (remover pontos, hífens e espaços)
@@ -479,6 +483,22 @@ export function NovoContrato() {
             // Atualizar a lista de usuários
             setUsuarios(prev => [...prev, newUser]);
 
+            // Atualizar listas filtradas por perfil baseado nos perfis concedidos
+            const perfisNomes = selectedPerfis.map(perfilId => {
+                const perfil = perfis.find(p => p.id === perfilId);
+                return perfil?.nome;
+            }).filter(Boolean);
+
+            // Se tem perfil Gestor, adicionar à lista de gestores
+            if (perfisNomes.includes('Gestor')) {
+                setUsuariosGestores(prev => [...prev, newUser]);
+            }
+
+            // Se tem perfil Fiscal, adicionar à lista de fiscais
+            if (perfisNomes.includes('Fiscal')) {
+                setUsuariosFiscais(prev => [...prev, newUser]);
+            }
+
             // Limpar o formulário
             setNewUserData({
                 nome: '',
@@ -500,6 +520,118 @@ export function NovoContrato() {
             toast.error(err.message || "Erro ao criar usuário", { id: toastId });
         } finally {
             setIsCreatingUser(false);
+        }
+    };
+
+    // Função para limpar CNPJ (remover pontos, barras, hífens e espaços)
+    const cleanCNPJ = (cnpj: string) => {
+        return cnpj.replace(/[.\-\/\s]/g, '');
+    };
+
+    // Função para criar novo contratado
+    const handleSubmitNewContratado = async () => {
+        if (!newContratadoData.nome || !newContratadoData.email) {
+            toast.error("Preencha pelo menos o Nome e E-mail do contratado");
+            return;
+        }
+
+        // Validação de CPF ou CNPJ (pelo menos um deve estar preenchido)
+        if (!newContratadoData.cpf && !newContratadoData.cnpj) {
+            toast.error("Preencha pelo menos o CPF ou CNPJ do contratado");
+            return;
+        }
+
+        // Validar CPF se preenchido
+        if (newContratadoData.cpf) {
+            const cpfLimpo = cleanCPF(newContratadoData.cpf);
+            if (cpfLimpo.length !== 11) {
+                toast.error("CPF deve ter exatamente 11 dígitos");
+                return;
+            }
+        }
+
+        // Validar CNPJ se preenchido
+        if (newContratadoData.cnpj) {
+            const cnpjLimpo = cleanCNPJ(newContratadoData.cnpj);
+            if (cnpjLimpo.length !== 14) {
+                toast.error("CNPJ deve ter exatamente 14 dígitos");
+                return;
+            }
+        }
+
+        setIsCreatingContratado(true);
+        const toastId = toast.loading("Criando contratado...");
+
+        try {
+            const token = localStorage.getItem("authToken") ||
+                         localStorage.getItem("token") ||
+                         localStorage.getItem("access_token") || "";
+
+            if (!token) {
+                throw new Error("Token de autenticação não encontrado");
+            }
+
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            };
+
+            // Preparar payload
+            const payload: any = {
+                nome: newContratadoData.nome,
+                email: newContratadoData.email,
+            };
+
+            if (newContratadoData.cpf) {
+                payload.cpf = cleanCPF(newContratadoData.cpf);
+            }
+
+            if (newContratadoData.cnpj) {
+                payload.cnpj = cleanCNPJ(newContratadoData.cnpj);
+            }
+
+            if (newContratadoData.telefone) {
+                payload.telefone = newContratadoData.telefone;
+            }
+
+            // Criar contratado
+            const createContratadoResponse = await fetch(`${import.meta.env.VITE_API_URL}/contratados`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+            });
+
+            if (!createContratadoResponse.ok) {
+                const errorData = await createContratadoResponse.json().catch(() => ({ message: "Erro desconhecido" }));
+                throw new Error(errorData.message || errorData.detail || `Erro ${createContratadoResponse.status}: ${createContratadoResponse.statusText}`);
+            }
+
+            const newContratado = await createContratadoResponse.json();
+            console.log("Contratado criado:", newContratado);
+
+            // Atualizar a lista de contratados
+            setContratados(prev => [...prev, newContratado]);
+
+            // Limpar o formulário
+            setNewContratadoData({
+                nome: '',
+                email: '',
+                cpf: '',
+                cnpj: '',
+                telefone: ''
+            });
+
+            // Fechar modal
+            setShowCreateContratadoModal(false);
+
+            toast.success("Contratado criado com sucesso!", { id: toastId });
+
+        } catch (err: any) {
+            console.error("Erro ao criar contratado:", err);
+            toast.error(err.message || "Erro ao criar contratado", { id: toastId });
+        } finally {
+            setIsCreatingContratado(false);
         }
     };
 
@@ -804,6 +936,9 @@ export function NovoContrato() {
                                 setValue("contratado_id", value);
                             }}
                             placeholder="Selecione um contratado"
+                            canCreateNew={true}
+                            onCreateNew={handleCreateContratado}
+                            createNewLabel="Criar novo contratado"
                         />
                     </div>
                     {errors.contratado_id && <p className="text-red-500 text-sm">{errors.contratado_id.message}</p>}
@@ -814,7 +949,7 @@ export function NovoContrato() {
                     <label className="font-medium">Gestor *</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosGestores}
                             value={selectedGestor}
                             onValueChange={(value) => {
                                 setSelectedGestor(value);
@@ -833,7 +968,7 @@ export function NovoContrato() {
                     <label className="font-medium">Fiscal *</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosFiscais}
                             value={selectedFiscal}
                             onValueChange={(value) => {
                                 setSelectedFiscal(value);
@@ -852,7 +987,7 @@ export function NovoContrato() {
                     <label className="font-medium">Fiscal Substituto</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosFiscais}
                             value={selectedFiscalSubstituto}
                             onValueChange={(value) => {
                                 setSelectedFiscalSubstituto(value);
@@ -1209,6 +1344,109 @@ export function NovoContrato() {
                             >
                                 <UserPlus className="h-4 w-4 mr-1" />
                                 {isCreatingUser ? "Criando..." : "Criar Usuário"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal para criação de novo contratado */}
+            {showCreateContratadoModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <h2 className="text-xl font-bold mb-4 text-blue-900 flex items-center gap-2">
+                            <UserPlus className="h-5 w-5" />
+                            Criar Novo Contratado
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                <input
+                                    type="text"
+                                    value={newContratadoData.nome}
+                                    onChange={(e) => setNewContratadoData(prev => ({ ...prev, nome: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="Nome completo do contratado"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                                <input
+                                    type="email"
+                                    value={newContratadoData.email}
+                                    onChange={(e) => setNewContratadoData(prev => ({ ...prev, email: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="email@exemplo.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                                <input
+                                    type="text"
+                                    value={newContratadoData.cpf}
+                                    onChange={(e) => setNewContratadoData(prev => ({ ...prev, cpf: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="000.000.000-00 ou apenas números"
+                                    maxLength={14}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ</label>
+                                <input
+                                    type="text"
+                                    value={newContratadoData.cnpj}
+                                    onChange={(e) => setNewContratadoData(prev => ({ ...prev, cnpj: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="00.000.000/0000-00 ou apenas números"
+                                    maxLength={18}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Preencha CPF ou CNPJ (pelo menos um é obrigatório)</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                                <input
+                                    type="text"
+                                    value={newContratadoData.telefone}
+                                    onChange={(e) => setNewContratadoData(prev => ({ ...prev, telefone: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    placeholder="(00) 00000-0000"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 justify-end mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setShowCreateContratadoModal(false);
+                                    setNewContratadoData({
+                                        nome: '',
+                                        email: '',
+                                        cpf: '',
+                                        cnpj: '',
+                                        telefone: ''
+                                    });
+                                }}
+                                disabled={isCreatingContratado}
+                                className="px-4 py-2"
+                            >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleSubmitNewContratado}
+                                disabled={isCreatingContratado}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
+                            >
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                {isCreatingContratado ? "Criando..." : "Criar Contratado"}
                             </Button>
                         </div>
                     </div>

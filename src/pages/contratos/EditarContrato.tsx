@@ -210,6 +210,8 @@ export function EditarContrato() {
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
     const [usuarios, setUsuarios] = useState<any[]>([]);
+    const [usuariosGestores, setUsuariosGestores] = useState<any[]>([]);
+    const [usuariosFiscais, setUsuariosFiscais] = useState<any[]>([]);
 
     // Estados para controlar os valores dos selects customizados
     const [selectedContratado, setSelectedContratado] = useState("");
@@ -247,6 +249,37 @@ export function EditarContrato() {
                 setModalidades(modalidades);
                 setStatusList(statusList);
                 setUsuarios((usuarios as any)?.data || usuarios);
+
+                // Carregar usuários filtrados por perfil
+                const [usuariosGestoresResponse, usuariosFiscaisResponse] = await Promise.all([
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    }),
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                ]);
+
+                const [usuariosGestoresData, usuariosFiscaisData] = await Promise.all([
+                    usuariosGestoresResponse.json(),
+                    usuariosFiscaisResponse.json()
+                ]);
+
+                const gestoresArray = Array.isArray(usuariosGestoresData) ? usuariosGestoresData : usuariosGestoresData.data || [];
+                const fiscaisArray = Array.isArray(usuariosFiscaisData) ? usuariosFiscaisData : usuariosFiscaisData.data || [];
+
+                setUsuariosGestores(gestoresArray.filter((item: any) => item.ativo !== false));
+                setUsuariosFiscais(fiscaisArray.filter((item: any) => item.ativo !== false));
                 
                 // Constrói apenas os campos esperados pelo formulário, com os tipos corretos
                 const formattedData: ContractFormData = {
@@ -600,7 +633,7 @@ export function EditarContrato() {
                     <label className="font-medium">Gestor *</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosGestores}
                             value={selectedGestor}
                             onValueChange={(value) => {
                                 setSelectedGestor(value);
@@ -615,7 +648,7 @@ export function EditarContrato() {
                     <label className="font-medium">Fiscal *</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosFiscais}
                             value={selectedFiscal}
                             onValueChange={(value) => {
                                 setSelectedFiscal(value);
@@ -630,7 +663,7 @@ export function EditarContrato() {
                     <label className="font-medium">Fiscal Substituto</label>
                     <div className="mt-1">
                         <SearchableSelect
-                            options={usuarios}
+                            options={usuariosFiscais}
                             value={selectedFiscalSubstituto}
                             onValueChange={(value) => {
                                 setSelectedFiscalSubstituto(value);
