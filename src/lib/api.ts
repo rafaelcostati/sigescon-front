@@ -1982,7 +1982,7 @@ export type ResetPasswordResponse = {
 export async function forgotPassword(payload: ForgotPasswordPayload): Promise<ForgotPasswordResponse> {
     console.log("🔐 Solicitação de recuperação de senha para:", payload.email);
 
-    const response = await fetch(`${AUTH_API_URL}/forgot-password`, {
+    const response = await fetch(`${AUTH_API_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2004,7 +2004,7 @@ export async function forgotPassword(payload: ForgotPasswordPayload): Promise<Fo
 export async function validateResetToken(payload: ValidateTokenPayload): Promise<ValidateTokenResponse> {
     console.log("🔍 Validando token de reset");
 
-    const response = await fetch(`${AUTH_API_URL}/validate-reset-token`, {
+    const response = await fetch(`${AUTH_API_URL}/auth/validate-reset-token`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2026,7 +2026,7 @@ export async function validateResetToken(payload: ValidateTokenPayload): Promise
 export async function resetPassword(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
     console.log("🔄 Redefinindo senha");
 
-    const response = await fetch(`${AUTH_API_URL}/reset-password`, {
+    const response = await fetch(`${AUTH_API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
