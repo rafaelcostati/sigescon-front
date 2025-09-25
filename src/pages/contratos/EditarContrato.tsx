@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import React from 'react';
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, SquareX, Upload, Trash2 } from "lucide-react";
+import { Save, SquareX, Upload, Trash2, ChevronDown, Search, X } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -64,6 +65,128 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
+// Componente SearchableSelect
+interface SearchableSelectProps {
+    options: Array<{ id: number | string; nome: string }>;
+    value: string;
+    onValueChange: (value: string) => void;
+    placeholder: string;
+}
+
+function SearchableSelect({ options, value, onValueChange, placeholder }: SearchableSelectProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filteredOptions, setFilteredOptions] = useState(options);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const filtered = options.filter(option =>
+            option.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredOptions(filtered);
+    }, [searchTerm, options]);
+
+    // Fechar dropdown ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setSearchTerm("");
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const selectedOption = options.find(option => option.id.toString() === value);
+
+    const handleSelect = (optionValue: string) => {
+        onValueChange(optionValue);
+        setIsOpen(false);
+        setSearchTerm("");
+    };
+
+    const clearSearch = () => {
+        setSearchTerm("");
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            {/* Display button */}
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left bg-white border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors hover:border-blue-400"
+            >
+                <span className={`block truncate ${!selectedOption ? 'text-gray-500' : 'text-blue-900'}`}>
+                    {selectedOption ? selectedOption.nome : placeholder}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown */}
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-xl">
+                    {/* Search input */}
+                    <div className="p-3 border-b border-blue-100 bg-blue-50/50">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar..."
+                                className="w-full pl-9 pr-8 py-2 text-sm border border-blue-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none"
+                                autoFocus
+                            />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-blue-600"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Options list - altura exata para 10 linhas (40px cada = 400px) */}
+                    <div className="h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option) => (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => handleSelect(option.id.toString())}
+                                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-blue-50 last:border-b-0 ${
+                                        value === option.id.toString()
+                                            ? 'bg-blue-100 text-blue-900 font-medium'
+                                            : 'text-gray-700 hover:text-blue-900'
+                                    }`}
+                                >
+                                    {option.nome}
+                                </button>
+                            ))
+                        ) : (
+                            <div className="px-4 py-8 text-center text-sm text-gray-500">
+                                <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                Nenhum item encontrado
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function EditarContrato() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
@@ -88,9 +211,18 @@ export function EditarContrato() {
     const [statusList, setStatusList] = useState<any[]>([]);
     const [usuarios, setUsuarios] = useState<any[]>([]);
 
+    // Estados para controlar os valores dos selects customizados
+    const [selectedContratado, setSelectedContratado] = useState("");
+    const [selectedGestor, setSelectedGestor] = useState("");
+    const [selectedFiscal, setSelectedFiscal] = useState("");
+    const [selectedFiscalSubstituto, setSelectedFiscalSubstituto] = useState("");
+    const [selectedModalidade, setSelectedModalidade] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState("");
+
     const {
         register,
         handleSubmit,
+        setValue,
         formState: { errors, dirtyFields, isDirty },
         reset,
     } = useForm<ContractFormData>({
@@ -103,10 +235,10 @@ export function EditarContrato() {
             try {
                 // Carrega dados dos dropdowns e contrato em paralelo usando as funções da API
                 const [contratados, modalidades, statusList, usuarios, contractData] = await Promise.all([
-                    getContratados({ page: 1, per_page: 10 }),
+                    getContratados({ page: 1, per_page: 100 }),
                     getModalidades(),
                     getStatus(),
-                    getUsuarios(),
+                    getUsuarios({ page: 1, per_page: 100, ativo: true }),
                     getContratoDetalhado(Number(id))
                 ]);
 
@@ -139,6 +271,14 @@ export function EditarContrato() {
                 };
 
                 reset(formattedData as Partial<ContractFormData>);
+
+                // Inicializar estados dos selects customizados
+                setSelectedContratado(String(contractData.contratado_id ?? ""));
+                setSelectedGestor(String(contractData.gestor_id ?? ""));
+                setSelectedFiscal(String(contractData.fiscal_id ?? ""));
+                setSelectedFiscalSubstituto(contractData.fiscal_substituto_id != null ? String(contractData.fiscal_substituto_id) : "");
+                setSelectedModalidade(String(contractData.modalidade_id ?? ""));
+                setSelectedStatus(String(contractData.status_id ?? ""));
 
                 // Carrega arquivos do contrato
                 const filesResponse = await getArquivosByContratoId(Number(id));
@@ -241,6 +381,15 @@ export function EditarContrato() {
                     garantia: (refreshed as any)?.garantia ? new Date((refreshed as any).garantia).toISOString().split('T')[0] : undefined,
                 };
                 reset(refreshedFormatted);
+
+                // Atualizar estados dos selects customizados
+                setSelectedContratado(String(refreshedData.contratado_id ?? ""));
+                setSelectedGestor(String(refreshedData.gestor_id ?? ""));
+                setSelectedFiscal(String(refreshedData.fiscal_id ?? ""));
+                setSelectedFiscalSubstituto(refreshedData.fiscal_substituto_id != null ? String(refreshedData.fiscal_substituto_id) : "");
+                setSelectedModalidade(String(refreshedData.modalidade_id ?? ""));
+                setSelectedStatus(String(refreshedData.status_id ?? ""));
+
                 const updatedFilesResponse = await getArquivosByContratoId(Number(id));
                 setExistingFiles(updatedFilesResponse.arquivos.map(arquivo => ({
                     id: arquivo.id,
@@ -396,6 +545,14 @@ export function EditarContrato() {
             <h1 className="text-2xl font-bold mb-6 text-gray-800">Editar Contrato</h1>
             <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-white shadow-md rounded-2xl p-6">
 
+                {/* Campos ocultos para react-hook-form */}
+                <input {...register("contratado_id")} type="hidden" />
+                <input {...register("gestor_id")} type="hidden" />
+                <input {...register("fiscal_id")} type="hidden" />
+                <input {...register("fiscal_substituto_id")} type="hidden" />
+                <input {...register("modalidade_id")} type="hidden" />
+                <input {...register("status_id")} type="hidden" />
+
                 {/* --- CAMPOS DO FORMULÁRIO (inalterados) --- */}
                 <div className="col-span-1">
                     <label className="font-medium">Número do contrato</label>
@@ -424,40 +581,63 @@ export function EditarContrato() {
                     {errors.objeto && <p className="text-red-500 text-sm">{errors.objeto.message}</p>}
                 </div>
                 <div className="md:col-span-1 lg:col-span-2">
-                    <label className="font-medium">Contratado</label>
-                    <select {...register("contratado_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {contratados.map((c) => (
-                            <option key={c.id} value={c.id}>{c.nome}</option>
-                        ))}
-                    </select>
+                    <label className="font-medium">Contratado *</label>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={contratados}
+                            value={selectedContratado}
+                            onValueChange={(value) => {
+                                setSelectedContratado(value);
+                                setValue("contratado_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione um contratado"
+                        />
+                    </div>
+                    {errors.contratado_id && <p className="text-red-500 text-sm">{errors.contratado_id.message}</p>}
                 </div>
                 <div className="md:col-span-1 lg:col-span-2">
-                    <label className="font-medium">Gestor</label>
-                    <select {...register("gestor_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {usuarios.map((u) => (
-                            <option key={u.id} value={u.id}>{u.nome}</option>
-                        ))}
-                    </select>
+                    <label className="font-medium">Gestor *</label>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={usuarios}
+                            value={selectedGestor}
+                            onValueChange={(value) => {
+                                setSelectedGestor(value);
+                                setValue("gestor_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione um gestor"
+                        />
+                    </div>
+                    {errors.gestor_id && <p className="text-red-500 text-sm">{errors.gestor_id.message}</p>}
                 </div>
                 <div className="md:col-span-1 lg:col-span-2">
-                    <label className="font-medium">Fiscal</label>
-                    <select {...register("fiscal_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {usuarios.map((u) => (
-                            <option key={u.id} value={u.id}>{u.nome}</option>
-                        ))}
-                    </select>
+                    <label className="font-medium">Fiscal *</label>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={usuarios}
+                            value={selectedFiscal}
+                            onValueChange={(value) => {
+                                setSelectedFiscal(value);
+                                setValue("fiscal_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione um fiscal"
+                        />
+                    </div>
+                    {errors.fiscal_id && <p className="text-red-500 text-sm">{errors.fiscal_id.message}</p>}
                 </div>
                 <div className="md:col-span-1 lg:col-span-2">
                     <label className="font-medium">Fiscal Substituto</label>
-                    <select {...register("fiscal_substituto_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {usuarios.map((u) => (
-                            <option key={u.id} value={u.id}>{u.nome}</option>
-                        ))}
-                    </select>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={usuarios}
+                            value={selectedFiscalSubstituto}
+                            onValueChange={(value) => {
+                                setSelectedFiscalSubstituto(value);
+                                setValue("fiscal_substituto_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione um fiscal substituto"
+                        />
+                    </div>
                 </div>
                 <div>
                     <label className="font-medium">Data Início</label>
@@ -470,22 +650,34 @@ export function EditarContrato() {
                     {errors.data_fim && <p className="text-red-500 text-sm">{errors.data_fim.message}</p>}
                 </div>
                 <div>
-                    <label className="font-medium">Modalidade</label>
-                    <select {...register("modalidade_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {modalidades.map((m) => (
-                            <option key={m.id} value={m.id}>{m.nome}</option>
-                        ))}
-                    </select>
+                    <label className="font-medium">Modalidade *</label>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={modalidades}
+                            value={selectedModalidade}
+                            onValueChange={(value) => {
+                                setSelectedModalidade(value);
+                                setValue("modalidade_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione uma modalidade"
+                        />
+                    </div>
+                    {errors.modalidade_id && <p className="text-red-500 text-sm">{errors.modalidade_id.message}</p>}
                 </div>
                 <div>
-                    <label className="font-medium">Status</label>
-                    <select {...register("status_id")} className="mt-1 border rounded-lg p-2 w-full">
-                        <option value="">Selecione</option>
-                        {statusList.map((s) => (
-                            <option key={s.id} value={s.id}>{s.nome}</option>
-                        ))}
-                    </select>
+                    <label className="font-medium">Status *</label>
+                    <div className="mt-1">
+                        <SearchableSelect
+                            options={statusList}
+                            value={selectedStatus}
+                            onValueChange={(value) => {
+                                setSelectedStatus(value);
+                                setValue("status_id", value, { shouldDirty: true });
+                            }}
+                            placeholder="Selecione um status"
+                        />
+                    </div>
+                    {errors.status_id && <p className="text-red-500 text-sm">{errors.status_id.message}</p>}
                 </div>
                 <div>
                     <label className="font-medium">Valor Anual</label>

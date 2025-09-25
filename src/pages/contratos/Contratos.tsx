@@ -38,6 +38,7 @@ import {
     IconSettings,
     IconUser,
     IconUserCheck,
+    IconChevronDown,
 } from "@tabler/icons-react";
 import {
     type ColumnDef,
@@ -310,6 +311,146 @@ const convertToPendencia = (data: any): Pendencia => {
 };
 
 // ============================================================================
+// Componente SearchableSelect para Filtros
+// ============================================================================
+interface SearchableSelectProps {
+    options: Array<{ id: number | string; nome: string }>;
+    value: string;
+    onValueChange: (value: string) => void;
+    placeholder: string;
+    name: string;
+    required?: boolean;
+}
+
+function SearchableSelect({ options, value, onValueChange, placeholder, name, required = false }: SearchableSelectProps) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [filteredOptions, setFilteredOptions] = React.useState(options);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const filtered = options.filter(option =>
+            option.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredOptions(filtered);
+    }, [searchTerm, options]);
+
+    // Fechar dropdown ao clicar fora
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setSearchTerm("");
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const selectedOption = options.find(option => option.id.toString() === value);
+
+    const handleSelect = (optionValue: string) => {
+        onValueChange(optionValue);
+        setIsOpen(false);
+        setSearchTerm("");
+    };
+
+    const clearSearch = () => {
+        setSearchTerm("");
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            {/* Display button */}
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left bg-white border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors hover:border-blue-400 h-9"
+            >
+                <span className={`block truncate text-sm ${!selectedOption ? 'text-gray-500' : 'text-blue-900'}`}>
+                    {selectedOption ? selectedOption.nome : placeholder}
+                </span>
+                <IconChevronDown className={`h-4 w-4 text-blue-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown */}
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-xl">
+                    {/* Search input */}
+                    <div className="p-2 border-b border-blue-100 bg-blue-50/50">
+                        <div className="relative">
+                            <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar..."
+                                className="w-full pl-9 pr-8 py-1.5 text-sm border border-blue-200 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none"
+                                autoFocus
+                            />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-blue-600"
+                                >
+                                    <IconX className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Options list - altura para 10 linhas */}
+                    <div className="max-h-64 overflow-y-auto">
+                        {filteredOptions.length > 0 ? (
+                            <>
+                                {/* Opção "Todos" */}
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect("all")}
+                                    className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors border-b border-blue-50 ${
+                                        value === "all"
+                                            ? 'bg-blue-100 text-blue-900 font-medium'
+                                            : 'text-gray-700 hover:text-blue-900'
+                                    }`}
+                                >
+                                    Todos
+                                </button>
+                                {filteredOptions.map((option) => (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        onClick={() => handleSelect(option.id.toString())}
+                                        className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors border-b border-blue-50 last:border-b-0 ${
+                                            value === option.id.toString()
+                                                ? 'bg-blue-100 text-blue-900 font-medium'
+                                                : 'text-gray-700 hover:text-blue-900'
+                                        }`}
+                                    >
+                                        {option.nome}
+                                    </button>
+                                ))}
+                            </>
+                        ) : (
+                            <div className="px-3 py-4 text-center text-sm text-gray-500">
+                                <IconSearch className="h-6 w-6 mx-auto mb-2 text-gray-300" />
+                                Nenhum item encontrado
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================================================
 // Componentes
 // ============================================================================
 function ContratosFilters({
@@ -524,44 +665,26 @@ function ContratosFilters({
                                     <IconUser className="h-4 w-4" />
                                     Gestor
                                 </Label>
-                                <Select
+                                <SearchableSelect
+                                    options={usuarios || []}
                                     value={filters.gestor_id}
                                     onValueChange={(value) => handleFilterChange("gestor_id", value)}
-                                >
-                                    <SelectTrigger className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9">
-                                        <SelectValue placeholder="Escolha um gestor" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos os Gestores</SelectItem>
-                                        {(usuarios || []).map((user) => (
-                                            <SelectItem key={user.id} value={String(user.id)}>
-                                                {user.nome}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    placeholder="Escolha um gestor"
+                                    name="gestor_id"
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-blue-800 text-sm font-medium flex items-center gap-2">
                                     <IconUserCheck className="h-4 w-4" />
                                     Fiscal
                                 </Label>
-                                <Select
+                                <SearchableSelect
+                                    options={usuarios || []}
                                     value={filters.fiscal_id}
                                     onValueChange={(value) => handleFilterChange("fiscal_id", value)}
-                                >
-                                    <SelectTrigger className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9">
-                                        <SelectValue placeholder="Escolha um fiscal" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos os Fiscais</SelectItem>
-                                        {(usuarios || []).map((user) => (
-                                            <SelectItem key={user.id} value={String(user.id)}>
-                                                {user.nome}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    placeholder="Escolha um fiscal"
+                                    name="fiscal_id"
+                                />
                             </div>
                         </>
                     )}
@@ -1296,13 +1419,13 @@ export function ContratosDataTable() {
             try {
                 // Carregar dados básicos sempre necessários
                 const promises = [
-                    getContratados({ page: 1, per_page: 10 }),
+                    getContratados({ page: 1, per_page: 100 }),
                     getStatus(),
                 ];
 
                 // Adicionar busca de usuários apenas para administradores
                 if (isAdmin) {
-                    promises.push(getUsers({ page: 1, per_page: 10 }));
+                    promises.push(getUsers({ page: 1, per_page: 100 }));
                 }
 
                 const responses = await Promise.all(promises);
@@ -1310,14 +1433,19 @@ export function ContratosDataTable() {
                 // Processar respostas com tipos corretos
                 const contratadosResponse = responses[0] as any; // ContratadoApiResponse
                 const statusResponse = responses[1] as Status[];
-                
-                setContratados(contratadosResponse.data || []);
-                setStatusList(statusResponse || []);
-                
+
+                // Filtrar apenas itens ativos (não excluídos)
+                const contratadosArray = contratadosResponse.data || [];
+                const statusArray = statusResponse || [];
+
+                setContratados(contratadosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+                setStatusList(statusArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+
                 // Definir usuários apenas se for admin
                 if (isAdmin && responses[2]) {
                     const usuariosResponse = responses[2] as any; // UserApiResponse
-                    setUsuarios(usuariosResponse.data || []);
+                    const usuariosArray = usuariosResponse.data || [];
+                    setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
                 } else {
                     setUsuarios([]); // Lista vazia para não-admins
                 }
@@ -1793,9 +1921,15 @@ function ContratoDetailsViewer({ contrato }: { contrato: ContratoList; }) {
                 // Converter os dados para os tipos corretos
                 setDetailedData(convertToContratoDetalhado(detailsData));
                 setArquivos(arquivosData);
-                setContratados(contratadosData.data || []);
-                setStatusList(statusData || []);
-                setUsuarios(usuariosData.data || []);
+
+                // Filtrar apenas itens ativos (não excluídos)
+                const contratadosArray = contratadosData.data || [];
+                const statusArray = statusData || [];
+                const usuariosArray = usuariosData.data || [];
+
+                setContratados(contratadosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+                setStatusList(statusArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
+                setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false && item.data_exclusao == null));
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
