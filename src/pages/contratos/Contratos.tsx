@@ -31,6 +31,13 @@ import {
     IconPlus,
     IconSearch,
     IconX,
+    IconFileText,
+    IconTarget,
+    IconFolder,
+    IconCalendar,
+    IconSettings,
+    IconUser,
+    IconUserCheck,
 } from "@tabler/icons-react";
 import {
     type ColumnDef,
@@ -422,59 +429,81 @@ function ContratosFilters({
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Filtros de Contratos</CardTitle>
-                <CardDescription>
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-slate-50 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-blue-100/70 to-blue-50/70 border-b border-blue-200">
+                <CardTitle className="text-blue-900 flex items-center gap-2 text-lg">
+                    <IconSearch className="h-5 w-5 text-blue-700" />
+                    Filtros de Contratos
+                </CardTitle>
+                <CardDescription className="text-blue-700/80">
                     {pageDescription}
                 </CardDescription>
             </CardHeader>
-            <form onSubmit={handleApplyFilters} className="p-4">
+            <form onSubmit={handleApplyFilters} className="p-6">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1.5">
-                        <Label htmlFor="nrContrato">Número do Contrato</Label>
+                        <Label htmlFor="nrContrato" className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                            <IconFileText className="h-4 w-4" />
+                            Número do Contrato
+                        </Label>
                         <Input
                             id="nrContrato"
                             placeholder="Ex: 99/2025"
                             value={filters.nr_contrato}
                             onChange={(e) => handleFilterChange("nr_contrato", e.target.value)}
+                            className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="objeto">Objeto do Contrato</Label>
+                        <Label htmlFor="objeto" className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                            <IconTarget className="h-4 w-4" />
+                            Objeto do Contrato
+                        </Label>
                         <Input
                             id="objeto"
                             placeholder="Pesquisar no objeto..."
                             value={filters.objeto}
                             onChange={(e) => handleFilterChange("objeto", e.target.value)}
+                            className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="pae">Nº (PAE)</Label>
+                        <Label htmlFor="pae" className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                            <IconFolder className="h-4 w-4" />
+                            Nº (PAE)
+                        </Label>
                         <Input
                             id="pae"
                             placeholder="Ex: 2025/123456"
                             value={filters.pae}
                             onChange={(e) => handleFilterChange("pae", e.target.value)}
+                            className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="ano">Ano Início</Label>
+                        <Label htmlFor="ano" className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                            <IconCalendar className="h-4 w-4" />
+                            Ano Início
+                        </Label>
                         <Input
                             id="ano"
                             type="number"
                             placeholder="Ex: 2024"
                             value={filters.ano}
                             onChange={(e) => handleFilterChange("ano", e.target.value)}
+                            className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label>Status</Label>
+                        <Label className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                            <IconSettings className="h-4 w-4" />
+                            Status
+                        </Label>
                         <Select
                             value={filters.status_id}
                             onValueChange={(value) => handleFilterChange("status_id", value)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9">
                                 <SelectValue placeholder="Escolha um status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -491,12 +520,15 @@ function ContratosFilters({
                     {isAdmin && (
                         <>
                             <div className="space-y-1.5">
-                                <Label>Gestor</Label>
+                                <Label className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                                    <IconUser className="h-4 w-4" />
+                                    Gestor
+                                </Label>
                                 <Select
                                     value={filters.gestor_id}
                                     onValueChange={(value) => handleFilterChange("gestor_id", value)}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9">
                                         <SelectValue placeholder="Escolha um gestor" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -510,12 +542,15 @@ function ContratosFilters({
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label>Fiscal</Label>
+                                <Label className="text-blue-800 text-sm font-medium flex items-center gap-2">
+                                    <IconUserCheck className="h-4 w-4" />
+                                    Fiscal
+                                </Label>
                                 <Select
                                     value={filters.fiscal_id}
                                     onValueChange={(value) => handleFilterChange("fiscal_id", value)}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-blue-300 focus:border-blue-500 focus:ring-blue-500/20 h-9">
                                         <SelectValue placeholder="Escolha um fiscal" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -530,113 +565,128 @@ function ContratosFilters({
                             </div>
                         </>
                     )}
-                    
-                    {/* Filtros de Vencimento */}
-                    <div className="space-y-3 md:col-span-2 lg:col-span-4">
-                        <Label className="text-sm font-medium text-purple-700">⏰ Filtrar por Proximidade de Vencimento</Label>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="vencimento_30_dias"
-                                    checked={filters.vencimento_30_dias}
-                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_30_dias', checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="vencimento_30_dias"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-red-700"
-                                >
-                                    🔴 30 dias ou menos para vencer
-                                </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="vencimento_60_dias"
-                                    checked={filters.vencimento_60_dias}
-                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_60_dias', checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="vencimento_60_dias"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-orange-700"
-                                >
-                                    🟠 60 dias ou menos para vencer
-                                </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="vencimento_90_dias"
-                                    checked={filters.vencimento_90_dias}
-                                    onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_90_dias', checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="vencimento_90_dias"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-yellow-700"
-                                >
-                                    🟡 90 dias ou menos para vencer
-                                </label>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Filtros cumulativos: 60 dias inclui contratos de 30 dias, 90 dias inclui ambos
-                        </p>
-                    </div>
 
-                    {/* Filtros de Garantia */}
+                    {/* Filtros Especiais - Vencimento e Garantia lado a lado */}
                     <div className="space-y-3 md:col-span-2 lg:col-span-4">
-                        <Label className="text-sm font-medium text-blue-700">🛡️ Filtrar por Garantia</Label>
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="tem_garantia"
-                                    checked={filters.tem_garantia}
-                                    onCheckedChange={(checked) => {
-                                        setFilters(prev => ({ ...prev, tem_garantia: checked as boolean }));
-                                        table.getColumn("tem_garantia")?.setFilterValue(checked || undefined);
-                                    }}
-                                />
-                                <label
-                                    htmlFor="tem_garantia"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-blue-700"
-                                >
-                                    🔵 Contratos com Garantia
-                                </label>
-                            </div>
-                            {filters.tem_garantia && (
-                                <div className="flex items-center space-x-2">
-                                    <Label className="text-sm">Vencimento da garantia:</Label>
-                                    <Select
-                                        value={filters.garantia_prazo_dias}
-                                        onValueChange={(value) => {
-                                            setFilters(prev => ({ ...prev, garantia_prazo_dias: value }));
-                                            table.getColumn("garantia_prazo_dias")?.setFilterValue(value === "all" ? undefined : value || undefined);
-                                        }}
-                                    >
-                                        <SelectTrigger className="w-48">
-                                            <SelectValue placeholder="Selecione o prazo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todos os prazos</SelectItem>
-                                            <SelectItem value="30">🔴 30 dias ou menos</SelectItem>
-                                            <SelectItem value="60">🟠 60 dias ou menos</SelectItem>
-                                            <SelectItem value="90">🟡 90 dias ou menos</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {/* Filtros de Vencimento */}
+                            <div className="bg-blue-50/70 rounded-lg p-3 border border-blue-200">
+                                <Label className="text-sm font-semibold text-blue-900 flex items-center gap-2 mb-2">
+                                    <IconClockHour4 className="h-4 w-4" />
+                                    Filtrar por Vencimento
+                                </Label>
+                                <div className="flex flex-wrap gap-2">
+                                    <div className="flex items-center space-x-1 px-2 py-1.5 bg-white rounded-md border border-blue-200 text-xs">
+                                        <Checkbox
+                                            id="vencimento_30_dias"
+                                            checked={filters.vencimento_30_dias}
+                                            onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_30_dias', checked as boolean)}
+                                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 h-3 w-3"
+                                        />
+                                        <label
+                                            htmlFor="vencimento_30_dias"
+                                            className="font-medium text-blue-800 cursor-pointer"
+                                        >
+                                            ≤30 dias
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-1 px-2 py-1.5 bg-white rounded-md border border-blue-200 text-xs">
+                                        <Checkbox
+                                            id="vencimento_60_dias"
+                                            checked={filters.vencimento_60_dias}
+                                            onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_60_dias', checked as boolean)}
+                                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 h-3 w-3"
+                                        />
+                                        <label
+                                            htmlFor="vencimento_60_dias"
+                                            className="font-medium text-blue-800 cursor-pointer"
+                                        >
+                                            ≤60 dias
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-1 px-2 py-1.5 bg-white rounded-md border border-blue-200 text-xs">
+                                        <Checkbox
+                                            id="vencimento_90_dias"
+                                            checked={filters.vencimento_90_dias}
+                                            onCheckedChange={(checked) => handleVencimentoFilterChange('vencimento_90_dias', checked as boolean)}
+                                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 h-3 w-3"
+                                        />
+                                        <label
+                                            htmlFor="vencimento_90_dias"
+                                            className="font-medium text-blue-800 cursor-pointer"
+                                        >
+                                            ≤90 dias
+                                        </label>
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+
+                            {/* Filtros de Garantia */}
+                            <div className="bg-blue-50/70 rounded-lg p-3 border border-blue-200">
+                                <Label className="text-sm font-semibold text-blue-900 flex items-center gap-2 mb-2">
+                                    <IconCircleCheckFilled className="h-4 w-4" />
+                                    Filtrar por Garantia
+                                </Label>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex items-center space-x-1 px-2 py-1.5 bg-white rounded-md border border-blue-200">
+                                        <Checkbox
+                                            id="tem_garantia"
+                                            checked={filters.tem_garantia}
+                                            onCheckedChange={(checked) => {
+                                                setFilters(prev => ({ ...prev, tem_garantia: checked as boolean }));
+                                                table.getColumn("tem_garantia")?.setFilterValue(checked || undefined);
+                                            }}
+                                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 h-3 w-3"
+                                        />
+                                        <label
+                                            htmlFor="tem_garantia"
+                                            className="text-xs font-medium text-blue-800 cursor-pointer"
+                                        >
+                                            Com Garantia
+                                        </label>
+                                    </div>
+                                    {filters.tem_garantia && (
+                                        <div className="flex items-center space-x-1">
+                                            <Label className="text-xs font-medium text-blue-700">Prazo:</Label>
+                                            <Select
+                                                value={filters.garantia_prazo_dias}
+                                                onValueChange={(value) => {
+                                                    setFilters(prev => ({ ...prev, garantia_prazo_dias: value }));
+                                                    table.getColumn("garantia_prazo_dias")?.setFilterValue(value === "all" ? undefined : value || undefined);
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-28 h-7 text-xs border-blue-300 focus:border-blue-500 focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Prazo" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Todos</SelectItem>
+                                                    <SelectItem value="30">≤30 dias</SelectItem>
+                                                    <SelectItem value="60">≤60 dias</SelectItem>
+                                                    <SelectItem value="90">≤90 dias</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-500">
-                            O filtro de garantia pode ser usado independentemente ou combinado com outros filtros
+                        <p className="text-xs text-blue-600 text-center">
+                            Filtros cumulativos no vencimento • Garantia pode ser combinada com outros filtros
                         </p>
                     </div>
 
-                    <div className="flex flex-col gap-2 self-end md:flex-row">
-                        <Button type="submit" className="w-full md:w-auto">
+                    <div className="flex flex-col gap-2 self-end md:flex-row lg:col-span-4 justify-end">
+                        <Button
+                            type="submit"
+                            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                        >
                             <IconSearch className="mr-2 h-4 w-4" /> Pesquisar
                         </Button>
                         <Button
                             type="button"
                             onClick={handleClearFilters}
                             variant="outline"
-                            className="w-full md:w-auto"
+                            className="w-full md:w-auto border-blue-300 text-blue-700 hover:bg-blue-50"
                         >
                             <IconX className="mr-2 h-4 w-4" /> Limpar
                         </Button>
@@ -1201,9 +1251,9 @@ export function ContratosDataTable() {
     
     // Título dinâmico baseado no perfil
     const getPageTitle = () => {
-        if (isFiscal) return "Meus Contratos - Fiscalização";
-        if (isGestor) return "Meus Contratos - Gestão";
-        return "Todos os Contratos";
+        if (isFiscal) return "Fiscalização";
+        if (isGestor) return "Gestão";
+        return "";
     };
     
     const getPageDescription = () => {
@@ -1458,9 +1508,13 @@ export function ContratosDataTable() {
             />
             <Tabs defaultValue="all" className="w-full">
                 <div className="flex items-center justify-between">
-                    <TabsList>
-                        <TabsTrigger value="all">{getPageTitle()}</TabsTrigger>
-                    </TabsList>
+                    {getPageTitle() ? (
+                        <TabsList>
+                            <TabsTrigger value="all">{getPageTitle()}</TabsTrigger>
+                        </TabsList>
+                    ) : (
+                        <div></div>
+                    )}
                     {canManageContratos && (
                         <NavLink to="/novocontrato">
                             <Button variant="default" size="sm" className="gap-2">
