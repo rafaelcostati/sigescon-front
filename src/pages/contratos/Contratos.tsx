@@ -322,7 +322,7 @@ interface SearchableSelectProps {
     required?: boolean;
 }
 
-function SearchableSelect({ options, value, onValueChange, placeholder, name, required = false }: SearchableSelectProps) {
+function SearchableSelect({ options, value, onValueChange, placeholder }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState("");
     const [filteredOptions, setFilteredOptions] = React.useState(options);

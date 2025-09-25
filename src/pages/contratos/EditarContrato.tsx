@@ -234,11 +234,12 @@ export function EditarContrato() {
             setIsLoading(true);
             try {
                 // Carrega dados dos dropdowns e contrato em paralelo usando as funções da API
-                const [contratados, modalidades, statusList, usuarios, contractData] = await Promise.all([
+                // Primeiro carrega os usuários ativos usando a função correta
+                const usuarios = await getUsuarios();
+                const [contratados, modalidades, statusList, contractData] = await Promise.all([
                     getContratados({ page: 1, per_page: 100 }),
                     getModalidades(),
                     getStatus(),
-                    getUsuarios({ page: 1, per_page: 100, ativo: true }),
                     getContratoDetalhado(Number(id))
                 ]);
 
@@ -383,12 +384,12 @@ export function EditarContrato() {
                 reset(refreshedFormatted);
 
                 // Atualizar estados dos selects customizados
-                setSelectedContratado(String(refreshedData.contratado_id ?? ""));
-                setSelectedGestor(String(refreshedData.gestor_id ?? ""));
-                setSelectedFiscal(String(refreshedData.fiscal_id ?? ""));
-                setSelectedFiscalSubstituto(refreshedData.fiscal_substituto_id != null ? String(refreshedData.fiscal_substituto_id) : "");
-                setSelectedModalidade(String(refreshedData.modalidade_id ?? ""));
-                setSelectedStatus(String(refreshedData.status_id ?? ""));
+                setSelectedContratado(String(refreshed.contratado_id ?? ""));
+                setSelectedGestor(String(refreshed.gestor_id ?? ""));
+                setSelectedFiscal(String(refreshed.fiscal_id ?? ""));
+                setSelectedFiscalSubstituto(refreshed.fiscal_substituto_id != null ? String(refreshed.fiscal_substituto_id) : "");
+                setSelectedModalidade(String(refreshed.modalidade_id ?? ""));
+                setSelectedStatus(String(refreshed.status_id ?? ""));
 
                 const updatedFilesResponse = await getArquivosByContratoId(Number(id));
                 setExistingFiles(updatedFilesResponse.arquivos.map(arquivo => ({
