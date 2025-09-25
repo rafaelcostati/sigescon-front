@@ -4,18 +4,21 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { forgotPassword } from "@/lib/api";
 
 // shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Componentes
 import { ProfileSelectionModal } from "@/components/ProfileSelectionModal";
 
 // Ícones e Logo
-import { LockKeyhole, User, AlertCircle } from "lucide-react";
+import { LockKeyhole, User, AlertCircle, Mail, Send } from "lucide-react";
 import logo from "@/assets/logo.svg";
 
 // Schema simplificado, sem o campo de perfil
@@ -24,7 +27,13 @@ const signInFormSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
+// Schema para o formulário de esqueceu a senha
+const forgotPasswordSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+});
+
 type SignInForm = z.infer<typeof signInFormSchema>;
+type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -33,12 +42,26 @@ export function SignIn() {
   const [showProfileSelection, setShowProfileSelection] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
+  // Estados para reset de senha
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SignInForm>({
     resolver: zodResolver(signInFormSchema),
+  });
+
+  // Form para reset de senha
+  const {
+    register: registerForgot,
+    handleSubmit: handleSubmitForgot,
+    formState: { errors: errorsForgot, isSubmitting: isSubmittingForgot },
+    reset: resetForgotForm,
+  } = useForm<ForgotPasswordForm>({
+    resolver: zodResolver(forgotPasswordSchema),
   });
 
   // Redireciona se o usuário já estiver logado e não precisa selecionar perfil
@@ -81,6 +104,34 @@ export function SignIn() {
     setShowProfileSelection(false);
     console.log("Perfil selecionado, redirecionando para dashboard");
     navigate("/dashboard", { replace: true });
+  };
+
+  // Função para abrir modal de esqueceu a senha
+  const handleForgotPasswordClick = () => {
+    setError("");
+    setForgotPasswordSent(false);
+    setShowForgotPasswordModal(true);
+  };
+
+  // Função para fechar modal de esqueceu a senha
+  const handleCloseForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
+    setForgotPasswordSent(false);
+    resetForgotForm();
+  };
+
+  // Função para enviar solicitação de reset de senha
+  const onSubmitForgotPassword = async ({ email }: ForgotPasswordForm) => {
+    try {
+      const response = await forgotPassword({ email });
+      if (response.success) {
+        setForgotPasswordSent(true);
+        toast.success(response.message);
+      }
+    } catch (err: any) {
+      console.error("Erro ao solicitar reset de senha:", err);
+      toast.error(err.message || "Erro ao solicitar reset de senha. Tente novamente.");
+    }
   };
 
   // Tela de loading inicial - agora dentro do layout
@@ -187,11 +238,23 @@ export function SignIn() {
           </Alert>
         )}
 
+        {/* Link Esqueceu a senha */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={handleForgotPasswordClick}
+            className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200"
+            disabled={isSubmitting}
+          >
+            Esqueceu a senha?
+          </button>
+        </div>
+
         {/* Botão de submit */}
         <div className="pt-2">
-          <Button 
-            type="submit" 
-            className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
+          <Button
+            type="submit"
+            className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -219,6 +282,96 @@ export function SignIn() {
         open={showProfileSelection}
         onProfileSelected={handleProfileSelected}
       />
+
+      {/* Modal de Esqueceu a Senha */}
+      <Dialog open={showForgotPasswordModal} onOpenChange={handleCloseForgotPasswordModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-900">
+              <Mail className="h-5 w-5" />
+              Recuperar Senha
+            </DialogTitle>
+          </DialogHeader>
+
+          {!forgotPasswordSent ? (
+            <form onSubmit={handleSubmitForgot(onSubmitForgotPassword)} className="space-y-4">
+              <div>
+                <Label htmlFor="forgot-email" className="text-sm font-semibold text-gray-700 mb-2 block">
+                  E-mail
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="seuemail@exemplo.com"
+                    className="pl-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    {...registerForgot("email")}
+                    disabled={isSubmittingForgot}
+                  />
+                </div>
+                {errorsForgot.email && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errorsForgot.email.message}
+                  </p>
+                )}
+              </div>
+
+              <p className="text-sm text-gray-600">
+                Digite seu e-mail para verificar se está cadastrado no sistema. O administrador será notificado para auxiliar na recuperação de sua senha.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseForgotPasswordModal}
+                  className="flex-1"
+                  disabled={isSubmittingForgot}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={isSubmittingForgot}
+                >
+                  {isSubmittingForgot ? (
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 border-2 border-white/30 rounded-full animate-spin mr-2"></div>
+                      Enviando...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <Send className="h-4 w-4 mr-2" />
+                      Enviar
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-green-800 mb-2">
+                Solicitação Registrada!
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Sua solicitação foi registrada. Entre em contato com o administrador do sistema para obter uma nova senha temporária.
+              </p>
+              <Button
+                onClick={handleCloseForgotPasswordModal}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Entendi
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Custom animations */}
       <style dangerouslySetInnerHTML={{

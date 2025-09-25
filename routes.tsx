@@ -12,6 +12,7 @@ import UserCard from '@/pages/usuarios/Usuario';
 import { CadastrarUsuarioSimples } from '@/pages/usuarios/CadastrarUsuarioSimples';
 import { NotFound } from '@/NotFound';
 import { SignIn } from '@/pages/auth/SignIn';
+import { ResetPassword } from '@/pages/auth/ResetPassword';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Contratados from '@/pages/fornecedor/Contratado';
 import Modalidades from '@/pages/modalidades/Modalidade';
@@ -41,6 +42,14 @@ export const router = createBrowserRouter([
       {
         path: '/login',
         element: <SignIn />,
+      },
+      {
+        path: '/auth/signin',
+        element: <SignIn />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPassword />,
       },
     ],
   },

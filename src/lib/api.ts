@@ -1943,6 +1943,105 @@ export async function getDashboardFiscalMelhorado(): Promise<{
     }
 }
 
+// ============================================================================
+// FUNÇÕES PARA RESET DE SENHA
+// ============================================================================
+
+export type ForgotPasswordPayload = {
+    email: string;
+};
+
+export type ResetPasswordPayload = {
+    token: string;
+    new_password: string;
+};
+
+export type ValidateTokenPayload = {
+    token: string;
+};
+
+export type ForgotPasswordResponse = {
+    success: boolean;
+    message: string;
+};
+
+export type ValidateTokenResponse = {
+    valid: boolean;
+    message: string;
+    user_email?: string;
+};
+
+export type ResetPasswordResponse = {
+    success: boolean;
+    message: string;
+};
+
+/**
+ * Solicita reset de senha via email
+ */
+export async function forgotPassword(payload: ForgotPasswordPayload): Promise<ForgotPasswordResponse> {
+    console.log("🔐 Solicitação de recuperação de senha para:", payload.email);
+
+    const response = await fetch(`${AUTH_API_URL}/forgot-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        throw new Error(errorData.detail || 'Erro ao solicitar reset de senha');
+    }
+
+    return await response.json();
+}
+
+/**
+ * Valida token de reset de senha
+ */
+export async function validateResetToken(payload: ValidateTokenPayload): Promise<ValidateTokenResponse> {
+    console.log("🔍 Validando token de reset");
+
+    const response = await fetch(`${AUTH_API_URL}/validate-reset-token`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        throw new Error(errorData.detail || 'Erro ao validar token');
+    }
+
+    return await response.json();
+}
+
+/**
+ * Redefine senha usando token
+ */
+export async function resetPassword(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
+    console.log("🔄 Redefinindo senha");
+
+    const response = await fetch(`${AUTH_API_URL}/reset-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        throw new Error(errorData.detail || 'Erro ao redefinir senha');
+    }
+
+    return await response.json();
+}
+
 /**
  * Busca contratos próximos ao vencimento para o dashboard do administrador
  * GET /api/v1/dashboard/admin/contratos-proximos-vencimento
