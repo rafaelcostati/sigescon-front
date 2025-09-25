@@ -31,8 +31,7 @@ import {
     deleteArquivoContrato,
     getContratados,
     getModalidades,
-    getStatus,
-    getUsuarios
+    getStatus
 } from '@/lib/api';
 
 // Schema de validação (inalterado)
@@ -209,7 +208,6 @@ export function EditarContrato() {
     const [contratados, setContratados] = useState<any[]>([]);
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
-    const [usuarios, setUsuarios] = useState<any[]>([]);
     const [usuariosGestores, setUsuariosGestores] = useState<any[]>([]);
     const [usuariosFiscais, setUsuariosFiscais] = useState<any[]>([]);
 
@@ -236,8 +234,6 @@ export function EditarContrato() {
             setIsLoading(true);
             try {
                 // Carrega dados dos dropdowns e contrato em paralelo usando as funções da API
-                // Primeiro carrega os usuários ativos usando a função correta
-                const usuarios = await getUsuarios();
                 const [contratados, modalidades, statusList, contractData] = await Promise.all([
                     getContratados({ page: 1, per_page: 100 }),
                     getModalidades(),
@@ -248,7 +244,6 @@ export function EditarContrato() {
                 setContratados(contratados.data || contratados);
                 setModalidades(modalidades);
                 setStatusList(statusList);
-                setUsuarios((usuarios as any)?.data || usuarios);
 
                 // Carregar usuários filtrados por perfil
                 const [usuariosGestoresResponse, usuariosFiscaisResponse] = await Promise.all([

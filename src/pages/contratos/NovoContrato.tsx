@@ -218,7 +218,6 @@ export function NovoContrato() {
     const [contratados, setContratados] = useState<any[]>([]);
     const [modalidades, setModalidades] = useState<any[]>([]);
     const [statusList, setStatusList] = useState<any[]>([]);
-    const [usuarios, setUsuarios] = useState<any[]>([]);
     const [usuariosGestores, setUsuariosGestores] = useState<any[]>([]);
     const [usuariosFiscais, setUsuariosFiscais] = useState<any[]>([]);
     const [perfis, setPerfis] = useState<any[]>([]);
@@ -312,7 +311,7 @@ export function NovoContrato() {
                     })
                 ]);
 
-                const [contratadosData, modalidadesData, statusData, usuariosData, perfisData] = await Promise.all([
+                const [contratadosData, modalidadesData, statusData, , perfisData] = await Promise.all([
                     contratadosResponse.json(),
                     modalidadesResponse.json(),
                     statusResponse.json(),
@@ -324,13 +323,11 @@ export function NovoContrato() {
                 const contratadosArray = Array.isArray(contratadosData) ? contratadosData : contratadosData.data || [];
                 const modalidadesArray = Array.isArray(modalidadesData) ? modalidadesData : modalidadesData.data || [];
                 const statusArray = Array.isArray(statusData) ? statusData : statusData.data || [];
-                const usuariosArray = Array.isArray(usuariosData) ? usuariosData : usuariosData.data || [];
                 const perfisArray = Array.isArray(perfisData) ? perfisData : perfisData.data || [];
 
                 setContratados(contratadosArray.filter((item: any) => item.ativo !== false));
                 setModalidades(modalidadesArray.filter((item: any) => item.ativo !== false));
                 setStatusList(statusArray.filter((item: any) => item.ativo !== false));
-                setUsuarios(usuariosArray.filter((item: any) => item.ativo !== false));
                 setPerfis(perfisArray);
 
                 // Carregar usuários filtrados por perfil
@@ -480,8 +477,7 @@ export function NovoContrato() {
                 }
             }
 
-            // Atualizar a lista de usuários
-            setUsuarios(prev => [...prev, newUser]);
+            // Usuário criado - será adicionado às listas filtradas abaixo
 
             // Atualizar listas filtradas por perfil baseado nos perfis concedidos
             const perfisNomes = selectedPerfis.map(perfilId => {
