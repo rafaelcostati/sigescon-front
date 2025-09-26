@@ -51,8 +51,8 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const ACCEPT_STRING = ALLOWED_FILE_TYPES.join(',');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB por arquivo
-const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 10MB por arquivo
+const MAX_TOTAL_SIZE = 250 * 1024 * 1024; // 50MB total
 
 // Componente SearchableSelect
 interface SearchableSelectProps {

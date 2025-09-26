@@ -115,7 +115,7 @@ export type AnalisarRelatorioPayload = {
 };
 
 
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1/";
+const API_BASE_URL = fetch(`${import.meta.env.VITE_API_URL}`);
 
 // Função auxiliar para tratar as respostas
 async function handleResponse<T>(response: Response): Promise<T> {
