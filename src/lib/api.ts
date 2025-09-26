@@ -1847,13 +1847,13 @@ export async function getDashboardAdminPendenciasVencidasCompleto(): Promise<Das
 
 /**
  * Cancela uma pendência (Admin)
- * PATCH /api/v1/dashboard/admin/cancelar-pendencia/{pendencia_id}
+ * PATCH /api/v1/contratos/{contrato_id}/pendencias/{pendencia_id}/cancelar
  */
-export async function cancelarPendencia(pendenciaId: number): Promise<{ message: string }> {
-    console.log("🚫 Cancelando pendência:", pendenciaId);
+export async function cancelarPendencia(contratoId: number, pendenciaId: number): Promise<Pendencia> {
+    console.log("🚫 Cancelando pendência:", { contratoId, pendenciaId });
 
     try {
-        const response = await api<{ message: string }>(`/dashboard/admin/cancelar-pendencia/${pendenciaId}`, {
+        const response = await api<Pendencia>(`/contratos/${contratoId}/pendencias/${pendenciaId}/cancelar`, {
             method: 'PATCH'
         });
 

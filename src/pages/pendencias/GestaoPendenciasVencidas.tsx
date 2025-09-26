@@ -5,23 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  AlertTriangle, 
-  Calendar, 
-  User, 
-  FileText, 
-  Clock, 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertTriangle,
+  Calendar,
+  User,
+  FileText,
+  Clock,
   Search,
   Users,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { 
-  getDashboardAdminPendenciasVencidas, 
+import {
+  getDashboardAdminPendenciasVencidas,
   getDashboardFiscalPendencias,
   getDashboardAdminPendenciasPendentes,
+  cancelarPendencia,
   type PendenciaVencida,
   type PendenciaFiscal,
   type DashboardAdminPendenciasVencidasResponseOld,
@@ -118,6 +121,44 @@ export default function GestaoPendencias() {
       return 'MÉDIA';
     }
     return urgencia;
+  };
+
+  // Função para verificar se pode cancelar pendência
+  const podeCancelarPendencia = (pendencia: any) => {
+    // Para pendências pendentes (não vencidas), verifica se não tem relatório enviado
+    if (pendencia.tipo === 'pendente') {
+      // Assumir que se está na lista de pendentes, pode cancelar
+      return true;
+    }
+    return false;
+  };
+
+  // Função para cancelar pendência
+  const handleCancelarPendencia = async (pendencia: any) => {
+    if (!podeCancelarPendencia(pendencia)) {
+      toast.error("Esta pendência não pode ser cancelada");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await cancelarPendencia(pendencia.contrato_id, pendencia.pendencia_id);
+
+      // Atualizar as listas removendo a pendência cancelada
+      if (pendencia.tipo === 'pendente') {
+        setPendenciasPendentes(pendenciasPendentes.filter(p => p.pendencia_id !== pendencia.pendencia_id));
+      }
+
+      toast.success("Pendência cancelada com sucesso!");
+
+      // Recarregar dados para atualizar contadores
+      loadPendenciasVencidas();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Erro ao cancelar pendência";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Combinar todas as pendências baseado no filtro de tipo
@@ -523,6 +564,63 @@ export default function GestaoPendencias() {
                     <div className="text-xs text-orange-600 font-medium">
                       ⏳ PENDÊNCIA PENDENTE - Aguardando resposta do fiscal
                     </div>
+                    {isAdmin && podeCancelarPendencia(pendencia) && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Cancelar
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Cancelar Pendência</DialogTitle>
+                            <DialogDescription>
+                              Tem certeza que deseja cancelar esta pendência? Esta ação não pode ser desfeita.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+                              <p className="text-sm text-yellow-800">
+                                <strong>Contrato:</strong> {pendencia.contrato_numero}
+                              </p>
+                              <p className="text-sm text-yellow-800 mt-1">
+                                <strong>Objeto:</strong> {pendencia.contrato_objeto}
+                              </p>
+                              <p className="text-sm text-yellow-800 mt-1">
+                                <strong>Descrição:</strong> {pendencia.descricao || pendencia.pendencia_descricao || pendencia.titulo}
+                              </p>
+                              <p className="text-sm text-yellow-800 mt-1">
+                                <strong>Fiscal:</strong> {pendencia.fiscal_nome}
+                              </p>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <DialogTrigger asChild>
+                                <Button type="button" variant="outline">Não, manter</Button>
+                              </DialogTrigger>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={loading}
+                                onClick={() => handleCancelarPendencia(pendencia)}
+                              >
+                                {loading ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Cancelando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Sim, cancelar
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 </CardContent>
               </Card>

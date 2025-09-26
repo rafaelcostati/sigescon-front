@@ -23,7 +23,6 @@ import EnviarRelatorio from '@/pages/fiscal/EnviarRelatorio';
 import Relatorios from '@/pages/relatorios/Relatorios';
 import { AnalisarRelatoriosNovo } from '@/pages/admin/AnalisarRelatoriosNovo';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
-import Pendencias from '@/pages/pendencias/Pendencias';
 import GestaoPendenciasVencidas from '@/pages/pendencias/GestaoPendenciasVencidas';
 
 // Componente para dashboard dinâmico baseado no perfil
@@ -114,10 +113,6 @@ export const router = createBrowserRouter([
       {
         path: '/cadastrarusuario',
         element: <ProtectedRoute requiredProfiles={['Administrador']}><CadastrarUsuarioSimples /></ProtectedRoute>,
-      },
-      {
-        path: '/pendencias',
-        element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor', 'Fiscal']}><Pendencias /></ProtectedRoute>,
       },
       {
         path: '/pendencias-vencidas',

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   ArrowLeft,
   Calendar,
@@ -13,12 +14,14 @@ import {
   DollarSign,
   Clock,
   Edit,
-  CheckCircle
+  CheckCircle,
+  Trash2
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getContratoDetalhado,
   getPendenciasByContratoId,
+  cancelarPendencia,
   type ContratoDetalhado
 } from "@/lib/api";
 import { toast } from "sonner";
@@ -50,6 +53,36 @@ export default function DetalhesContrato() {
   const [loading, setLoading] = useState(true);
 
   const podeEditar = perfilAtivo?.nome === "Administrador";
+  const isAdmin = perfilAtivo?.nome === "Administrador";
+
+  // Função para verificar se pode cancelar pendência
+  const podeCancelarPendencia = (pendencia: Pendencia) => {
+    // Só pode cancelar se for administrador e a pendência estiver "Pendente"
+    return isAdmin && (pendencia.status_nome === "Pendente" || pendencia.status_nome === "pendente");
+  };
+
+  // Função para cancelar pendência
+  const handleCancelarPendencia = async (pendencia: Pendencia) => {
+    if (!podeCancelarPendencia(pendencia)) {
+      toast.error("Esta pendência não pode ser cancelada");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await cancelarPendencia(parseInt(id!), pendencia.id);
+
+      // Remove a pendência da lista
+      setPendencias(pendencias.filter(p => p.id !== pendencia.id));
+
+      toast.success("Pendência cancelada com sucesso!");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Erro ao cancelar pendência";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDetalhes = async () => {
@@ -388,9 +421,69 @@ export default function DetalhesContrato() {
                           </div>
                         </div>
                         <p className="text-sm text-gray-600 mb-2">{pendencia.descricao}</p>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Criada em: {formatDate(pendencia.data_criacao || pendencia.created_at)}</span>
-                          <span>Prazo: {formatDate(pendencia.prazo_entrega || pendencia.data_prazo)}</span>
+                        <div className="flex justify-between items-center text-xs text-gray-500">
+                          <div>
+                            <span>Criada em: {formatDate(pendencia.data_criacao || pendencia.created_at)}</span>
+                            <br />
+                            <span>Prazo: {formatDate(pendencia.prazo_entrega || pendencia.data_prazo)}</span>
+                          </div>
+                          {isAdmin && podeCancelarPendencia(pendencia) && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Cancelar
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Cancelar Pendência</DialogTitle>
+                                  <DialogDescription>
+                                    Tem certeza que deseja cancelar esta pendência? Esta ação não pode ser desfeita.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+                                    <p className="text-sm text-yellow-800">
+                                      <strong>Pendência:</strong> {pendencia.titulo || `Pendência #${pendencia.id}`}
+                                    </p>
+                                    <p className="text-sm text-yellow-800 mt-1">
+                                      <strong>Descrição:</strong> {pendencia.descricao}
+                                    </p>
+                                    <p className="text-sm text-yellow-800 mt-1">
+                                      <strong>Status:</strong> {pendencia.status_nome || 'Pendente'}
+                                    </p>
+                                    <p className="text-sm text-yellow-800 mt-1">
+                                      <strong>Prazo:</strong> {formatDate(pendencia.prazo_entrega || pendencia.data_prazo)}
+                                    </p>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <DialogTrigger asChild>
+                                      <Button type="button" variant="outline">Não, manter</Button>
+                                    </DialogTrigger>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      disabled={loading}
+                                      onClick={() => handleCancelarPendencia(pendencia)}
+                                    >
+                                      {loading ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                          Cancelando...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Sim, cancelar
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
                         </div>
                       </div>
                     ))}
