@@ -516,7 +516,16 @@ export function getUsers(params: { page?: number; per_page?: number; nome?: stri
     if (params.per_page) searchParams.set('per_page', String(params.per_page));
     if (params.nome) searchParams.set('nome', params.nome);
     
-    return api<UserApiResponse>(`/usuarios/?${searchParams.toString()}`);
+    const endpoint = `/usuarios?${searchParams.toString()}`;
+    console.log('🔍 getUsers - Endpoint construído:', endpoint);
+    console.log('🔍 getUsers - Parâmetros:', params);
+    return api<UserApiResponse>(endpoint);
+}
+
+// Função de teste para verificar se o router está funcionando
+export function testUsuarios(): Promise<any> {
+    console.log('🔍 Testando rota /usuarios/test');
+    return api<any>('/usuarios/test');
 }
 
 /**
@@ -556,14 +565,22 @@ export function updateUser(userId: number, userData: EditUserPayload): Promise<U
 }
 
 export function getContratados(params: { page: number; per_page: number; nome?: string }): Promise<ContratadoApiResponse> {
-    const url = new URL(`${API_URL}/contratados/`);
-    url.searchParams.append('page', String(params.page));
-    url.searchParams.append('per_page', String(params.per_page));
+    const searchParams = new URLSearchParams();
+    searchParams.append('page', String(params.page));
+    searchParams.append('per_page', String(params.per_page));
     if (params.nome) {
-        url.searchParams.append('nome', params.nome);
+        searchParams.append('nome', params.nome);
     }
-    const endpoint = `/contratados/${url.search}`;
+    const endpoint = `/contratados?${searchParams.toString()}`;
+    console.log('🔍 getContratados - Endpoint construído:', endpoint);
+    console.log('🔍 getContratados - Parâmetros:', params);
     return api<ContratadoApiResponse>(endpoint);
+}
+
+// Função de teste para verificar se o router está funcionando
+export function testContratados(): Promise<any> {
+    console.log('🔍 Testando rota /contratados/test');
+    return api<any>('/contratados/test');
 }
 
 /**
