@@ -63,11 +63,10 @@ interface SearchableSelectProps {
     canCreateNew?: boolean;
     onCreateNew?: () => void;
     createNewLabel?: string;
-    searchable?: boolean;
     maxHeight?: string;
 }
 
-function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew, createNewLabel = "Criar novo usuário", searchable = true, maxHeight = "h-80" }: SearchableSelectProps) {
+function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew, createNewLabel = "Criar novo usuário", maxHeight = "h-80" }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredOptions, setFilteredOptions] = useState(options);
