@@ -245,9 +245,9 @@ export function EditarContrato() {
                 setModalidades(modalidades);
                 setStatusList(statusList);
 
-                // Carregar usuários filtrados por perfil
+                // Carregar usuários filtrados por perfil com limite maior
                 const [usuariosGestoresResponse, usuariosFiscaisResponse] = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor`, {
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor&per_page=100`, {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -255,7 +255,7 @@ export function EditarContrato() {
                             'Content-Type': 'application/json'
                         }
                     }),
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal`, {
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal&per_page=100`, {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

@@ -63,9 +63,11 @@ interface SearchableSelectProps {
     canCreateNew?: boolean;
     onCreateNew?: () => void;
     createNewLabel?: string;
+    searchable?: boolean;
+    maxHeight?: string;
 }
 
-function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew, createNewLabel = "Criar novo usuário" }: SearchableSelectProps) {
+function SearchableSelect({ options, value, onValueChange, placeholder, canCreateNew = false, onCreateNew, createNewLabel = "Criar novo usuário", searchable = true, maxHeight = "h-80" }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredOptions, setFilteredOptions] = useState(options);
@@ -147,10 +149,18 @@ function SearchableSelect({ options, value, onValueChange, placeholder, canCreat
                                 </button>
                             )}
                         </div>
+                        {options.length > 0 && (
+                            <div className="mt-2 text-xs text-blue-600 flex items-center justify-between">
+                                <span>{filteredOptions.length} de {options.length} usuários</span>
+                                {options.length >= 100 && (
+                                    <span className="text-amber-600">⚠ Lista limitada a 100 usuários</span>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Options list - altura exata para 10 linhas (40px cada = 400px) */}
-                    <div className="h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50">
+                    {/* Options list - altura configurável com scroll */}
+                    <div className={`${maxHeight} overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50`}>
                         {filteredOptions.length > 0 ? (
                             <>
                                 {filteredOptions.map((option) => (
@@ -330,9 +340,9 @@ export function NovoContrato() {
                 setStatusList(statusArray.filter((item: any) => item.ativo !== false));
                 setPerfis(perfisArray);
 
-                // Carregar usuários filtrados por perfil
+                // Carregar usuários filtrados por perfil com limite maior
                 const [usuariosGestoresResponse, usuariosFiscaisResponse] = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor`, {
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Gestor&per_page=100`, {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -340,7 +350,7 @@ export function NovoContrato() {
                             'Content-Type': 'application/json'
                         }
                     }),
-                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal`, {
+                    fetch(`${import.meta.env.VITE_API_URL}/usuarios?perfil=Fiscal&per_page=100`, {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
