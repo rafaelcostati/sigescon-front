@@ -2241,6 +2241,113 @@ export async function updateLembretesConfig(
 }
 
 // ============================================================================
+// MODELO DE RELATÓRIO
+// ============================================================================
+
+export interface ModeloRelatorioInfo {
+    arquivo_id: number;
+    nome_original: string;
+    ativo: boolean;
+}
+
+export interface ModeloRelatorioResponse {
+    success: boolean;
+    message: string;
+    modelo: ModeloRelatorioInfo | null;
+}
+
+/**
+ * Busca informações do modelo de relatório ativo
+ * GET /api/v1/config/modelo-relatorio/info
+ */
+export async function getModeloRelatorioInfo(): Promise<ModeloRelatorioInfo | null> {
+    console.log("🔍 Buscando informações do modelo de relatório...");
+    return await api<ModeloRelatorioInfo | null>('/config/modelo-relatorio/info');
+}
+
+/**
+ * Faz upload do modelo de relatório
+ * POST /api/v1/config/modelo-relatorio/upload
+ */
+export async function uploadModeloRelatorio(file: File): Promise<ModeloRelatorioResponse> {
+    console.log(`📤 Fazendo upload do modelo de relatório: ${file.name}...`);
+    
+    const { token, type } = tokenManager.getTokenData();
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/config/modelo-relatorio/upload`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `${type} ${token}`
+        },
+        body: formData
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Erro ao fazer upload do modelo');
+    }
+    
+    return await response.json();
+}
+
+/**
+ * Remove o modelo de relatório ativo
+ * DELETE /api/v1/config/modelo-relatorio
+ */
+export async function removeModeloRelatorio(): Promise<ModeloRelatorioResponse> {
+    console.log("🗑️ Removendo modelo de relatório...");
+    return await api<ModeloRelatorioResponse>('/config/modelo-relatorio', {
+        method: 'DELETE'
+    });
+}
+
+/**
+ * Faz download do modelo de relatório
+ * GET /api/v1/config/modelo-relatorio/download
+ */
+export async function downloadModeloRelatorio(): Promise<void> {
+    console.log("📥 Baixando modelo de relatório...");
+    
+    const { token, type } = tokenManager.getTokenData();
+    
+    const response = await fetch(`${API_URL}/config/modelo-relatorio/download`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `${type} ${token}`
+        }
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Erro ao baixar modelo');
+    }
+    
+    // Extrai o nome do arquivo do header Content-Disposition
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'modelo_relatorio.pdf';
+    
+    if (contentDisposition) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+        if (matches && matches[1]) {
+            filename = matches[1].replace(/['"]/g, '');
+        }
+    }
+    
+    // Cria blob e faz download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// ============================================================================
 // PENDÊNCIAS AUTOMÁTICAS
 // ============================================================================
 

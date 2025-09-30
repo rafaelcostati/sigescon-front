@@ -38,7 +38,10 @@ import {
   getArquivosByContratoId,
   downloadArquivoContrato,
   deleteArquivoContrato,
-  getRelatoriosAprovadosByContratoId
+  getRelatoriosAprovadosByContratoId,
+  getModeloRelatorioInfo,
+  downloadModeloRelatorio,
+  type ModeloRelatorioInfo
 } from "@/lib/api";
 
 interface ContratoArquivosProps {
@@ -66,6 +69,7 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
     arquivo: ArquivoContrato | null;
   }>({ open: false, arquivo: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [modeloRelatorio, setModeloRelatorio] = useState<ModeloRelatorioInfo | null>(null);
 
   // Verificar se o usuário pode excluir arquivos (apenas admin)
   const canDelete = perfilAtivo?.nome === 'Administrador';
@@ -121,12 +125,34 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
   };
 
   // Carregar todos os dados
+  const loadModeloRelatorio = async () => {
+    try {
+      const modelo = await getModeloRelatorioInfo();
+      setModeloRelatorio(modelo);
+      console.log("✅ Modelo de relatório carregado:", modelo);
+    } catch (error) {
+      console.error("❌ Erro ao carregar modelo de relatório:", error);
+      // Não mostra toast de erro, apenas não exibe o botão
+    }
+  };
+
+  const handleDownloadModelo = async () => {
+    try {
+      await downloadModeloRelatorio();
+      toast.success("Download iniciado!");
+    } catch (error: any) {
+      console.error("❌ Erro ao baixar modelo:", error);
+      toast.error("Erro ao baixar modelo de relatório");
+    }
+  };
+
   const loadArquivos = async () => {
     setIsLoading(true);
     try {
       await Promise.all([
         loadArquivosContratuais(),
-        loadRelatoriosAprovados()
+        loadRelatoriosAprovados(),
+        loadModeloRelatorio()
       ]);
     } finally {
       setIsLoading(false);
@@ -270,6 +296,39 @@ export function ContratoArquivos({ contratoId, className }: ContratoArquivosProp
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Modelo de Relatório (se existir) */}
+      {modeloRelatorio && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg p-4 shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-600 text-white p-2 rounded-lg">
+                <IconFile className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-semibold text-purple-900 flex items-center gap-2">
+                  📋 Modelo de Relatório Fiscal
+                  <Badge className="bg-purple-600 text-white">Padrão do Sistema</Badge>
+                </p>
+                <p className="text-sm text-purple-700 mt-1">
+                  {modeloRelatorio.nome_original}
+                </p>
+                <p className="text-xs text-purple-600 mt-0.5">
+                  Use este modelo para criar relatórios padronizados
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handleDownloadModelo}
+              className="bg-purple-600 hover:bg-purple-700 text-white shadow-md"
+              size="sm"
+            >
+              <IconDownload className="w-4 h-4 mr-2" />
+              Baixar Modelo
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Arquivos Contratuais */}
       <Card>
         <CardHeader>

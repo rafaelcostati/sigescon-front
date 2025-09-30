@@ -17,12 +17,21 @@ import {
     IconReload,
     IconInfoCircle,
     IconBell,
+    IconFileText,
+    IconUpload,
+    IconTrash,
+    IconDownload,
 } from "@tabler/icons-react";
 import { 
     getPendenciasIntervaloDias, 
     updatePendenciasIntervaloDias,
     getLembretesConfig,
-    updateLembretesConfig
+    updateLembretesConfig,
+    getModeloRelatorioInfo,
+    uploadModeloRelatorio,
+    removeModeloRelatorio,
+    downloadModeloRelatorio,
+    type ModeloRelatorioInfo
 } from "@/lib/api";
 
 export default function Administracao() {
@@ -39,10 +48,17 @@ export default function Administracao() {
     const [isLoadingLembretes, setIsLoadingLembretes] = useState(false);
     const [isSavingLembretes, setIsSavingLembretes] = useState(false);
 
+    // Estados para modelo de relatório
+    const [modeloRelatorio, setModeloRelatorio] = useState<ModeloRelatorioInfo | null>(null);
+    const [isLoadingModelo, setIsLoadingModelo] = useState(false);
+    const [isUploadingModelo, setIsUploadingModelo] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
     // Carregar configuração atual
     useEffect(() => {
         carregarConfiguracao();
         carregarConfiguracaoLembretes();
+        carregarModeloRelatorio();
     }, []);
 
     const carregarConfiguracao = async () => {
@@ -134,6 +150,102 @@ export default function Administracao() {
         setDiasAntesInicio(diasAntesInicioOriginal);
         setIntervaloLembrete(intervaloLembreteOriginal);
         toast.info("Valores restaurados para os últimos salvos");
+    };
+
+    // ==================== Funções de Modelo de Relatório ====================
+
+    const carregarModeloRelatorio = async () => {
+        setIsLoadingModelo(true);
+        try {
+            const modelo = await getModeloRelatorioInfo();
+            setModeloRelatorio(modelo);
+            console.log("✅ Modelo de relatório carregado:", modelo);
+        } catch (error) {
+            console.error("❌ Erro ao carregar modelo de relatório:", error);
+        } finally {
+            setIsLoadingModelo(false);
+        }
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            // Valida extensão
+            const allowedExtensions = ['pdf', 'doc', 'docx', 'odt'];
+            const ext = file.name.split('.').pop()?.toLowerCase();
+            
+            if (!ext || !allowedExtensions.includes(ext)) {
+                toast.error(`Tipo de arquivo não permitido. Use: ${allowedExtensions.join(', ').toUpperCase()}`);
+                event.target.value = '';
+                return;
+            }
+            
+            // Valida tamanho (máx 10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                toast.error("Arquivo muito grande. Máximo: 10MB");
+                event.target.value = '';
+                return;
+            }
+            
+            setSelectedFile(file);
+        }
+    };
+
+    const handleUploadModelo = async () => {
+        if (!selectedFile) {
+            toast.error("Selecione um arquivo primeiro");
+            return;
+        }
+
+        setIsUploadingModelo(true);
+        try {
+            const response = await uploadModeloRelatorio(selectedFile);
+            setModeloRelatorio(response.modelo);
+            setSelectedFile(null);
+            toast.success("Modelo de relatório atualizado com sucesso!");
+            console.log("✅ Upload realizado:", response);
+            
+            // Limpa o input file
+            const fileInput = document.getElementById('modelo-file-input') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+        } catch (error: any) {
+            console.error("❌ Erro ao fazer upload:", error);
+            toast.error(error.message || "Erro ao fazer upload do modelo");
+        } finally {
+            setIsUploadingModelo(false);
+        }
+    };
+
+    const handleRemoverModelo = async () => {
+        if (!modeloRelatorio) return;
+
+        if (!confirm("Deseja realmente remover o modelo de relatório? Esta ação não pode ser desfeita.")) {
+            return;
+        }
+
+        setIsUploadingModelo(true);
+        try {
+            await removeModeloRelatorio();
+            setModeloRelatorio(null);
+            toast.success("Modelo de relatório removido com sucesso!");
+            console.log("✅ Modelo removido");
+        } catch (error: any) {
+            console.error("❌ Erro ao remover modelo:", error);
+            toast.error(error.message || "Erro ao remover modelo");
+        } finally {
+            setIsUploadingModelo(false);
+        }
+    };
+
+    const handleDownloadModelo = async () => {
+        try {
+            await downloadModeloRelatorio();
+            toast.success("Download iniciado!");
+        } catch (error: any) {
+            console.error("❌ Erro ao baixar modelo:", error);
+            toast.error(error.message || "Erro ao baixar modelo");
+        }
     };
 
     const temAlteracoes = intervaloDias !== intervaloDiasOriginal;
@@ -359,6 +471,131 @@ export default function Administracao() {
                                 </p>
                             </>
                         )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Card de Modelo de Relatório */}
+            <Card className="border-purple-200 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-200">
+                    <div className="flex items-center gap-3">
+                        <IconFileText className="h-6 w-6 text-purple-600" />
+                        <div>
+                            <CardTitle className="text-xl text-purple-900">
+                                Modelo de Relatório
+                            </CardTitle>
+                            <CardDescription className="text-purple-700">
+                                Configure um modelo padrão de relatório que ficará disponível para download em todos os contratos
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6 pt-6">
+                    {/* Status do modelo atual */}
+                    {isLoadingModelo ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                        </div>
+                    ) : modeloRelatorio ? (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3 flex-1">
+                                    <IconFileText className="h-5 w-5 text-purple-600 mt-0.5" />
+                                    <div className="flex-1">
+                                        <p className="font-medium text-purple-900">Modelo Ativo</p>
+                                        <p className="text-sm text-purple-700 mt-1">{modeloRelatorio.nome_original}</p>
+                                        <p className="text-xs text-purple-600 mt-1">
+                                            Este modelo está disponível para download em todos os contratos
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDownloadModelo}
+                                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                                    >
+                                        <IconDownload className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleRemoverModelo}
+                                        disabled={isUploadingModelo}
+                                        className="border-red-300 text-red-700 hover:bg-red-50"
+                                    >
+                                        <IconTrash className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                            <IconInfoCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">Nenhum modelo configurado</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Faça upload de um arquivo para configurar o modelo
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Upload de novo modelo */}
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="modelo-file-input" className="text-base font-medium">
+                                {modeloRelatorio ? "Substituir Modelo" : "Fazer Upload do Modelo"}
+                            </Label>
+                            <p className="text-xs text-gray-500 mt-1 mb-2">
+                                Formatos aceitos: PDF, DOC, DOCX, ODT (Máximo: 10MB)
+                            </p>
+                            <Input
+                                id="modelo-file-input"
+                                type="file"
+                                accept=".pdf,.doc,.docx,.odt"
+                                onChange={handleFileSelect}
+                                disabled={isUploadingModelo}
+                                className="border-purple-300 focus:border-purple-500 focus:ring-purple-500/20"
+                            />
+                        </div>
+
+                        {selectedFile && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-sm text-blue-900 font-medium">
+                                    Arquivo selecionado:
+                                </p>
+                                <p className="text-sm text-blue-700">{selectedFile.name}</p>
+                                <p className="text-xs text-blue-600 mt-1">
+                                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                            </div>
+                        )}
+
+                        <Button
+                            onClick={handleUploadModelo}
+                            disabled={!selectedFile || isUploadingModelo}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                            <IconUpload className="h-4 w-4 mr-2" />
+                            {isUploadingModelo ? "Enviando..." : modeloRelatorio ? "Substituir Modelo" : "Enviar Modelo"}
+                        </Button>
+                    </div>
+
+                    {/* Informações */}
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <IconInfoCircle className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm text-purple-800 space-y-2">
+                                <p className="font-medium">Como funciona:</p>
+                                <ul className="list-disc list-inside space-y-1 text-purple-700">
+                                    <li>O modelo ficará disponível em todos os contratos para qualquer usuário baixar</li>
+                                    <li>Aparecerá destacado na seção de arquivos dos contratos</li>
+                                    <li>Substitui automaticamente o modelo anterior quando você faz um novo upload</li>
+                                    <li>Fiscais podem usar este modelo para criar relatórios padronizados</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
