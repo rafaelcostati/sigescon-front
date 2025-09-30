@@ -2201,6 +2201,45 @@ export async function updatePendenciasIntervaloDias(intervalo_dias: number): Pro
     });
 }
 
+/**
+ * Busca as configurações de lembretes de pendências
+ * GET /api/v1/config/lembretes/config
+ */
+export async function getLembretesConfig(): Promise<{ 
+    dias_antes_vencimento_inicio: number; 
+    intervalo_dias_lembrete: number 
+}> {
+    console.log("🔍 Buscando configurações de lembretes...");
+    return await api<{ 
+        dias_antes_vencimento_inicio: number; 
+        intervalo_dias_lembrete: number 
+    }>('/config/lembretes/config');
+}
+
+/**
+ * Atualiza as configurações de lembretes de pendências
+ * PATCH /api/v1/config/lembretes/config
+ */
+export async function updateLembretesConfig(
+    dias_antes_vencimento_inicio: number,
+    intervalo_dias_lembrete: number
+): Promise<{ 
+    dias_antes_vencimento_inicio: number; 
+    intervalo_dias_lembrete: number 
+}> {
+    console.log(`📝 Atualizando configurações de lembretes: Início=${dias_antes_vencimento_inicio} dias, Intervalo=${intervalo_dias_lembrete} dias...`);
+    return await api<{ 
+        dias_antes_vencimento_inicio: number; 
+        intervalo_dias_lembrete: number 
+    }>('/config/lembretes/config', {
+        method: 'PATCH',
+        body: JSON.stringify({ 
+            dias_antes_vencimento_inicio,
+            intervalo_dias_lembrete
+        })
+    });
+}
+
 // ============================================================================
 // PENDÊNCIAS AUTOMÁTICAS
 // ============================================================================
