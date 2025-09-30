@@ -2135,3 +2135,115 @@ export async function getDashboardAdminContratosProximosVencimento(diasAnteceden
         throw error;
     }
 }
+
+// ============================================================================
+// CONFIGURAÇÕES DO SISTEMA
+// ============================================================================
+
+export interface ConfiguracaoSistema {
+    id: number;
+    chave: string;
+    valor: string;
+    descricao: string | null;
+    tipo: string;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Busca todas as configurações do sistema
+ * GET /api/v1/config/
+ */
+export async function getConfiguracoes(): Promise<ConfiguracaoSistema[]> {
+    console.log("🔍 Buscando configurações do sistema...");
+    return await api<ConfiguracaoSistema[]>('/config/');
+}
+
+/**
+ * Busca uma configuração específica
+ * GET /api/v1/config/{chave}
+ */
+export async function getConfiguracao(chave: string): Promise<ConfiguracaoSistema> {
+    console.log(`🔍 Buscando configuração: ${chave}...`);
+    return await api<ConfiguracaoSistema>(`/config/${chave}`);
+}
+
+/**
+ * Atualiza uma configuração
+ * PATCH /api/v1/config/{chave}
+ */
+export async function updateConfiguracao(chave: string, valor: string): Promise<ConfiguracaoSistema> {
+    console.log(`📝 Atualizando configuração ${chave}...`);
+    return await api<ConfiguracaoSistema>(`/config/${chave}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ valor })
+    });
+}
+
+/**
+ * Busca o intervalo de dias para pendências automáticas
+ * GET /api/v1/config/pendencias/intervalo-dias
+ */
+export async function getPendenciasIntervaloDias(): Promise<{ intervalo_dias: number }> {
+    console.log("🔍 Buscando intervalo de dias para pendências automáticas...");
+    return await api<{ intervalo_dias: number }>('/config/pendencias/intervalo-dias');
+}
+
+/**
+ * Atualiza o intervalo de dias para pendências automáticas
+ * PATCH /api/v1/config/pendencias/intervalo-dias
+ */
+export async function updatePendenciasIntervaloDias(intervalo_dias: number): Promise<ConfiguracaoSistema> {
+    console.log(`📝 Atualizando intervalo de dias para: ${intervalo_dias}...`);
+    return await api<ConfiguracaoSistema>('/config/pendencias/intervalo-dias', {
+        method: 'PATCH',
+        body: JSON.stringify({ intervalo_dias })
+    });
+}
+
+// ============================================================================
+// PENDÊNCIAS AUTOMÁTICAS
+// ============================================================================
+
+export interface PendenciaAutomaticaPreview {
+    numero: number;
+    titulo: string;
+    data_prazo: string;
+    dias_desde_inicio: number;
+    dias_ate_fim: number;
+}
+
+export interface PendenciasAutomaticasPreviewResponse {
+    contrato_id: number;
+    contrato_numero: string;
+    data_inicio: string;
+    data_fim: string;
+    duracao_dias: number;
+    intervalo_dias: number;
+    total_pendencias: number;
+    pendencias: PendenciaAutomaticaPreview[];
+}
+
+/**
+ * Calcula preview das pendências automáticas que serão criadas
+ * GET /api/v1/contratos/{contrato_id}/pendencias/automaticas/preview
+ */
+export async function getPendenciasAutomaticasPreview(contratoId: number): Promise<PendenciasAutomaticasPreviewResponse> {
+    console.log(`🔍 Calculando preview de pendências automáticas para contrato ${contratoId}...`);
+    return await api<PendenciasAutomaticasPreviewResponse>(`/contratos/${contratoId}/pendencias/automaticas/preview`);
+}
+
+/**
+ * Cria pendências automáticas para um contrato
+ * POST /api/v1/contratos/{contrato_id}/pendencias/automaticas
+ */
+export async function criarPendenciasAutomaticas(
+    contratoId: number,
+    descricaoBase: string = "Relatório fiscal periódico do contrato."
+): Promise<Pendencia[]> {
+    console.log(`📝 Criando pendências automáticas para contrato ${contratoId}...`);
+    return await api<Pendencia[]>(`/contratos/${contratoId}/pendencias/automaticas`, {
+        method: 'POST',
+        body: JSON.stringify({ descricao_base: descricaoBase })
+    });
+}

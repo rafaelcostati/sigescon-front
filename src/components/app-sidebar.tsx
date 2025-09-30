@@ -7,6 +7,7 @@ import {
   IconFileCertificate,
   IconClipboardList,
   IconAlertTriangle,
+  IconSettings,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -51,6 +52,11 @@ const getNavigationByProfile = (perfilNome: string) => {
           title: "Contratados",
           url: "/contratado",
           icon: IconBuilding,
+        },
+        {
+          title: "Administração",
+          url: "/administracao",
+          icon: IconSettings,
         },
         {
           title: "Usuários",

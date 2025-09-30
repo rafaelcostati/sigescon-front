@@ -24,6 +24,7 @@ import Relatorios from '@/pages/relatorios/Relatorios';
 import { AnalisarRelatoriosNovo } from '@/pages/admin/AnalisarRelatoriosNovo';
 import Fiscalizacao from '@/pages/fiscalizacao/Fiscalizacao';
 import GestaoPendenciasVencidas from '@/pages/pendencias/GestaoPendenciasVencidas';
+import Administracao from '@/pages/admin/Administracao';
 
 // Componente para dashboard dinâmico baseado no perfil
 import DashboardRouter from '@/components/DashboardRouter';
@@ -105,6 +106,10 @@ export const router = createBrowserRouter([
       {
         path: '/modalidades',
         element: <ProtectedRoute requiredProfiles={['Administrador', 'Gestor']}><Modalidades /></ProtectedRoute>,
+      },
+      {
+        path: '/administracao',
+        element: <ProtectedRoute requiredProfiles={['Administrador']}><Administracao /></ProtectedRoute>,
       },
       {
         path: '/usuarios',

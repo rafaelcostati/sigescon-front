@@ -71,6 +71,8 @@ import {
     getStatus,
     getUsers,
     logout,
+    getPendenciasAutomaticasPreview,
+    criarPendenciasAutomaticas as criarPendenciasAutomaticasAPI,
     type Contratado,
     type Status,
     type User,
@@ -832,12 +834,33 @@ function CriarPendenciaDialog({
     children: React.ReactNode;
 }) {
     const [isOpen, setIsOpen] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState<"manual" | "automatica">("manual");
+
+    // Estados para pendência manual
     const [descricao, setDescricao] = React.useState("");
     const [dataPrazo, setDataPrazo] = React.useState("");
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    // Estados para pendências automáticas
+    const [descricaoBase, setDescricaoBase] = React.useState("Relatório fiscal periódico do contrato.");
+    const [preview, setPreview] = React.useState<any>(null);
+    const [isLoadingPreview, setIsLoadingPreview] = React.useState(false);
+    const [isCriandoAutomaticas, setIsCriandoAutomaticas] = React.useState(false);
+
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // Resetar estados ao abrir/fechar o modal
+    React.useEffect(() => {
+        if (!isOpen) {
+            setActiveTab("manual");
+            setDescricao("");
+            setDataPrazo("");
+            setDescricaoBase("Relatório fiscal periódico do contrato.");
+            setPreview(null);
+        }
+    }, [isOpen]);
+
+    const handleSubmitManual = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!descricao.trim() || !dataPrazo) {
             toast.error("Por favor, preencha a descrição e a data prazo.");
@@ -888,11 +911,74 @@ function CriarPendenciaDialog({
         }
     };
 
+    const calcularPendenciasAutomaticas = async () => {
+        setIsLoadingPreview(true);
+        const toastId = toast.loading("Calculando pendências...");
+
+        try {
+            const previewData = await getPendenciasAutomaticasPreview(contratoId);
+            setPreview(previewData);
+            toast.success(`${previewData.total_pendencias} pendências calculadas!`, { id: toastId });
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+
+            if (errorMessage.includes("401") || errorMessage.includes("não autorizado")) {
+                toast.error("Sessão expirada", {
+                    description: "Por favor, faça o login novamente.",
+                });
+                await logout();
+                navigate("/login", { replace: true });
+            } else {
+                toast.error("Erro ao calcular pendências", {
+                    description: errorMessage,
+                    id: toastId,
+                });
+            }
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    };
+
+    const handleCriarPendenciasAutomaticas = async () => {
+        if (!preview) {
+            toast.error("Calcule as pendências primeiro");
+            return;
+        }
+
+        setIsCriandoAutomaticas(true);
+        const toastId = toast.loading(`Criando ${preview.total_pendencias} pendências...`);
+
+        try {
+            await criarPendenciasAutomaticasAPI(contratoId, descricaoBase);
+
+            toast.success(`${preview.total_pendencias} pendências criadas com sucesso!`, { id: toastId });
+            onPendenciaCriada();
+            setIsOpen(false);
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+
+            if (errorMessage.includes("401") || errorMessage.includes("não autorizado")) {
+                toast.error("Sessão expirada", {
+                    description: "Por favor, faça o login novamente.",
+                });
+                await logout();
+                navigate("/login", { replace: true });
+            } else {
+                toast.error("Erro ao criar pendências", {
+                    description: errorMessage,
+                    id: toastId,
+                });
+            }
+        } finally {
+            setIsCriandoAutomaticas(false);
+        }
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent
-                className="sm:max-w-md"
+                className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
             >
@@ -902,52 +988,179 @@ function CriarPendenciaDialog({
                         Para o contrato: <strong>{contratoNumero}</strong>
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="space-y-2">
-                        <Label htmlFor="descricao">Descrição da Pendência</Label>
-                        <Textarea
-                            id="descricao"
-                            placeholder="Ex: Relatório do 1º trimestre"
-                            value={descricao}
-                            onChange={(e) => setDescricao(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            onFocus={(e) => e.stopPropagation()}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <Label htmlFor="data_prazo">Data Prazo</Label>
-                        <Input
-                            id="data_prazo"
-                            type="date"
-                            className="mt-1 w-full"
-                            value={dataPrazo}
-                            onChange={(e) => setDataPrazo(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            onFocus={(e) => e.stopPropagation()}
-                            required
-                        />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                disabled={isSubmitting}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                Cancelar
-                            </Button>
-                        </DialogClose>
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {isSubmitting ? "Salvando..." : "Salvar Pendência"}
-                        </Button>
-                    </DialogFooter>
-                </form>
+
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "manual" | "automatica")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="manual">Manual</TabsTrigger>
+                        <TabsTrigger value="automatica">Automática</TabsTrigger>
+                    </TabsList>
+
+                    {/* TAB MANUAL */}
+                    <TabsContent value="manual" className="space-y-4">
+                        <form onSubmit={handleSubmitManual} className="space-y-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="space-y-2">
+                                <Label htmlFor="descricao">Descrição da Pendência</Label>
+                                <Textarea
+                                    id="descricao"
+                                    placeholder="Ex: Relatório do 1º trimestre"
+                                    value={descricao}
+                                    onChange={(e) => setDescricao(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="data_prazo">Data Prazo</Label>
+                                <Input
+                                    id="data_prazo"
+                                    type="date"
+                                    className="mt-1 w-full"
+                                    value={dataPrazo}
+                                    onChange={(e) => setDataPrazo(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    required
+                                />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={isSubmitting}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                </DialogClose>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {isSubmitting ? "Salvando..." : "Salvar Pendência"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </TabsContent>
+
+                    {/* TAB AUTOMÁTICA */}
+                    <TabsContent value="automatica" className="space-y-4">
+                        <div className="space-y-4">
+                            {/* Descrição Base */}
+                            <div className="space-y-2">
+                                <Label htmlFor="descricaoBase">Descrição Base</Label>
+                                <Textarea
+                                    id="descricaoBase"
+                                    placeholder="Descrição que será usada em todas as pendências"
+                                    value={descricaoBase}
+                                    onChange={(e) => setDescricaoBase(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    rows={2}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Esta descrição será aplicada a todas as pendências criadas automaticamente
+                                </p>
+                            </div>
+
+                            {/* Botão Calcular */}
+                            {!preview && (
+                                <Button
+                                    type="button"
+                                    onClick={calcularPendenciasAutomaticas}
+                                    disabled={isLoadingPreview}
+                                    className="w-full"
+                                >
+                                    {isLoadingPreview ? "Calculando..." : "Calcular Pendências Automáticas"}
+                                </Button>
+                            )}
+
+                            {/* Preview das Pendências */}
+                            {preview && (
+                                <div className="space-y-4">
+                                    {/* Resumo */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <h4 className="font-semibold text-blue-900 mb-2">Resumo</h4>
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <div>
+                                                <span className="text-blue-700">Total de pendências:</span>
+                                                <span className="ml-2 font-semibold text-blue-900">{preview.total_pendencias}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-blue-700">Intervalo:</span>
+                                                <span className="ml-2 font-semibold text-blue-900">{preview.intervalo_dias} dias</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-blue-700">Data início:</span>
+                                                <span className="ml-2 font-semibold text-blue-900">
+                                                    {format(new Date(preview.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-blue-700">Data fim:</span>
+                                                <span className="ml-2 font-semibold text-blue-900">
+                                                    {format(new Date(preview.data_fim), 'dd/MM/yyyy', { locale: ptBR })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tabela de Pendências */}
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <div className="max-h-96 overflow-y-auto">
+                                            <table className="w-full">
+                                                <thead className="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Nº</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Título</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Data Prazo</th>
+                                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-700">Dias desde início</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {preview.pendencias.map((pend: any) => (
+                                                        <tr key={pend.numero} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-2 text-sm">{pend.numero}</td>
+                                                            <td className="px-4 py-2 text-sm font-medium">{pend.titulo}</td>
+                                                            <td className="px-4 py-2 text-sm">
+                                                                {format(new Date(pend.data_prazo), 'dd/MM/yyyy', { locale: ptBR })}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-sm text-right text-gray-600">
+                                                                {pend.dias_desde_inicio} dias
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* Botões de Ação */}
+                                    <div className="flex gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setPreview(null)}
+                                            disabled={isCriandoAutomaticas}
+                                        >
+                                            Recalcular
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            onClick={handleCriarPendenciasAutomaticas}
+                                            disabled={isCriandoAutomaticas}
+                                            className="flex-1 bg-green-600 hover:bg-green-700"
+                                        >
+                                            {isCriandoAutomaticas ? "Criando..." : `Criar ${preview.total_pendencias} Pendências`}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );
