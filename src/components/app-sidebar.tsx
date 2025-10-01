@@ -54,11 +54,6 @@ const getNavigationByProfile = (perfilNome: string) => {
           icon: IconBuilding,
         },
         {
-          title: "Administração",
-          url: "/administracao",
-          icon: IconSettings,
-        },
-        {
           title: "Usuários",
           url: "/usuarios",
           icon: IconUsers,
@@ -72,6 +67,11 @@ const getNavigationByProfile = (perfilNome: string) => {
           title: "Gestão de Pendências",
           url: "/gestao-de-pendencias",
           icon: IconAlertTriangle,
+        },
+        {
+          title: "Administração",
+          url: "/administracao",
+          icon: IconSettings,
         },
       ];
 

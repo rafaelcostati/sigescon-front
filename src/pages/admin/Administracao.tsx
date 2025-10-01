@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     IconSettings,
     IconCalendarTime,
@@ -21,6 +22,9 @@ import {
     IconUpload,
     IconTrash,
     IconDownload,
+    IconAlertTriangle,
+    IconClock,
+    IconUsers,
 } from "@tabler/icons-react";
 import { 
     getPendenciasIntervaloDias, 
@@ -31,7 +35,10 @@ import {
     uploadModeloRelatorio,
     removeModeloRelatorio,
     downloadModeloRelatorio,
-    type ModeloRelatorioInfo
+    type ModeloRelatorioInfo,
+    getAlertasVencimentoConfig,
+    updateAlertasVencimentoConfig,
+    type AlertasVencimentoConfig
 } from "@/lib/api";
 
 export default function Administracao() {
@@ -54,11 +61,30 @@ export default function Administracao() {
     const [isUploadingModelo, setIsUploadingModelo] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+    // Estados para alertas de vencimento
+    const [alertasConfig, setAlertasConfig] = useState<AlertasVencimentoConfig>({
+        ativo: true,
+        dias_antes: 90,
+        periodicidade_dias: 30,
+        perfis_destino: ['Administrador'],
+        hora_envio: '10:00'
+    });
+    const [alertasConfigOriginal, setAlertasConfigOriginal] = useState<AlertasVencimentoConfig>({
+        ativo: true,
+        dias_antes: 90,
+        periodicidade_dias: 30,
+        perfis_destino: ['Administrador'],
+        hora_envio: '10:00'
+    });
+    const [isLoadingAlertas, setIsLoadingAlertas] = useState(false);
+    const [isSavingAlertas, setIsSavingAlertas] = useState(false);
+
     // Carregar configuração atual
     useEffect(() => {
         carregarConfiguracao();
         carregarConfiguracaoLembretes();
         carregarModeloRelatorio();
+        carregarAlertasVencimento();
     }, []);
 
     const carregarConfiguracao = async () => {
@@ -248,10 +274,88 @@ export default function Administracao() {
         }
     };
 
+    // ==================== Funções de Alertas de Vencimento ====================
+
+    const carregarAlertasVencimento = async () => {
+        setIsLoadingAlertas(true);
+        try {
+            const config = await getAlertasVencimentoConfig();
+            setAlertasConfig(config);
+            setAlertasConfigOriginal(config);
+            console.log("✅ Configurações de alertas carregadas:", config);
+        } catch (error) {
+            console.error("❌ Erro ao carregar alertas:", error);
+            toast.error("Erro ao carregar configurações de alertas");
+        } finally {
+            setIsLoadingAlertas(false);
+        }
+    };
+
+    const salvarAlertasVencimento = async () => {
+        // Validações
+        if (alertasConfig.dias_antes < 1 || alertasConfig.dias_antes > 365) {
+            toast.error("Dias antes do vencimento deve estar entre 1 e 365");
+            return;
+        }
+
+        if (alertasConfig.periodicidade_dias < 1 || alertasConfig.periodicidade_dias > 90) {
+            toast.error("Periodicidade deve estar entre 1 e 90 dias");
+            return;
+        }
+
+        if (alertasConfig.perfis_destino.length === 0) {
+            toast.error("Selecione pelo menos um perfil de destino");
+            return;
+        }
+
+        // Valida formato de hora
+        const horaRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!horaRegex.test(alertasConfig.hora_envio)) {
+            toast.error("Formato de hora inválido. Use HH:MM (ex: 10:00)");
+            return;
+        }
+
+        setIsSavingAlertas(true);
+        try {
+            const updated = await updateAlertasVencimentoConfig(alertasConfig);
+            setAlertasConfig(updated);
+            setAlertasConfigOriginal(updated);
+            toast.success("Configurações de alertas atualizadas com sucesso!");
+            console.log("✅ Alertas salvos:", updated);
+        } catch (error: any) {
+            console.error("❌ Erro ao salvar alertas:", error);
+            toast.error(error.message || "Erro ao salvar configurações de alertas");
+        } finally {
+            setIsSavingAlertas(false);
+        }
+    };
+
+    const resetarAlertasVencimento = () => {
+        setAlertasConfig(alertasConfigOriginal);
+        toast.info("Valores restaurados para os últimos salvos");
+    };
+
+    const togglePerfilAlerta = (perfil: string) => {
+        const novoPerfis = alertasConfig.perfis_destino.includes(perfil)
+            ? alertasConfig.perfis_destino.filter(p => p !== perfil)
+            : [...alertasConfig.perfis_destino, perfil];
+        
+        setAlertasConfig({
+            ...alertasConfig,
+            perfis_destino: novoPerfis
+        });
+    };
+
+    const calcularNumeroAlertasVencimento = () => {
+        if (alertasConfig.dias_antes <= 0 || alertasConfig.periodicidade_dias <= 0) return 0;
+        return Math.ceil(alertasConfig.dias_antes / alertasConfig.periodicidade_dias);
+    };
+
     const temAlteracoes = intervaloDias !== intervaloDiasOriginal;
     const temAlteracoesLembretes = 
         diasAntesInicio !== diasAntesInicioOriginal || 
         intervaloLembrete !== intervaloLembreteOriginal;
+    const temAlteracoesAlertas = JSON.stringify(alertasConfig) !== JSON.stringify(alertasConfigOriginal);
     
     // Calcula quantos lembretes serão enviados
     const calcularNumeroLembretes = () => {
@@ -472,6 +576,219 @@ export default function Administracao() {
                             </>
                         )}
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Card de Alertas de Vencimento */}
+            <Card className="border-green-200 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-teal-50 border-b border-green-200">
+                    <div className="flex items-center gap-3">
+                        <IconAlertTriangle className="h-6 w-6 text-green-600" />
+                        <div>
+                            <CardTitle className="text-xl text-green-900">
+                                Alertas de Vencimento de Contratos
+                            </CardTitle>
+                            <CardDescription className="text-green-700">
+                                Configure alertas automáticos para contratos próximos do vencimento
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6 pt-6">
+                    {isLoadingAlertas ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Ativar/Desativar */}
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div className="flex items-center gap-3">
+                                    <IconBell className="h-5 w-5 text-green-600" />
+                                    <div>
+                                        <p className="font-medium text-green-900">Sistema de Alertas</p>
+                                        <p className="text-sm text-green-700">
+                                            {alertasConfig.ativo ? "Alertas ativados" : "Alertas desativados"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant={alertasConfig.ativo ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setAlertasConfig({...alertasConfig, ativo: !alertasConfig.ativo})}
+                                    className={alertasConfig.ativo ? "bg-green-600 hover:bg-green-700" : "border-green-300"}
+                                >
+                                    {alertasConfig.ativo ? "Ativo" : "Inativo"}
+                                </Button>
+                            </div>
+
+                            {/* Configurações */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Dias antes do vencimento */}
+                                <div>
+                                    <Label htmlFor="dias-antes" className="text-base font-medium flex items-center gap-2">
+                                        <IconCalendarTime className="h-4 w-4 text-green-600" />
+                                        Dias Antes do Vencimento
+                                    </Label>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Quando começar a enviar alertas (1-365 dias)
+                                    </p>
+                                    <Input
+                                        id="dias-antes"
+                                        type="number"
+                                        min="1"
+                                        max="365"
+                                        value={alertasConfig.dias_antes}
+                                        onChange={(e) => setAlertasConfig({
+                                            ...alertasConfig,
+                                            dias_antes: parseInt(e.target.value) || 1
+                                        })}
+                                        className="border-green-300 focus:border-green-500 focus:ring-green-500/20"
+                                        disabled={!alertasConfig.ativo}
+                                    />
+                                </div>
+
+                                {/* Periodicidade */}
+                                <div>
+                                    <Label htmlFor="periodicidade" className="text-base font-medium flex items-center gap-2">
+                                        <IconReload className="h-4 w-4 text-green-600" />
+                                        Periodicidade de Reenvio
+                                    </Label>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        A cada quantos dias reenviar (1-90 dias)
+                                    </p>
+                                    <Input
+                                        id="periodicidade"
+                                        type="number"
+                                        min="1"
+                                        max="90"
+                                        value={alertasConfig.periodicidade_dias}
+                                        onChange={(e) => setAlertasConfig({
+                                            ...alertasConfig,
+                                            periodicidade_dias: parseInt(e.target.value) || 1
+                                        })}
+                                        className="border-green-300 focus:border-green-500 focus:ring-green-500/20"
+                                        disabled={!alertasConfig.ativo}
+                                    />
+                                </div>
+
+                                {/* Hora de envio */}
+                                <div>
+                                    <Label htmlFor="hora-envio" className="text-base font-medium flex items-center gap-2">
+                                        <IconClock className="h-4 w-4 text-green-600" />
+                                        Hora do Envio
+                                    </Label>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Horário para enviar os alertas (HH:MM)
+                                    </p>
+                                    <Input
+                                        id="hora-envio"
+                                        type="time"
+                                        value={alertasConfig.hora_envio}
+                                        onChange={(e) => setAlertasConfig({
+                                            ...alertasConfig,
+                                            hora_envio: e.target.value
+                                        })}
+                                        className="border-green-300 focus:border-green-500 focus:ring-green-500/20"
+                                        disabled={!alertasConfig.ativo}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Perfis Destinatários */}
+                            <div>
+                                <Label className="text-base font-medium flex items-center gap-2 mb-3">
+                                    <IconUsers className="h-4 w-4 text-green-600" />
+                                    Perfis que Receberão Alertas
+                                </Label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    {['Administrador', 'Gestor', 'Fiscal'].map((perfil) => (
+                                        <div
+                                            key={perfil}
+                                            className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                                alertasConfig.perfis_destino.includes(perfil)
+                                                    ? 'border-green-500 bg-green-50'
+                                                    : 'border-gray-200 bg-white hover:border-green-300'
+                                            } ${!alertasConfig.ativo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            onClick={() => alertasConfig.ativo && togglePerfilAlerta(perfil)}
+                                        >
+                                            <Checkbox
+                                                id={`perfil-${perfil}`}
+                                                checked={alertasConfig.perfis_destino.includes(perfil)}
+                                                onCheckedChange={() => alertasConfig.ativo && togglePerfilAlerta(perfil)}
+                                                disabled={!alertasConfig.ativo}
+                                                className="border-green-600"
+                                            />
+                                            <label
+                                                htmlFor={`perfil-${perfil}`}
+                                                className="text-sm font-medium cursor-pointer flex-1"
+                                            >
+                                                {perfil}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    <strong>Administrador:</strong> Recebe relatório consolidado de TODOS os contratos<br/>
+                                    <strong>Gestor:</strong> Recebe apenas dos contratos que gerencia<br/>
+                                    <strong>Fiscal:</strong> Recebe apenas dos contratos que fiscaliza
+                                </p>
+                            </div>
+
+                            {/* Preview */}
+                            {alertasConfig.ativo && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p className="font-medium text-blue-900 mb-2">📊 Preview de Alertas:</p>
+                                    <p className="text-sm text-blue-800">
+                                        • Serão enviados aproximadamente <strong>{calcularNumeroAlertasVencimento()}</strong> alertas
+                                    </p>
+                                    <p className="text-sm text-blue-800">
+                                        • Primeiro alerta: <strong>{alertasConfig.dias_antes}</strong> dias antes do vencimento
+                                    </p>
+                                    <p className="text-sm text-blue-800">
+                                        • Reenvio a cada: <strong>{alertasConfig.periodicidade_dias}</strong> dias
+                                    </p>
+                                    <p className="text-sm text-blue-800">
+                                        • Horário: <strong>{alertasConfig.hora_envio}</strong>
+                                    </p>
+                                    <p className="text-sm text-blue-800">
+                                        • Destinatários: <strong>{alertasConfig.perfis_destino.join(', ')}</strong>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Botões */}
+                            <div className="flex flex-wrap gap-3 items-center">
+                                <Button
+                                    onClick={salvarAlertasVencimento}
+                                    disabled={!temAlteracoesAlertas || isSavingAlertas || isLoadingAlertas}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    <IconDeviceFloppy className="h-4 w-4 mr-2" />
+                                    {isSavingAlertas ? "Salvando..." : "Salvar Configuração"}
+                                </Button>
+
+                                {temAlteracoesAlertas && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            onClick={resetarAlertasVencimento}
+                                            disabled={isSavingAlertas}
+                                            className="border-gray-300 hover:bg-gray-50"
+                                        >
+                                            <IconReload className="h-4 w-4 mr-2" />
+                                            Resetar
+                                        </Button>
+                                        <p className="text-sm text-green-600 flex items-center">
+                                            <IconInfoCircle className="h-4 w-4 mr-1" />
+                                            Alterações não salvas
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </CardContent>
             </Card>
 

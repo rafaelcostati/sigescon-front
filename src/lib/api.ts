@@ -2241,6 +2241,41 @@ export async function updateLembretesConfig(
 }
 
 // ============================================================================
+// ALERTAS DE VENCIMENTO
+// ============================================================================
+
+export interface AlertasVencimentoConfig {
+    ativo: boolean;
+    dias_antes: number;
+    periodicidade_dias: number;
+    perfis_destino: string[];
+    hora_envio: string;
+}
+
+/**
+ * Busca as configurações de alertas de vencimento
+ * GET /api/v1/config/alertas-vencimento
+ */
+export async function getAlertasVencimentoConfig(): Promise<AlertasVencimentoConfig> {
+    console.log("🔍 Buscando configurações de alertas de vencimento...");
+    return await api<AlertasVencimentoConfig>('/config/alertas-vencimento');
+}
+
+/**
+ * Atualiza as configurações de alertas de vencimento
+ * PATCH /api/v1/config/alertas-vencimento
+ */
+export async function updateAlertasVencimentoConfig(
+    config: AlertasVencimentoConfig
+): Promise<AlertasVencimentoConfig> {
+    console.log("📝 Atualizando configurações de alertas de vencimento...", config);
+    return await api<AlertasVencimentoConfig>('/config/alertas-vencimento', {
+        method: 'PATCH',
+        body: JSON.stringify(config)
+    });
+}
+
+// ============================================================================
 // MODELO DE RELATÓRIO
 // ============================================================================
 
