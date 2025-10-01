@@ -26,8 +26,8 @@ import {
     IconClock,
     IconUsers,
 } from "@tabler/icons-react";
-import { 
-    getPendenciasIntervaloDias, 
+import {
+    getPendenciasIntervaloDias,
     updatePendenciasIntervaloDias,
     getLembretesConfig,
     updateLembretesConfig,
@@ -38,7 +38,10 @@ import {
     type ModeloRelatorioInfo,
     getAlertasVencimentoConfig,
     updateAlertasVencimentoConfig,
-    type AlertasVencimentoConfig
+    type AlertasVencimentoConfig,
+    getEscalonamentoConfig,
+    updateEscalonamentoConfig,
+    type EscalonamentoConfig
 } from "@/lib/api";
 
 export default function Administracao() {
@@ -79,12 +82,27 @@ export default function Administracao() {
     const [isLoadingAlertas, setIsLoadingAlertas] = useState(false);
     const [isSavingAlertas, setIsSavingAlertas] = useState(false);
 
+    // Estados para escalonamento
+    const [escalonamentoConfig, setEscalonamentoConfig] = useState<EscalonamentoConfig>({
+        ativo: true,
+        dias_gestor: 7,
+        dias_admin: 14
+    });
+    const [escalonamentoConfigOriginal, setEscalonamentoConfigOriginal] = useState<EscalonamentoConfig>({
+        ativo: true,
+        dias_gestor: 7,
+        dias_admin: 14
+    });
+    const [isLoadingEscalonamento, setIsLoadingEscalonamento] = useState(false);
+    const [isSavingEscalonamento, setIsSavingEscalonamento] = useState(false);
+
     // Carregar configuração atual
     useEffect(() => {
         carregarConfiguracao();
         carregarConfiguracaoLembretes();
         carregarModeloRelatorio();
         carregarAlertasVencimento();
+        carregarEscalonamento();
     }, []);
 
     const carregarConfiguracao = async () => {
@@ -351,11 +369,66 @@ export default function Administracao() {
         return Math.ceil(alertasConfig.dias_antes / alertasConfig.periodicidade_dias);
     };
 
+    // ==================== Funções de Escalonamento ====================
+
+    const carregarEscalonamento = async () => {
+        setIsLoadingEscalonamento(true);
+        try {
+            const config = await getEscalonamentoConfig();
+            setEscalonamentoConfig(config);
+            setEscalonamentoConfigOriginal(config);
+            console.log("✅ Configurações de escalonamento carregadas:", config);
+        } catch (error) {
+            console.error("❌ Erro ao carregar escalonamento:", error);
+            toast.error("Erro ao carregar configurações de escalonamento");
+        } finally {
+            setIsLoadingEscalonamento(false);
+        }
+    };
+
+    const salvarEscalonamento = async () => {
+        // Validações
+        if (escalonamentoConfig.dias_gestor < 1 || escalonamentoConfig.dias_gestor > 90) {
+            toast.error("Dias para notificar gestor deve estar entre 1 e 90");
+            return;
+        }
+
+        if (escalonamentoConfig.dias_admin < 1 || escalonamentoConfig.dias_admin > 180) {
+            toast.error("Dias para notificar administrador deve estar entre 1 e 180");
+            return;
+        }
+
+        if (escalonamentoConfig.dias_admin <= escalonamentoConfig.dias_gestor) {
+            toast.error("Dias para admin deve ser maior que dias para gestor");
+            return;
+        }
+
+        setIsSavingEscalonamento(true);
+        try {
+            const updated = await updateEscalonamentoConfig(escalonamentoConfig);
+            setEscalonamentoConfig(updated);
+            setEscalonamentoConfigOriginal(updated);
+            toast.success("Configurações de escalonamento atualizadas com sucesso!");
+            console.log("✅ Escalonamento salvo:", updated);
+        } catch (error: any) {
+            console.error("❌ Erro ao salvar escalonamento:", error);
+            toast.error(error.message || "Erro ao salvar configurações de escalonamento");
+        } finally {
+            setIsSavingEscalonamento(false);
+        }
+    };
+
+    const resetarEscalonamento = () => {
+        setEscalonamentoConfig(escalonamentoConfigOriginal);
+        toast.info("Valores restaurados para os últimos salvos");
+    };
+
     const temAlteracoes = intervaloDias !== intervaloDiasOriginal;
-    const temAlteracoesLembretes = 
-        diasAntesInicio !== diasAntesInicioOriginal || 
+    const temAlteracoesLembretes =
+        diasAntesInicio !== diasAntesInicioOriginal ||
         intervaloLembrete !== intervaloLembreteOriginal;
     const temAlteracoesAlertas = JSON.stringify(alertasConfig) !== JSON.stringify(alertasConfigOriginal);
+    const temAlteracoesEscalonamento = JSON.stringify(escalonamentoConfig) !== JSON.stringify(escalonamentoConfigOriginal);
     
     // Calcula quantos lembretes serão enviados
     const calcularNumeroLembretes = () => {
@@ -914,6 +987,170 @@ export default function Administracao() {
                             </div>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Card de Escalonamento de Pendências */}
+            <Card className="border-orange-200 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200">
+                    <div className="flex items-center gap-3">
+                        <IconAlertTriangle className="h-6 w-6 text-orange-600" />
+                        <div>
+                            <CardTitle className="text-xl text-orange-900">
+                                Sistema de Escalonamento
+                            </CardTitle>
+                            <CardDescription className="text-orange-700">
+                                Notificações automáticas quando pendências não são resolvidas no prazo
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6 pt-6">
+                    {isLoadingEscalonamento ? (
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Toggle Ativo/Inativo */}
+                            <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                <div className="flex items-center gap-3">
+                                    <IconBell className="h-5 w-5 text-orange-600" />
+                                    <div>
+                                        <p className="font-medium text-orange-900">
+                                            Sistema {escalonamentoConfig.ativo ? "Ativo" : "Inativo"}
+                                        </p>
+                                        <p className="text-sm text-orange-700">
+                                            {escalonamentoConfig.ativo
+                                                ? "Notificações de escalonamento estão sendo enviadas"
+                                                : "Sistema desativado - nenhuma notificação será enviada"
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="escalonamento-ativo"
+                                        checked={escalonamentoConfig.ativo}
+                                        onCheckedChange={(checked) =>
+                                            setEscalonamentoConfig({
+                                                ...escalonamentoConfig,
+                                                ativo: checked as boolean
+                                            })
+                                        }
+                                    />
+                                    <Label
+                                        htmlFor="escalonamento-ativo"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    >
+                                        Ativar
+                                    </Label>
+                                </div>
+                            </div>
+
+                            {/* Dias para Gestor */}
+                            <div className="space-y-2">
+                                <Label htmlFor="escalonamento-dias-gestor" className="flex items-center gap-2">
+                                    <IconUsers className="h-4 w-4 text-orange-600" />
+                                    <span className="font-medium">Dias para Notificar Gestor</span>
+                                </Label>
+                                <Input
+                                    id="escalonamento-dias-gestor"
+                                    type="number"
+                                    min={1}
+                                    max={90}
+                                    value={escalonamentoConfig.dias_gestor}
+                                    onChange={(e) =>
+                                        setEscalonamentoConfig({
+                                            ...escalonamentoConfig,
+                                            dias_gestor: parseInt(e.target.value) || 1
+                                        })
+                                    }
+                                    className="border-orange-300 focus:ring-orange-500"
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Após quantos dias do vencimento da pendência o gestor será notificado (1-90 dias)
+                                </p>
+                            </div>
+
+                            {/* Dias para Admin */}
+                            <div className="space-y-2">
+                                <Label htmlFor="escalonamento-dias-admin" className="flex items-center gap-2">
+                                    <IconSettings className="h-4 w-4 text-orange-600" />
+                                    <span className="font-medium">Dias para Notificar Administrador</span>
+                                </Label>
+                                <Input
+                                    id="escalonamento-dias-admin"
+                                    type="number"
+                                    min={1}
+                                    max={180}
+                                    value={escalonamentoConfig.dias_admin}
+                                    onChange={(e) =>
+                                        setEscalonamentoConfig({
+                                            ...escalonamentoConfig,
+                                            dias_admin: parseInt(e.target.value) || 1
+                                        })
+                                    }
+                                    className="border-orange-300 focus:ring-orange-500"
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Após quantos dias do vencimento o administrador será notificado (1-180 dias, deve ser maior que dias do gestor)
+                                </p>
+                            </div>
+
+                            {/* Informação de Como Funciona */}
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                <div className="flex gap-3">
+                                    <IconInfoCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-sm text-orange-800 space-y-2">
+                                        <p className="font-medium">Como funciona o escalonamento:</p>
+                                        <ul className="list-decimal list-inside space-y-1 text-orange-700">
+                                            <li>Pendência vence e não é resolvida</li>
+                                            <li>
+                                                Após <strong>{escalonamentoConfig.dias_gestor} dias</strong>
+                                                {' '}→ Gestor do contrato recebe email
+                                            </li>
+                                            <li>
+                                                Após <strong>{escalonamentoConfig.dias_admin} dias</strong>
+                                                {' '}→ Administrador recebe email
+                                            </li>
+                                            <li>Emails continuam até a pendência ser resolvida</li>
+                                        </ul>
+                                        <p className="mt-3 pt-3 border-t border-orange-300">
+                                            <strong>Exemplo com configuração atual:</strong><br />
+                                            Pendência vence dia 01/01 → Gestor notificado dia {
+                                                new Date(new Date().setDate(new Date().getDate() + escalonamentoConfig.dias_gestor)).toLocaleDateString()
+                                            } → Admin notificado dia {
+                                                new Date(new Date().setDate(new Date().getDate() + escalonamentoConfig.dias_admin)).toLocaleDateString()
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Botões de Ação */}
+                            <div className="flex gap-3 pt-4 border-t">
+                                <Button
+                                    onClick={salvarEscalonamento}
+                                    disabled={!temAlteracoesEscalonamento || isSavingEscalonamento}
+                                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                                >
+                                    <IconDeviceFloppy className="h-4 w-4 mr-2" />
+                                    {isSavingEscalonamento ? "Salvando..." : "Salvar Configurações"}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={resetarEscalonamento}
+                                    disabled={!temAlteracoesEscalonamento || isSavingEscalonamento}
+                                    className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                                >
+                                    <IconReload className="h-4 w-4 mr-2" />
+                                    Resetar
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </CardContent>
             </Card>
 

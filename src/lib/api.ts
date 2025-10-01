@@ -2276,6 +2276,39 @@ export async function updateAlertasVencimentoConfig(
 }
 
 // ============================================================================
+// ESCALONAMENTO DE PENDÊNCIAS
+// ============================================================================
+
+export interface EscalonamentoConfig {
+    ativo: boolean;
+    dias_gestor: number;
+    dias_admin: number;
+}
+
+/**
+ * Busca as configurações de escalonamento de pendências
+ * GET /api/v1/config/escalonamento
+ */
+export async function getEscalonamentoConfig(): Promise<EscalonamentoConfig> {
+    console.log("🔍 Buscando configurações de escalonamento...");
+    return await api<EscalonamentoConfig>('/config/escalonamento');
+}
+
+/**
+ * Atualiza as configurações de escalonamento de pendências
+ * PATCH /api/v1/config/escalonamento
+ */
+export async function updateEscalonamentoConfig(
+    config: EscalonamentoConfig
+): Promise<EscalonamentoConfig> {
+    console.log("📝 Atualizando configurações de escalonamento...", config);
+    return await api<EscalonamentoConfig>('/config/escalonamento', {
+        method: 'PATCH',
+        body: JSON.stringify(config)
+    });
+}
+
+// ============================================================================
 // MODELO DE RELATÓRIO
 // ============================================================================
 
@@ -2427,4 +2460,125 @@ export async function criarPendenciasAutomaticas(
         method: 'POST',
         body: JSON.stringify({ descricao_base: descricaoBase })
     });
+}
+
+// ============================================================================
+// LOGS DE AUDITORIA
+// ============================================================================
+
+export interface AuditLog {
+    id: number;
+    usuario_id: number;
+    usuario_nome: string;
+    perfil_usado: string | null;
+    acao: string;
+    entidade: string;
+    entidade_id: number | null;
+    descricao: string;
+    dados_anteriores: any;
+    dados_novos: any;
+    ip_address: string | null;
+    user_agent: string | null;
+    data_hora: string;
+}
+
+export interface AuditLogListResponse {
+    logs: AuditLog[];
+    total: number;
+    pagina: number;
+    tamanho_pagina: number;
+    total_paginas: number;
+}
+
+export interface AuditLogFilters {
+    usuario_id?: number;
+    perfil?: string;
+    acao?: string;
+    entidade?: string;
+    entidade_id?: number;
+    data_inicio?: string;
+    data_fim?: string;
+    busca?: string;
+    pagina?: number;
+    tamanho_pagina?: number;
+    ordenar_por?: string;
+    ordem?: 'ASC' | 'DESC';
+}
+
+export interface AuditStatistics {
+    total_logs: number;
+    logs_por_acao: Record<string, number>;
+    logs_por_entidade: Record<string, number>;
+    logs_por_usuario: Array<{
+        usuario_id: number;
+        usuario_nome: string;
+        count: number;
+    }>;
+    logs_ultimas_24h: number;
+    logs_ultima_semana: number;
+}
+
+/**
+ * Lista logs de auditoria com filtros
+ * GET /api/v1/audit-logs
+ */
+export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogListResponse> {
+    const params = new URLSearchParams();
+
+    if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                params.append(key, String(value));
+            }
+        });
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `/audit-logs?${queryString}` : '/audit-logs';
+
+    console.log(`🔍 Buscando logs de auditoria: ${url}`);
+    return await api<AuditLogListResponse>(url);
+}
+
+/**
+ * Busca estatísticas de auditoria
+ * GET /api/v1/audit-logs/statistics
+ */
+export async function getAuditStatistics(): Promise<AuditStatistics> {
+    console.log("📊 Buscando estatísticas de auditoria...");
+    return await api<AuditStatistics>('/audit-logs/statistics');
+}
+
+/**
+ * Busca um log específico por ID
+ * GET /api/v1/audit-logs/{id}
+ */
+export async function getAuditLog(logId: number): Promise<AuditLog> {
+    console.log(`🔍 Buscando log de auditoria #${logId}...`);
+    return await api<AuditLog>(`/audit-logs/${logId}`);
+}
+
+/**
+ * Busca logs de uma entidade específica
+ * GET /api/v1/audit-logs/entidade/{entidade}/{entidade_id}
+ */
+export async function getAuditLogsByEntidade(
+    entidade: string,
+    entidadeId: number,
+    limit: number = 50
+): Promise<AuditLog[]> {
+    console.log(`🔍 Buscando logs da entidade ${entidade} #${entidadeId}...`);
+    return await api<AuditLog[]>(`/audit-logs/entidade/${entidade}/${entidadeId}?limit=${limit}`);
+}
+
+/**
+ * Busca logs de um usuário específico
+ * GET /api/v1/audit-logs/usuario/{id}
+ */
+export async function getAuditLogsByUsuario(
+    usuarioId: number,
+    limit: number = 100
+): Promise<AuditLog[]> {
+    console.log(`🔍 Buscando logs do usuário #${usuarioId}...`);
+    return await api<AuditLog[]>(`/audit-logs/usuario/${usuarioId}?limit=${limit}`);
 }
