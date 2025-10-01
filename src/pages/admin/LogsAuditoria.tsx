@@ -27,7 +27,6 @@ import {
     getAuditLogs,
     getAuditStatistics,
     type AuditLog,
-    type AuditLogFilters,
     type AuditStatistics
 } from "@/lib/api";
 
@@ -42,14 +41,6 @@ export default function LogsAuditoria() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalLogs, setTotalLogs] = useState(0);
     const pageSize = 20;
-
-    // Filtros
-    const [filters, setFilters] = useState<AuditLogFilters>({
-        pagina: 1,
-        tamanho_pagina: pageSize,
-        ordenar_por: 'data_hora',
-        ordem: 'DESC'
-    });
 
     // Estados para os filtros
     const [searchTerm, setSearchTerm] = useState("");
@@ -67,9 +58,10 @@ export default function LogsAuditoria() {
         setIsLoading(true);
         try {
             const response = await getAuditLogs({
-                ...filters,
                 pagina: currentPage,
                 tamanho_pagina: pageSize,
+                ordenar_por: 'data_hora',
+                ordem: 'DESC',
                 busca: searchTerm || undefined,
                 acao: selectedAction || undefined,
                 entidade: selectedEntity || undefined,
